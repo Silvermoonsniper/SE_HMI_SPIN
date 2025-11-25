@@ -1,0 +1,64 @@
+<h2>System Status</h2>
+<p>Connection: <span data-spin="@hostinfo">Connecting…</span></p>
+
+<h2>Mass Flow Controller 1</h2>
+<table style="width: 100%; border-collapse: collapse;">
+  <tr style="border-bottom: 1px solid #ccc;">
+    <td style="padding: 10px;">Value:</td>
+    <td style="padding: 10px; font-weight: bold;"><span data-spin='@massflow_contr1 "%s {unit}"'>-- ml/min</span></td>
+  </tr>
+  <tr style="border-bottom: 1px solid #ccc;">
+    <td style="padding: 10px;">Target:</td>
+    <td style="padding: 10px; font-weight: bold;"><span data-spin='@massflow_contr1.target "%s {unit}"'>-- ml/min</span></td>
+  </tr>
+</table>
+
+<h2>Mass Flow Controller 2</h2>
+<table style="width: 100%; border-collapse: collapse;">
+  <tr style="border-bottom: 1px solid #ccc;">
+    <td style="padding: 10px;">Value:</td>
+    <td style="padding: 10px; font-weight: bold;"><span data-spin='@massflow_contr2 "%s {unit}"'>-- ml/min</span></td>
+  </tr>
+  <tr style="border-bottom: 1px solid #ccc;">
+    <td style="padding: 10px;">Target:</td>
+    <td style="padding: 10px; font-weight: bold;"><span data-spin='@massflow_contr2.target "%s {unit}"'>-- ml/min</span></td>
+  </tr>
+</table>
+
+<hr style="margin: 30px 0;">
+<h3>Debug Info</h3>
+<pre id="debug-output" style="background: #f5f5f5; padding: 10px; max-height: 200px; overflow-y: auto; font-size: 11px; border-radius: 4px; border: 1px solid #ddd;">Waiting for page load...</pre>
+
+<script>
+let debugLines = [];
+function debug(msg) {
+  debugLines.push('[' + new Date().toLocaleTimeString() + '] ' + msg);
+  if (debugLines.length > 30) debugLines.shift();
+  var el = document.getElementById('debug-output');
+  if (el) el.textContent = debugLines.join('\n');
+  console.log(msg);
+}
+
+debug('✓ Page initialized');
+
+// Listen for Spin startup event
+window.addEventListener('spinstartup', function() {
+  debug('✓ Spin startup event fired');
+});
+
+// Listen for Spin connect event
+window.addEventListener('spinconnect', function() {
+  debug('✓ WebSocket connected to Spin backend');
+});
+
+// Listen for Spin disconnect event
+window.addEventListener('spindisconnect', function() {
+  debug('⚠ WebSocket disconnected from backend');
+});
+
+// Listen for Spin updates
+window.addEventListener('spinupdate', function(event) {
+  var val = event.detail.value;
+  debug('✓ Data update: ' + event.detail.key + ' = ' + JSON.stringify(val));
+});
+</script>

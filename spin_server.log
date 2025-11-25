@@ -1,0 +1,18 @@
+[37m[14:43:57] [39;49;00mspin                      : ======== Running on http://0.0.0.0:8000 ========
+[37m[14:43:57] [39;49;00mspin.secop.localhost:10801: connected to node
+[37m[14:43:57] [39;49;00mspin.secop.massflow_contr1: datainfo is set
+[37m[14:43:57] [39;49;00mspin.secop.massflow_contr1: datainfo is set
+[37m[14:43:57] [39;49;00mspin.secop.massflow_contr1: datainfo is set
+[37m[14:43:57] [39;49;00mspin.secop.massflow_contr2: datainfo is set
+[37m[14:43:57] [39;49;00mspin.secop.massflow_contr2: datainfo is set
+[37m[14:43:57] [39;49;00mspin.secop.massflow_contr2: datainfo is set
+[37m[14:43:57] [39;49;00mspin.secop.localhost:10801: waiting for initial updates
+[37m[14:43:57] [39;49;00mspin.secop.localhost:10801: handling regular updates
+[37m[14:43:58] [39;49;00mspin.handler              : [127.0.0.1] [ws] connection accepted
+[37m[14:44:01] [39;49;00mspin.handler              : [127.0.0.1] serving page 'default'
+[37m[14:44:44] [39;49;00mspin.handler              : [127.0.0.1] serving page 'default'
+[37m[14:45:02] [39;49;00mspin.handler              : [127.0.0.1] [ws] connection accepted
+[37m[14:45:07] [39;49;00mspin.handler              : [127.0.0.1] [ws] connection closed
+[37m[14:45:42] [39;49;00mspin.handler              : [127.0.0.1] serving page 'default'
+[37m[14:45:47] [39;49;00mspin.handler              : [127.0.0.1] [ws] connection closed
+[37m[14:45:47] [39;49;00mspin.handler              : [127.0.0.1] [ws] connection accepted

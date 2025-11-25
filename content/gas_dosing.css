@@ -1,0 +1,50 @@
+/* ===== Page layout ===== */
+body {
+    font-family: sans-serif;
+    margin: 20px;
+    background: #fafafa;
+    color: #333;
+}
+
+h2 {
+    margin-top: 30px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 4px;
+}
+
+div[data-spin] {
+    padding: 6px 10px;
+    margin: 6px 0;
+    border-radius: 4px;
+    display: inline-block;
+    min-width: 180px;
+    border: 1px solid #ddd;
+    transition: background 0.2s;
+}
+
+/* ===== Highlight color applied by hl=... rules ===== */
+.spin-highlight {
+    background-color: #ffefbf !important; /* yellowish */
+}
+
+/* ===== Status color backgrounds (Spin applies CSS classes) ===== */
+.spin-ok {
+    background: #d9fddb;
+    border-color: #8cd98c;
+}
+
+.spin-busy {
+    background: #e8f1ff;
+    border-color: #89a9e8;
+}
+
+.spin-error {
+    background: #ffe2e2;
+    border-color: #e88c8c;
+}
+
+/* Optional small formatting for values */
+.value-large {
+    font-size: 1.4em;
+    font-weight: bold;
+}
