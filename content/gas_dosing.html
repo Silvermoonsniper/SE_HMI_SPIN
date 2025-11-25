@@ -1,29 +1,165 @@
 <h2>System Status</h2>
 <p>Connection: <span data-spin="@hostinfo">Connecting…</span></p>
 
-<h2>Mass Flow Controller 1</h2>
-<table style="width: 100%; border-collapse: collapse;">
-  <tr style="border-bottom: 1px solid #ccc;">
-    <td style="padding: 10px;">Value:</td>
-    <td style="padding: 10px; font-weight: bold;"><span data-spin='@massflow_contr1 "%s {unit}"'>-- ml/min</span></td>
-  </tr>
-  <tr style="border-bottom: 1px solid #ccc;">
-    <td style="padding: 10px;">Target:</td>
-    <td style="padding: 10px; font-weight: bold;"><span data-spin='@massflow_contr1.target "%s {unit}"'>-- ml/min</span></td>
-  </tr>
-</table>
+<style>
+  .device-grid { display: flex; gap: 16px; flex-wrap: wrap; }
+  .device-box {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+    width: 320px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    background: #fff;
+  }
+  .device-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .device-title { font-weight:600; }
+  .status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    color: #fff;
+  }
+  .state-ok { background: #28a745; }
+  .state-warn { background: #ffc107; color: #222; }
+  .state-busy { background: #17a2b8; }
+  .state-error { background: #dc3545; }
+  .device-field { display:flex; justify-content:space-between; padding:6px 0; font-size:14px; }
+  .device-value { font-weight:700; }
+  .set-btn { margin-left:8px; padding:6px 8px; border-radius:4px; border:1px solid #bbb; background:#ffffff; color:#000000; cursor:pointer; }
+  .set-btn:hover { background:#f2f2f2; }
+  .set-btn:focus { outline: 2px solid #c8d7ff; }
+  .toggle-btn { margin-left:8px; padding:6px 8px; border-radius:4px; border:1px solid #bbb; background:#ffffff; color:#000000; cursor:pointer; }
+  .toggle-btn:hover { background:#f2f2f2; }
+  .toggle-btn:focus { outline: 2px solid #c8d7ff; }
+  .extra-panel { max-height: 0; overflow: hidden; transition: max-height 0.25s ease; margin-top:8px; border-top:1px dashed #eee; }
+  .extra-panel.open { max-height: 300px; overflow: auto; padding-top:8px; }
+  .extra-row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #f5f5f5; font-size:13px; }
+</style>
 
-<h2>Mass Flow Controller 2</h2>
-<table style="width: 100%; border-collapse: collapse;">
-  <tr style="border-bottom: 1px solid #ccc;">
-    <td style="padding: 10px;">Value:</td>
-    <td style="padding: 10px; font-weight: bold;"><span data-spin='@massflow_contr2 "%s {unit}"'>-- ml/min</span></td>
-  </tr>
-  <tr style="border-bottom: 1px solid #ccc;">
-    <td style="padding: 10px;">Target:</td>
-    <td style="padding: 10px; font-weight: bold;"><span data-spin='@massflow_contr2.target "%s {unit}"'>-- ml/min</span></td>
-  </tr>
-</table>
+<div class="device-grid">
+  <div class="device-box" id="box-mfc1">
+    <div class="device-header">
+      <div class="device-title">Mass Flow Controller 1</div>
+      <div id="status-mfc1" class="status-badge state-warn">unknown</div>
+    </div>
+    <div class="device-field"><div>Value</div><div class="device-value"><span data-spin='@massflow_contr1 "%s {unit}"'>--</span></div></div>
+    <div class="device-field"><div>Target</div><div class="device-value"><span data-spin='@massflow_contr1.target "%s {unit}"'>--</span></div></div>
+    <div style="margin-top:8px; display:flex; gap:8px; align-items:center;"><button class="set-btn" onclick="openSetTarget('massflow_contr1.target')">Set target</button><button class="toggle-btn" id="toggle-mfc1" onclick="toggleExtra('massflow_contr1')">More ▾</button></div>
+    <div id="extra-mfc1" class="extra-panel" aria-hidden="true"></div>
+  </div>
+
+  <div class="device-box" id="box-mfc2">
+    <div class="device-header">
+      <div class="device-title">Mass Flow Controller 2</div>
+      <div id="status-mfc2" class="status-badge state-warn">unknown</div>
+    </div>
+    <div class="device-field"><div>Value</div><div class="device-value"><span data-spin='@massflow_contr2 "%s {unit}"'>--</span></div></div>
+    <div class="device-field"><div>Target</div><div class="device-value"><span data-spin='@massflow_contr2.target "%s {unit}"'>--</span></div></div>
+    <div style="margin-top:8px; display:flex; gap:8px; align-items:center;"><button class="set-btn" onclick="openSetTarget('massflow_contr2.target')">Set target</button><button class="toggle-btn" id="toggle-mfc2" onclick="toggleExtra('massflow_contr2')">More ▾</button></div>
+    <div id="extra-mfc2" class="extra-panel" aria-hidden="true"></div>
+  </div>
+</div>
+
+<script>
+// Update status badges when Spin sends updates. spinupdate carries state and state_str.
+window.addEventListener('spinupdate', function(event) {
+  try {
+    var key = event.detail.key || '';
+    var state = event.detail.state || '';
+    var state_str = event.detail.state_str || '';
+    if (key.startsWith('massflow_contr1')) {
+      var el = document.getElementById('status-mfc1');
+      if (el) {
+        el.textContent = state_str || state || 'unknown';
+        el.className = 'status-badge ' + (state ? ('state-' + state) : 'state-warn');
+      }
+    } else if (key.startsWith('massflow_contr2')) {
+      var el = document.getElementById('status-mfc2');
+      if (el) {
+        el.textContent = state_str || state || 'unknown';
+        el.className = 'status-badge ' + (state ? ('state-' + state) : 'state-warn');
+      }
+    }
+  } catch(e) { console.error('status update error', e); }
+});
+
+// Open numeric input and send the new target to the server
+function openSetTarget(key) {
+  try {
+    // valuetype: [type, min, max] - choose reasonable defaults
+    const valuetype = ["float", 0, 1000];
+    Spin.input_show(valuetype, function(value) {
+      try {
+        // send_request(key, transform, action, intent, data)
+        Spin.send_request(key, "", "input", "", value);
+        console.log('Sent target', key, value);
+      } catch(e) { console.error('send_request failed', e); }
+    });
+  } catch(e) { console.error('openSetTarget failed', e); }
+}
+</script>
+
+<script>
+// Store latest values per device and render extra parameter panel
+const latestValues = {};
+
+function deviceDomId(device) {
+  // massflow_contr1 -> mfc1
+  return device.replace(/^massflow_contr/, 'mfc');
+}
+
+function renderExtra(device) {
+  const id = deviceDomId(device);
+  const panel = document.getElementById('extra-' + id);
+  if (!panel) return;
+  const data = latestValues[device] || {};
+  const keys = Object.keys(data).sort();
+  if (keys.length === 0) {
+    panel.innerHTML = '<div class="extra-row">No additional parameters</div>';
+    return;
+  }
+  let html = '';
+  for (let k of keys) {
+    const entry = data[k];
+    const v = entry && entry.value !== undefined ? entry.value : '—';
+    const u = entry && entry.unit ? (' ' + entry.unit) : '';
+    html += `<div class="extra-row"><div>${k}</div><div>${String(v)}${u}</div></div>`;
+  }
+  panel.innerHTML = html;
+}
+
+function toggleExtra(device) {
+  const id = deviceDomId(device);
+  const panel = document.getElementById('extra-' + id);
+  const btn = document.getElementById('toggle-' + id);
+  if (!panel || !btn) return;
+  const open = panel.classList.toggle('open');
+  panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+  btn.textContent = open ? 'Close ▴' : 'More ▾';
+  if (open) renderExtra(device);
+}
+
+// listen for updates and cache them
+window.addEventListener('spinupdate', function(event) {
+  try {
+    const key = event.detail.key || '';
+    let device, param;
+    if (key.includes('.')) {
+      [device, param] = key.split('.', 2);
+    } else {
+      device = key;
+      param = 'value';
+    }
+    if (!device) return;
+    if (!latestValues[device]) latestValues[device] = {};
+    latestValues[device][param] = { value: event.detail.value, unit: event.detail.unit, state: event.detail.state, state_str: event.detail.state_str };
+    // if panel open, refresh
+    const domId = deviceDomId(device);
+    const panel = document.getElementById('extra-' + domId);
+    if (panel && panel.classList.contains('open')) renderExtra(device);
+  } catch (e) { console.error('cache spinupdate failed', e); }
+});
+</script>
 
 <hr style="margin: 30px 0;">
 <h3>Debug Info</h3>

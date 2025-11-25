@@ -10,8 +10,25 @@ config.pages = {
 config.devices = {
     'massflow_contr1':  Device('secop://localhost:10801/massflow_contr1',
                      pollinterval=1.0,
-                     params=[Param('value'), Param('target')] ),
+                     # Expose additional commonly useful parameters so the
+                     # frontend can display them in the "More" panel.
+                     params=[
+                         Param('value'),
+                         Param('target'),
+                         Param('setpoint'),
+                         Param('status'),
+                         Param('ramp'),
+                         Param('_gastype'),
+                        
+                     ] ),
     'massflow_contr2': Device('secop://localhost:10801/massflow_contr2',
                      pollinterval=1.0,
-                     params=[Param('value'), Param('target')]), 
+                     params=[
+                         Param('value'),
+                         Param('target'),
+                         Param('setpoint'),
+                         Param('status'),
+                         Param('ramp'),
+                         Param('_gastype'),
+                     ]), 
 }
