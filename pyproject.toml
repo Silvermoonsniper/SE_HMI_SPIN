@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spin-gui-SE"
+version = "0.1.0"                # <-- set a static version
+description = "Web GUI for Sample Environment at HZB with spin-hmi framework"
+authors = [
+  { name = "Zhengyu Chen", email = "zhengyu.chen@helmholtz-berlin.de" }
+]
+readme = "README.md"
+requires-python = ">=3.11"
+
+dependencies = [
+  "spin-hmi",
+  "frappy-core==0.20.4",
+  "ipykernel",
+]
+
+[project.optional-dependencies]
+dev = ["ruff"]
+
+[tool.setuptools.packages.find]
+include = ["content*", "configuration*"]   # <-- explicitly include your packages
