@@ -1,0 +1,1730 @@
+<style>
+/* Gas Dosing System Styles */
+
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #f9f9f9;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Panels */
+#connection-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: #f0f2f5;
+  position: relative;
+  overflow: hidden;
+}
+
+.bg-decoration {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1fr;
+  grid-template-rows: 1fr 1.5fr 1fr;
+  gap: 20px;
+  padding: 20px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bg-img {
+  background-color: #e1e4e8;
+  background-size: cover;
+  background-position: center;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  transition: all 0.5s ease;
+  opacity: 0.8;
+}
+
+.bg-img.tl { grid-area: 1 / 1 / 2 / 2; transform-origin: top left; }
+.bg-img.tr { grid-area: 1 / 3 / 2 / 4; transform-origin: top right; }
+.bg-img.c  { grid-area: 2 / 2 / 3 / 3; opacity: 1; box-shadow: 0 12px 36px rgba(0,0,0,0.15); }
+.bg-img.bl { grid-area: 3 / 1 / 4 / 2; transform-origin: bottom left; }
+.bg-img.br { grid-area: 3 / 3 / 4 / 4; transform-origin: bottom right; }
+
+/* Subtle hover animation */
+#connection-panel:hover .bg-img.tl { transform: scale(1.02) translate(-5px, -5px); }
+#connection-panel:hover .bg-img.tr { transform: scale(1.02) translate(5px, -5px); }
+#connection-panel:hover .bg-img.bl { transform: scale(1.02) translate(-5px, 5px); }
+#connection-panel:hover .bg-img.br { transform: scale(1.02) translate(5px, 5px); }
+
+#main-panel {
+  display: none;
+  padding: 20px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.conn-box {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  width: 300px;
+  text-align: center;
+  position: relative;
+  z-index: 10;
+  border: 1px solid rgba(255,255,255,0.5);
+}
+
+.conn-field {
+  margin-bottom: 15px;
+  text-align: left;
+}
+
+.conn-field label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #555;
+  font-size: 12px;
+}
+
+.conn-field input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.conn-btn {
+  width: 100%;
+  padding: 10px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.conn-btn:hover {
+  background: #0056b3;
+}
+
+/* Viewport for Pan/Zoom */
+.viewport {
+  position: relative;
+  width: 100%;
+  height: 75vh;
+  margin: 20px 0;
+  border: 1px dashed #e0e0e0;
+  background: #eef;
+  overflow: hidden;
+  cursor: grab;
+}
+
+.viewport:active {
+  cursor: grabbing;
+}
+
+.canvas { 
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3000px; /* Large virtual size */
+  height: 2000px;
+  background: #fdfdfd;
+  transform-origin: 0 0;
+  /* Grid pattern for better orientation */
+  background-image: 
+    linear-gradient(#eee 1px, transparent 1px),
+    linear-gradient(90deg, #eee 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+.device-box {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  border: 1px solid #666;
+  border-radius: 4px;
+  padding: 4px;
+  width: 180px; /* Compact width */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  background: #ffffff;
+  
+  /* Custom resizing */
+  overflow: hidden;
+  min-width: 140px;
+  min-height: 100px;
+  z-index: 10;
+  font-size: 11px;
+}
+
+.resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 50%, #999 50%);
+  z-index: 20;
+}
+
+.device-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #eee;
+  
+  /* Enable dragging handle */
+  cursor: move;
+  user-select: none;
+  background: #f1f1f1; 
+  margin: -4px -4px 4px -4px;
+  padding: 4px 6px;
+  border-radius: 3px 3px 0 0;
+}
+
+.device-title { 
+  font-weight: 700; 
+  font-size: 11px;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-badge {
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 9px;
+  color: #fff;
+}
+
+.state-ok { background: #28a745; }
+.state-warn { background: #ffc107; color: #222; }
+.state-busy { background: #17a2b8; }
+.state-error { background: #dc3545; }
+
+.device-field { 
+  display: flex; 
+  justify-content: space-between; 
+  padding: 2px 0; 
+  font-size: 11px;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.device-value { 
+  font-weight: 700; 
+  color: #0066cc; 
+  font-size: 12px;
+}
+
+.set-btn:hover { 
+  background: #f2f2f2; 
+}
+
+.set-btn:focus { 
+  outline: 2px solid #c8d7ff; 
+}
+
+.toggle-btn { 
+  margin-left: 0; 
+  padding: 2px 8px; 
+  border-radius: 3px; 
+  border: 1px solid #999; 
+  background: #f0f0f0; 
+  color: #333; 
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.toggle-btn:hover { 
+  background: #e0e0e0;
+  border-color: #666;
+}
+
+.toggle-btn:focus { 
+  outline: 2px solid #c8d7ff; 
+}
+
+.extra-panel { 
+  max-height: 0; 
+  overflow: hidden; 
+  transition: max-height 0.25s ease; 
+  margin-top: 4px; 
+  border-top: 1px dashed #eee; 
+}
+
+.extra-panel.open { 
+  max-height: 300px; 
+  overflow: auto; 
+  padding-top: 4px; 
+}
+
+.extra-row { 
+  display: flex; 
+  justify-content: space-between; 
+  padding: 2px 0; 
+  border-bottom: 1px solid #f5f5f5; 
+  font-size: 11px; 
+}
+
+.control-section {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #eee;
+  background: transparent;
+  padding: 6px 4px;
+  margin: 6px -6px 0 -6px;
+}
+
+.control-field {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+  align-items: center;
+  font-size: 11px;
+}
+
+.control-label {
+  min-width: 60px;
+  font-weight: 600;
+  color: #555;
+  font-size: 11px;
+}
+
+.control-input {
+  flex: 1;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 11px;
+  background: white;
+}
+.device-field {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 12px;
+  border-bottom: 1px solid #f7f7f7;
+  align-items: center;
+}
+.device-value {
+  font-weight: 700;
+  color: #0066cc;
+  font-size: 12px;
+}
+.inline-small { font-size: 11px; color: #004085; }
+.control-button { 
+  padding: 2px 6px; 
+  background: #0066cc; 
+  color: #ffffff; 
+  border: 1px solid #0052a3; 
+  border-radius: 3px; 
+  cursor: pointer; 
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.control-button:hover { 
+  background: #0052a3; 
+}
+
+.commands-section {
+  padding: 8px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: #fff;
+  border-top: 1px solid #eee;
+}
+
+.cmd-btn {
+  padding: 4px 8px;
+  font-size: 11px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.cmd-btn:hover { background: #5a6268; }
+
+/* Decoration Styles */
+.deco-box {
+  position: absolute;
+  top: 50px;
+  left: 50px;
+  z-index: 5;
+  /* Custom resizing */
+  overflow: visible; 
+  min-width: 20px;
+  min-height: 20px;
+}
+
+.deco-box.selected {
+  outline: 2px dashed #007bff;
+}
+
+.deco-visual {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.deco-type-line .deco-visual {
+  height: 6px;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 3px;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.deco-type-line-v .deco-visual {
+  width: 6px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 3px;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.deco-label {
+  border: 1px dashed transparent;
+  padding: 2px 4px;
+  font-weight: bold;
+  color: #333;
+  min-width: 50px;
+  min-height: 20px;
+  white-space: nowrap;
+}
+.deco-label:hover {
+  border-color: #ccc;
+}
+.deco-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  background: red;
+  color: white;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 14px;
+  font-size: 12px;
+  cursor: pointer;
+  display: none;
+  z-index: 20;
+}
+.deco-drag-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 50%;
+  cursor: move;
+  display: none;
+  z-index: 15;
+}
+.resize-handle {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 12px;
+  height: 12px;
+  background: rgba(0,0,0,0.35);
+  border-radius: 2px;
+  cursor: se-resize;
+  z-index: 20;
+  display: none;
+}
+
+.deco-box:hover .deco-remove,
+.deco-box:hover .deco-drag-handle,
+.deco-box:hover .resize-handle,
+.deco-box.selected .resize-handle,
+.device-box:hover .resize-handle {
+  display: block;
+}
+
+@keyframes grid-flow {
+  0% { background-position: 0 0, 0 0; }
+  100% { background-position: 50px 50px, 50px 50px; }
+}
+
+.canvas.animated {
+  animation: grid-flow 5s linear infinite;
+}
+</style>
+
+<div id="connection-panel">
+  <div class="bg-decoration">
+    <div class="bg-img tl"></div>
+    <div class="bg-img tr"></div>
+    <div class="bg-img c"></div>
+    <div class="bg-img bl"></div>
+    <div class="bg-img br"></div>
+  </div>
+  <div class="conn-box">
+    <h1 style="margin-top:0; margin-bottom:20px; color:#333; font-size:28px;">GSE-UI</h1>
+    <div class="conn-field">
+      <label>IP Address</label>
+      <input type="text" id="conn-ip" value="localhost" placeholder="e.g. 192.168.1.10">
+    </div>
+    <div class="conn-field">
+      <label>Port</label>
+      <input type="number" id="conn-port" value="10801" placeholder="e.g. 10801">
+    </div>
+    <div class="conn-field">
+      <label>Layout Preset</label>
+      <div style="display:flex; gap:5px;">
+        <select id="conn-layout-select" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:4px;">
+          <option value="">-- Select Layout --</option>
+        </select>
+        <button class="conn-btn" style="width:auto; padding: 0 15px;" onclick="loadSelectedLayout()">Set</button>
+      </div>
+    </div>
+
+    <div id="connected-nodes-list" style="margin-bottom: 15px; text-align: left; max-height: 100px; overflow-y: auto; border: 1px solid #eee; padding: 5px; display: none; background: rgba(255,255,255,0.5);">
+        <div style="font-size: 11px; font-weight: bold; color: #555; margin-bottom: 5px;">Connected Nodes:</div>
+        <ul id="nodes-ul" style="list-style: none; padding: 0; margin: 0; font-size: 12px;"></ul>
+    </div>
+
+    <button class="conn-btn" onclick="addNodeConnection()">Add Node Connection</button>
+    <button id="enter-system-btn" class="conn-btn" style="margin-top: 10px; background: #28a745; display: none;" onclick="enterSystem()">Configure New System Layout / Edit System Layout</button>
+  </div>
+</div>
+
+<div id="main-panel">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+    <h3 style="margin:0;">Gas Dosing Control</h3>
+    <button onclick="disconnectNode()" style="padding:4px 8px; background:#dc3545; color:white; border:none; border-radius:4px; cursor:pointer;">Disconnect</button>
+  </div>
+
+<div id="device-manager" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; gap: 10px; align-items: center;">
+  <label for="device-select" style="font-weight: bold; font-size: 12px;">Add Device:</label>
+  <select id="device-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; min-width: 150px;">
+    <option value="">-- Select Module --</option>
+  </select>
+  <button onclick="createDeviceDisplay()" style="padding: 4px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Create Display</button>
+</div>
+
+<div id="decoration-manager" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; gap: 10px; align-items: center;">
+  <label for="deco-select" style="font-weight: bold; font-size: 12px;">Add Decoration:</label>
+  <select id="deco-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; min-width: 150px;">
+    <option value="">-- Select Decoration --</option>
+    <option value="gas-line">Gas Line (Horizontal)</option>
+    <option value="gas-line-v">Gas Line (Vertical)</option>
+    <option value="label">Text Label</option>
+  </select>
+  <input type="color" id="deco-color" value="#cccccc" style="width: 30px; height: 24px; padding: 0; border: none; cursor: pointer;" title="Choose Color">
+  <button onclick="createDecoration()" style="padding: 4px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Create Decoration</button>
+  
+  <div style="width:1px; height:20px; background:#ddd; margin:0 10px;"></div>
+  
+  <button onclick="zoomCanvas(0.1)" style="padding: 4px 8px; font-weight:bold;">+</button>
+  <button onclick="zoomCanvas(-0.1)" style="padding: 4px 8px; font-weight:bold;">-</button>
+  <button onclick="toggleAnimation()" style="padding: 4px 8px; font-size:11px;">Anim</button>
+  <button onclick="resetView()" style="padding: 4px 8px; font-size:11px;">Reset View</button>
+  <button onclick="saveLayout()" style="margin-left:10px; padding: 4px 8px; font-size:11px;">Save File</button>
+  <button onclick="saveLayoutAsPreset()" style="padding: 4px 8px; font-size:11px;">Save Preset</button>
+  <button onclick="loadLayout()" style="padding: 4px 8px; font-size:11px;">Load File</button>
+</div>
+
+<div class="viewport" id="viewport">
+  <div class="canvas" id="device-grid">
+    <!-- Devices will be added here -->
+  </div>
+</div>
+
+<template id="device-template">
+  <div class="device-box" id="box-{{DOM_ID}}">
+    <div class="device-header">
+      <div class="device-title">{{TITLE}}</div>
+      <div id="status-{{DOM_ID}}" class="status-badge state-warn">connecting...</div>
+      <button onclick="removeDevice('{{DOM_ID}}')" style="margin-left:auto; background:none; border:none; color:#999; cursor:pointer; font-weight:bold; padding:0 4px; font-size:14px; line-height:1;">&times;</button>
+    </div>
+    <div class="device-field">
+      <div>Value / Target</div>
+      <div class="device-value">
+        <span id="val-{{DOM_ID}}" class="inline-small" data-spin='@{{DEVICE}} "%s {unit}"'>--</span> / 
+        <span id="target-{{DOM_ID}}" class="inline-small" data-spin='@{{DEVICE}}.target "%s {unit}"'>--</span>
+      </div>
+    </div>
+
+    <div class="control-section">
+      <div class="control-field">
+        <select id="param-select-{{DOM_ID}}" class="control-input" aria-label="Parameter">
+          <option value="">--</option>
+        </select>
+        <input type="text" id="param-value-{{DOM_ID}}" class="control-input" placeholder="val" style="max-width:70px;" />
+        <button class="control-button" onclick="sendSelectedParam('{{DEVICE}}', '{{DOM_ID}}')">Set</button>
+      </div>
+    </div>
+    
+    <div id="commands-{{DOM_ID}}" class="commands-section"></div>
+
+    <div style="margin-top:8px; display:flex; gap:8px; align-items:center;"><button class="toggle-btn" id="toggle-{{DOM_ID}}" onclick="toggleExtra('{{DEVICE}}')">More ▾</button></div>
+    <div id="extra-{{DOM_ID}}" class="extra-panel" aria-hidden="true"></div>
+    <div class="resize-handle"></div>
+  </div>
+</template>
+
+<hr style="margin: 30px 0;">
+<h3>Log Info</h3>
+<pre id="debug-output" style="background: #f5f5f5; padding: 10px; max-height: 200px; overflow-y: auto; font-size: 11px; border-radius: 4px; border: 1px solid #ddd;">Waiting for page load...</pre>
+</div>
+
+<!-- Context Menu -->
+<div id="context-menu" style="display:none; position:absolute; z-index:2000; background:white; border:1px solid #ccc; box-shadow:2px 2px 5px rgba(0,0,0,0.2); padding:8px; border-radius:4px; min-width:120px;">
+  <div style="margin-bottom:8px; font-size:12px; font-weight:bold; border-bottom:1px solid #eee; padding-bottom:4px;">Edit Decoration</div>
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+      <label style="font-size:11px; color:#333;">Color:</label>
+      <input type="color" id="ctx-color-picker" style="width:40px; height:20px; border:none; padding:0; cursor:pointer;">
+  </div>
+  <button id="ctx-remove-btn" style="width:100%; background:#dc3545; color:white; border:none; padding:4px; border-radius:3px; cursor:pointer; font-size:11px;">Remove</button>
+</div>
+
+<script>
+/**
+ * Gas Dosing System - JavaScript Logic
+ * Handles device status updates, value sending, and extra parameters panel
+ */
+
+// ===== Connection Panel Logic =====
+let connectedNodes = [];
+
+function setBackgroundImage() {
+  const input = document.getElementById('conn-bg-url');
+  const raw = input.value.trim();
+  const urls = raw.split(',').map(u => u.trim()).filter(u => u);
+  
+  const imgs = document.querySelectorAll('.bg-img');
+  
+  if (urls.length > 0) {
+    imgs.forEach((img, i) => {
+      // Cycle through URLs if fewer than 5
+      let url = urls[i % urls.length];
+      img.style.backgroundImage = `url('${url}')`;
+    });
+    localStorage.setItem('system_bg', raw);
+  } else {
+    imgs.forEach(img => img.style.backgroundImage = '');
+    localStorage.removeItem('system_bg');
+  }
+}
+
+function loadSavedBackground() {
+  const raw = localStorage.getItem('system_bg');
+  if (raw) {
+    const urls = raw.split(',').map(u => u.trim()).filter(u => u);
+    const imgs = document.querySelectorAll('.bg-img');
+    imgs.forEach((img, i) => {
+      let url = urls[i % urls.length];
+      img.style.backgroundImage = `url('${url}')`;
+    });
+    const input = document.getElementById('conn-bg-url');
+    if (input) input.value = raw;
+  }
+}
+
+function addNodeConnection() {
+  const ip = document.getElementById('conn-ip').value;
+  const port = document.getElementById('conn-port').value;
+  
+  if (!ip || !port) {
+    alert('Please enter both IP and Port.');
+    return;
+  }
+  
+  if (window.Spin) {
+      Spin.send_request('nodemanager.add_node', "", "input", "set", {host: ip, port: port});
+      alert('Request sent. Please restart the server to apply changes.');
+      document.getElementById('conn-ip').value = '';
+  } else {
+      alert('Not connected to Spin server.');
+  }
+}
+
+function fetchNodesList() {
+    if (window.Spin) {
+        Spin.send_request('nodemanager.list_nodes', "", "read", "read", null);
+    }
+}
+
+function updateConnectedNodesList() {
+    const listDiv = document.getElementById('connected-nodes-list');
+    const ul = document.getElementById('nodes-ul');
+    const enterBtn = document.getElementById('enter-system-btn');
+    
+    ul.innerHTML = '';
+    connectedNodes.forEach(node => {
+        const li = document.createElement('li');
+        li.textContent = node;
+        li.style.padding = '2px 0';
+        li.style.borderBottom = '1px dashed #ccc';
+        ul.appendChild(li);
+    });
+    
+    if (connectedNodes.length > 0) {
+        listDiv.style.display = 'block';
+        enterBtn.style.display = 'inline-block';
+    } else {
+        listDiv.style.display = 'none';
+        enterBtn.style.display = 'none';
+    }
+}
+
+// Call fetchNodesList on load
+document.addEventListener('DOMContentLoaded', fetchNodesList);
+
+function enterSystem() {
+  if (connectedNodes.length === 0) {
+      alert('No nodes connected.');
+      return;
+  }
+  
+  console.log('Entering system with nodes:', connectedNodes);
+  debug('Entering system with nodes: ' + connectedNodes.join(', '));
+  
+  // Switch panels
+  document.getElementById('connection-panel').style.display = 'none';
+  document.getElementById('main-panel').style.display = 'block';
+}
+
+function connectToNode() {
+    // Legacy function kept if needed, but redirected to addNodeConnection logic if called
+    addNodeConnection();
+}
+
+function disconnectNode() {
+  document.getElementById('main-panel').style.display = 'none';
+  document.getElementById('connection-panel').style.display = 'flex';
+  // Clear nodes? Or keep them? User probably wants to keep them or reset.
+  // For now, let's keep them so they can add more or re-enter.
+  debug('Disconnected / Returned to setup.');
+}
+
+// ===== Status Badge Updates =====
+window.addEventListener('spinupdate', function(event) {
+  try {
+    var key = event.detail.key || '';
+    
+    if (key === 'nodemanager.nodes') {
+        var nodes = event.detail.value;
+        if (nodes && Array.isArray(nodes)) {
+            connectedNodes = nodes.map(n => `${n.host}:${n.port}`);
+            updateConnectedNodesList();
+        }
+        return;
+    }
+
+    if (key === 'nodemanager.device_params') {
+        var data = event.detail.value;
+        if (data) {
+            WRITABLE_PARAMS = data;
+            populateDeviceList(data);
+            debug('✓ Device parameters loaded via Spin');
+        }
+        return;
+    }
+
+    var state = event.detail.state || '';
+    var state_str = event.detail.state_str || '';
+    
+    // Extract device name (everything before the first dot)
+    var device = key.split('.')[0];
+    var param = key.includes('.') ? key.split('.').slice(1).join('.') : '';
+    var domId = deviceDomId(device);
+    
+    // 1. Update Status Badge
+    var statusEl = document.getElementById('status-' + domId);
+    if (statusEl && (state || state_str)) {
+      statusEl.textContent = state_str || state || 'unknown';
+      statusEl.className = 'status-badge ' + (state ? ('state-' + state) : 'state-warn');
+    } else {
+       // Debug if element missing
+       // debug('Missing status el for ' + domId);
+    }
+
+    // 2. Update Value/Target Fields (Manual update for dynamic elements)
+    var val = event.detail.value;
+    var unit = event.detail.unit || '';
+    var formatted = (val !== undefined && val !== null) ? (val + (unit ? ' ' + unit : '')) : '--';
+
+    if (param === '' || param === 'value') {
+        // Main value update
+        var valEl = document.getElementById('val-' + domId);
+        if (valEl) valEl.textContent = formatted;
+    } else if (param === 'target') {
+        // Target update
+        var targetEl = document.getElementById('target-' + domId);
+        if (targetEl) targetEl.textContent = formatted;
+    }
+    
+    // Log update to UI for debugging
+    debug('Upd: ' + key + ' -> ' + domId + ' st:' + (state||'-'));
+
+  } catch(e) { 
+    console.error('status update error', e);
+    debug('Err: ' + e.message);
+  }
+});
+
+// ===== Send Values to Backend =====
+function sendValue(key, inputElementId) {
+  try {
+    const inputEl = document.getElementById(inputElementId);
+    if (!inputEl) return;
+    const value = inputEl.value.trim();
+    if (!value) return;
+    let finalValue = isNaN(value) ? value : parseFloat(value);
+    Spin.send_request(key, "", "input", "", finalValue);
+    console.log('Sent', key, '=', finalValue);
+    inputEl.value = '';
+  } catch(e) { 
+    console.error('sendValue failed', e); 
+  }
+}
+
+function sendSelectedParam(device, domId) {
+  try {
+    const paramSelect = document.getElementById('param-select-' + domId);
+    const valueInput = document.getElementById('param-value-' + domId);
+    if (!paramSelect || !valueInput) return;
+    
+    const param = paramSelect.value;
+    const value = valueInput.value.trim();
+    
+    if (!param) { alert('Please select a parameter first'); return; }
+    if (!value) { alert('Please enter a value'); return; }
+    
+    let finalValue = isNaN(value) ? value : parseFloat(value);
+    const key = device + '.' + param;
+    Spin.send_request(key, "", "input", "", finalValue);
+    console.log('Set parameter:', key, '=', finalValue);
+    valueInput.value = '';
+  } catch(e) {
+    console.error('sendSelectedParam failed', e);
+  }
+}
+
+// ===== Extra Parameters Panel =====
+const latestValues = {};
+
+function deviceDomId(device) {
+  // Use the full device name, just sanitized for DOM ID safety
+  // This ensures consistency regardless of the naming convention
+  return device.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function renderExtra(device) {
+  const id = deviceDomId(device);
+  const panel = document.getElementById('extra-' + id);
+  if (!panel) return;
+  
+  const data = latestValues[device] || {};
+  const keys = Object.keys(data).sort();
+  const filteredKeys = keys.filter(k => k !== 'value' && k !== 'target');
+  
+  if (filteredKeys.length === 0) {
+    panel.innerHTML = '<div class="extra-row"><em>No additional parameters</em></div>';
+    return;
+  }
+  
+  let html = '';
+  for (let k of filteredKeys) {
+    const entry = data[k];
+    const v = entry && entry.value !== undefined ? entry.value : '—';
+    const u = entry && entry.unit ? (' ' + entry.unit) : '';
+    html += `<div class="extra-row"><div>${k}</div><div>${String(v)}${u}</div></div>`;
+  }
+  panel.innerHTML = html;
+}
+
+function toggleExtra(device) {
+  const id = deviceDomId(device);
+  const panel = document.getElementById('extra-' + id);
+  const btn = document.getElementById('toggle-' + id);
+  if (!panel || !btn) return;
+  
+  const open = panel.classList.toggle('open');
+  panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+  btn.textContent = open ? 'Close ▴' : 'More ▾';
+  
+  if (open) renderExtra(device);
+}
+
+// ===== Device Management =====
+var WRITABLE_PARAMS = null; 
+
+function fetchDeviceParams() {
+    if (window.Spin) {
+        Spin.send_request('nodemanager.get_device_params', "", "read", "read", null);
+    }
+}
+
+function populateDeviceList(data) {
+  const select = document.getElementById('device-select');
+  if (!select) return;
+  
+  // Clear existing (except first)
+  while (select.options.length > 1) select.remove(1);
+  
+  Object.keys(data).sort().forEach(device => {
+    const option = document.createElement('option');
+    option.value = device;
+    option.text = device;
+    select.add(option);
+  });
+}
+
+function createDeviceDisplay() {
+  const select = document.getElementById('device-select');
+  const device = select.value;
+  if (!device) {
+    alert('Please select a device first.');
+    return;
+  }
+  
+  const domId = deviceDomId(device);
+  if (document.getElementById('box-' + domId)) {
+    alert('Display for ' + device + ' already exists.');
+    return;
+  }
+  
+  const template = document.getElementById('device-template');
+  const clone = template.content.cloneNode(true);
+  
+  // Replace placeholders in HTML
+  const tempDiv = document.createElement('div');
+  tempDiv.appendChild(clone);
+  let html = tempDiv.innerHTML;
+  
+  html = html.replace(/{{DOM_ID}}/g, domId)
+             .replace(/{{DEVICE}}/g, device)
+             .replace(/{{TITLE}}/g, device);
+             
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = html;
+  const newBox = wrapper.firstElementChild;
+  
+  // Position it intelligently
+  const count = document.querySelectorAll('.device-box').length;
+  newBox.style.top = (20 + count * 110) + 'px'; // Stack vertically
+  newBox.style.left = '20px';
+  
+  document.getElementById('device-grid').appendChild(newBox);
+  
+  // Initialize draggable & resizable
+  makeDraggable(newBox);
+  makeResizable(newBox);
+  
+  // Populate params/commands
+  if (WRITABLE_PARAMS && WRITABLE_PARAMS[device]) {
+    populateParamsForDevice(device, WRITABLE_PARAMS[device], domId);
+  }
+  
+  // Trigger Spin to bind new data-spin elements if possible
+  if (window.Spin) {
+      if (window.Spin.reload) {
+          debug('Calling Spin.reload()');
+          window.Spin.reload();
+      } else {
+          debug('Warn: Spin.reload not found');
+          // Fallback: Try to manually trigger a scan if we can guess the method
+          // or maybe we need to re-init?
+          if (window.Spin.init) {
+             debug('Calling Spin.init()');
+             window.Spin.init();
+          }
+      }
+  } else {
+      debug('Error: window.Spin not found');
+  }
+}
+
+function removeDevice(domId) {
+  const el = document.getElementById('box-' + domId);
+  if (el) el.remove();
+}
+
+// ===== Decoration Logic =====
+let selectedDeco = null;
+
+function selectDeco(el) {
+  if (selectedDeco) selectedDeco.classList.remove('selected');
+  selectedDeco = el;
+  if (el) {
+    el.classList.add('selected');
+    // Sync color picker
+    const picker = document.getElementById('deco-color');
+    if (picker) {
+        let color;
+        if (el.dataset.type === 'label') {
+            color = el.style.color;
+        } else {
+            const visual = el.querySelector('.deco-visual');
+            if (visual) color = visual.style.backgroundColor;
+        }
+        // Convert rgb to hex if needed, but simple assignment might work if it's hex
+        // For now, we assume the user sets it via picker so it's hex, or we don't sync back perfectly
+        // if it's rgb. But let's try.
+        if (color && color.startsWith('#')) picker.value = color;
+    }
+  }
+}
+
+// Initialize listeners for selection and color
+document.addEventListener('DOMContentLoaded', () => {
+    const grid = document.getElementById('device-grid');
+    if (grid) {
+        grid.addEventListener('mousedown', (e) => {
+            if (e.target === grid) selectDeco(null);
+        });
+    }
+    
+    const picker = document.getElementById('deco-color');
+    if (picker) {
+        picker.addEventListener('input', (e) => {
+            if (selectedDeco) {
+                const color = e.target.value;
+                if (selectedDeco.dataset.type === 'label') {
+                    selectedDeco.style.color = color;
+                } else {
+                    const visual = selectedDeco.querySelector('.deco-visual');
+                    if (visual) visual.style.backgroundColor = color;
+                }
+            }
+        });
+    }
+});
+
+function createDecoration() {
+  const select = document.getElementById('deco-select');
+  const colorInput = document.getElementById('deco-color');
+  const type = select.value;
+  const color = colorInput ? colorInput.value : '#cccccc';
+  
+  if (!type) {
+    alert('Please select a decoration type.');
+    return;
+  }
+
+  const id = 'deco-' + Date.now();
+  const wrapper = document.createElement('div');
+  wrapper.className = 'deco-box';
+  wrapper.id = id;
+  wrapper.dataset.type = type;
+  
+  // Selection logic
+  wrapper.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      selectDeco(wrapper);
+  });
+  
+  if (type === 'gas-line') {
+    wrapper.classList.add('deco-type-line');
+    wrapper.style.width = '100px';
+    wrapper.style.height = '20px';
+    
+    const visual = document.createElement('div');
+    visual.className = 'deco-visual';
+    visual.style.backgroundColor = color;
+    visual.style.border = '1px solid #999';
+    wrapper.appendChild(visual);
+    
+  } else if (type === 'gas-line-v') {
+    wrapper.classList.add('deco-type-line-v');
+    wrapper.style.width = '20px';
+    wrapper.style.height = '100px';
+    
+    const visual = document.createElement('div');
+    visual.className = 'deco-visual';
+    visual.style.backgroundColor = color;
+    visual.style.border = '1px solid #999';
+    wrapper.appendChild(visual);
+    
+  } else if (type === 'label') {
+    wrapper.classList.add('deco-label');
+    wrapper.contentEditable = true;
+    wrapper.textContent = 'Label';
+    wrapper.style.color = color;
+    wrapper.style.resize = 'none'; 
+  }
+
+  // Remove button
+  const removeBtn = document.createElement('div');
+  removeBtn.className = 'deco-remove';
+  removeBtn.innerHTML = '&times;';
+  removeBtn.onclick = function(e) {
+    e.stopPropagation(); 
+    if (selectedDeco === wrapper) selectDeco(null);
+    wrapper.remove();
+  };
+  wrapper.appendChild(removeBtn);
+
+  // Drag handle (center dot)
+  const dragHandle = document.createElement('div');
+  dragHandle.className = 'deco-drag-handle';
+  dragHandle.title = 'Drag to move';
+  wrapper.appendChild(dragHandle);
+
+  // Resize handle
+  const resizeHandle = document.createElement('div');
+  resizeHandle.className = 'resize-handle';
+  wrapper.appendChild(resizeHandle);
+
+  document.getElementById('device-grid').appendChild(wrapper);
+  
+  // Make draggable & resizable
+  makeDraggableDeco(wrapper, dragHandle);
+  makeResizable(wrapper);
+  
+  // Auto-select
+  selectDeco(wrapper);
+}
+
+function makeDraggableDeco(el, handle) {
+  let isDragging = false;
+  let startX, startY, initialLeft, initialTop;
+
+  // Only allow dragging via the handle
+  handle.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    
+    // Ensure selection on drag start
+    selectDeco(el);
+
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    const style = window.getComputedStyle(el);
+    initialLeft = parseInt(style.left, 10) || el.offsetLeft;
+    initialTop = parseInt(style.top, 10) || el.offsetTop;
+    
+    el.style.zIndex = 1000;
+    // handle.style.cursor = 'grabbing';
+    e.stopPropagation(); // Prevent bubbling
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    // Adjust delta by scale
+    const dx = (e.clientX - startX) / scale;
+    const dy = (e.clientY - startY) / scale;
+    el.style.left = `${initialLeft + dx}px`;
+    el.style.top = `${initialTop + dy}px`;
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      // handle.style.cursor = 'move';
+      el.style.zIndex = '5';
+    }
+  });
+  
+  // Special handling for contentEditable labels
+  if (el.classList.contains('deco-label')) {
+      el.addEventListener('blur', () => { el.contentEditable = true; });
+  }
+}
+
+function populateParamsForDevice(device, info, domId) {
+    // 1. Populate Parameters
+    const select = document.getElementById('param-select-' + domId);
+    if (select && info.params) {
+      while (select.options.length > 1) select.remove(1);
+      info.params.sort().forEach(param => {
+        if (param === 'value') return;
+        const option = document.createElement('option');
+        option.value = param;
+        option.text = param;
+        select.add(option);
+      });
+    }
+
+    // 2. Populate Commands
+    const cmdContainer = document.getElementById('commands-' + domId);
+    if (cmdContainer && info.commands) {
+      cmdContainer.innerHTML = '';
+      if (info.commands.length === 0) {
+        cmdContainer.style.display = 'none';
+      } else {
+        cmdContainer.style.display = 'flex';
+        info.commands.sort().forEach(cmd => {
+          const btn = document.createElement('button');
+          btn.className = 'cmd-btn';
+          btn.textContent = cmd;
+          btn.title = `Execute ${cmd}`;
+          btn.onclick = () => sendCommand(device, cmd);
+          cmdContainer.appendChild(btn);
+        });
+      }
+    }
+}
+
+function sendCommand(device, cmd) {
+  if (confirm(`Execute command '${cmd}' on ${device}?`)) {
+      const key = device + '.' + cmd;
+      Spin.send_request(key, "", "input", "", null);
+      console.log('Sent command:', key);
+  }
+}
+
+// Cache values for extra panel
+window.addEventListener('spinupdate', function(event) {
+  try {
+    const key = event.detail.key;
+    if (!key) return;
+    const parts = key.split('.');
+    if (parts.length < 2) return;
+    const device = parts[0];
+    const param = parts.slice(1).join('.');
+    
+    if (!latestValues[device]) latestValues[device] = {};
+    latestValues[device][param] = { 
+      value: event.detail.value, 
+      unit: event.detail.unit, 
+      state: event.detail.state, 
+      state_str: event.detail.state_str 
+    };
+    
+    const domId = deviceDomId(device);
+    const panel = document.getElementById('extra-' + domId);
+    if (panel && panel.classList.contains('open')) {
+      renderExtra(device);
+    }
+  } catch (e) { 
+    console.error('cache spinupdate failed', e); 
+  }
+});
+
+// ===== Debug Logging =====
+let debugLines = [];
+function debug(msg) {
+  debugLines.push('[' + new Date().toLocaleTimeString() + '] ' + msg);
+  if (debugLines.length > 30) debugLines.shift();
+  var el = document.getElementById('debug-output');
+  if (el) el.textContent = debugLines.join('\n');
+  console.log(msg);
+}
+
+debug('✓ Page initialized');
+updateLayoutList();
+loadSavedBackground();
+fetchNodesList();
+fetchDeviceParams();
+
+// Listen for Spin lifecycle events
+window.addEventListener('spinstartup', function() { debug('✓ Spin startup event fired'); });
+window.addEventListener('spinconnect', function() { 
+    debug('✓ WebSocket connected to Spin backend');
+    fetchNodesList();
+});
+
+window.addEventListener('spindisconnect', function() { debug('⚠ WebSocket disconnected from backend'); });
+window.addEventListener('spinupdate', function(event) {
+  var val = event.detail.value;
+  debug('✓ Data update: ' + event.detail.key + ' = ' + JSON.stringify(val));
+});
+
+// ===== Context Menu Logic =====
+let contextMenuTarget = null;
+const ctxMenu = document.getElementById('context-menu');
+const ctxColor = document.getElementById('ctx-color-picker');
+
+// Hide menu on left click elsewhere
+document.addEventListener('mousedown', (e) => {
+  // Only handle left clicks for closing
+  if (e.button !== 0) return;
+  
+  if (ctxMenu.style.display === 'block' && !ctxMenu.contains(e.target)) {
+    ctxMenu.style.display = 'none';
+  }
+});
+
+// Delegate contextmenu event
+document.addEventListener('contextmenu', (e) => {
+  const box = e.target.closest('.deco-box');
+  if (box) {
+    e.preventDefault();
+    contextMenuTarget = box;
+    
+    // Set current color in picker
+    let currentColor = '#cccccc';
+    if (box.dataset.type === 'label') {
+        // Try to get color from style
+        if (box.style.color) currentColor = rgbToHex(box.style.color) || box.style.color;
+    } else {
+        const visual = box.querySelector('.deco-visual');
+        if (visual && visual.style.backgroundColor) {
+             currentColor = rgbToHex(visual.style.backgroundColor) || visual.style.backgroundColor;
+        }
+    }
+    // Ensure it's a valid hex for input type=color
+    if (currentColor.startsWith('rgb')) currentColor = rgbToHex(currentColor);
+    if (!currentColor.startsWith('#')) currentColor = '#cccccc'; // Fallback
+    
+    ctxColor.value = currentColor;
+
+    ctxMenu.style.left = e.pageX + 'px';
+    ctxMenu.style.top = e.pageY + 'px';
+    ctxMenu.style.display = 'block';
+  }
+});
+
+if (ctxColor) {
+    ctxColor.addEventListener('input', (e) => {
+        if (contextMenuTarget) {
+            const color = e.target.value;
+            if (contextMenuTarget.dataset.type === 'label') {
+                contextMenuTarget.style.color = color;
+            } else {
+                const visual = contextMenuTarget.querySelector('.deco-visual');
+                if (visual) visual.style.backgroundColor = color;
+            }
+        }
+    });
+}
+
+const ctxRemoveBtn = document.getElementById('ctx-remove-btn');
+if (ctxRemoveBtn) {
+    ctxRemoveBtn.addEventListener('click', () => {
+        if (contextMenuTarget) {
+            contextMenuTarget.remove();
+            contextMenuTarget = null;
+            ctxMenu.style.display = 'none';
+        }
+    });
+}
+
+function rgbToHex(col) {
+    if(!col) return null;
+    if(col.startsWith('#')) return col;
+    const rgb = col.match(/\d+/g);
+    if (!rgb || rgb.length < 3) return null;
+    const r = parseInt(rgb[0]).toString(16).padStart(2, '0');
+    const g = parseInt(rgb[1]).toString(16).padStart(2, '0');
+    const b = parseInt(rgb[2]).toString(16).padStart(2, '0');
+    return '#' + r + g + b;
+}
+
+// ===== Pan & Zoom Logic =====
+let scale = 1;
+let panX = 0;
+let panY = 0;
+const viewport = document.getElementById('viewport');
+const canvas = document.getElementById('device-grid');
+
+function updateTransform() {
+  canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+}
+
+function zoomCanvas(delta) {
+  const newScale = Math.max(0.1, Math.min(5, scale + delta));
+  // Zoom towards center of viewport
+  const rect = viewport.getBoundingClientRect();
+  const cx = rect.width / 2;
+  const cy = rect.height / 2;
+  
+  // Adjust pan to keep center stable
+  panX = cx - (cx - panX) * (newScale / scale);
+  panY = cy - (cy - panY) * (newScale / scale);
+  
+  scale = newScale;
+  updateTransform();
+}
+
+function toggleAnimation() {
+  const c = document.getElementById('device-grid');
+  c.classList.toggle('animated');
+}
+
+function resetView() {
+  scale = 1;
+  panX = 0;
+  panY = 0;
+  updateTransform();
+}
+
+// Pan Event Listeners
+let isPanning = false;
+let startPanX, startPanY;
+
+viewport.addEventListener('mousedown', (e) => {
+  // Only pan if clicking directly on viewport or canvas (not on items)
+  if (e.target === viewport || e.target === canvas) {
+    isPanning = true;
+    startPanX = e.clientX - panX;
+    startPanY = e.clientY - panY;
+    viewport.style.cursor = 'grabbing';
+  }
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (isPanning) {
+    e.preventDefault();
+    panX = e.clientX - startPanX;
+    panY = e.clientY - startPanY;
+    updateTransform();
+  }
+});
+
+window.addEventListener('mouseup', () => {
+  if (isPanning) {
+    isPanning = false;
+    viewport.style.cursor = 'grab';
+  }
+});
+
+// Wheel Zoom
+viewport.addEventListener('wheel', (e) => {
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    
+    // Zoom towards mouse pointer
+    const rect = viewport.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    
+    const newScale = Math.max(0.1, Math.min(5, scale + delta));
+    
+    panX = mx - (mx - panX) * (newScale / scale);
+    panY = my - (my - panY) * (newScale / scale);
+    
+    scale = newScale;
+    updateTransform();
+  }
+});
+
+// ===== Save/Load Layout =====
+const STORAGE_KEY = 'system_layouts';
+
+function getStoredLayouts() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.error('Error reading localStorage', e);
+    return {};
+  }
+}
+
+function updateLayoutList() {
+  const select = document.getElementById('conn-layout-select');
+  if (!select) return;
+  
+  // Keep first option
+  while (select.options.length > 1) select.remove(1);
+  
+  const layouts = getStoredLayouts();
+  Object.keys(layouts).sort().forEach(name => {
+    const option = document.createElement('option');
+    option.value = name;
+    option.text = name;
+    select.add(option);
+  });
+}
+
+function saveLayoutAsPreset() {
+  const name = prompt('Enter a name for this layout preset:');
+  if (!name) return;
+  
+  const layout = getCurrentLayoutData();
+  const layouts = getStoredLayouts();
+  layouts[name] = layout;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
+  
+  alert('Layout "' + name + '" saved!');
+  updateLayoutList();
+}
+
+function loadSelectedLayout() {
+  const select = document.getElementById('conn-layout-select');
+  const name = select.value;
+  if (!name) {
+    alert('Please select a layout preset.');
+    return;
+  }
+  
+  const layouts = getStoredLayouts();
+  if (layouts[name]) {
+    applyLayout(layouts[name]);
+    // alert('Layout "' + name + '" loaded.');
+  } else {
+    alert('Layout not found.');
+  }
+}
+
+function getCurrentLayoutData() {
+  const layout = {
+    devices: [],
+    decorations: []
+  };
+  
+  // Save Devices
+  document.querySelectorAll('.device-box').forEach(box => {
+    const title = box.querySelector('.device-title').textContent;
+    layout.devices.push({
+      id: box.id,
+      device: title,
+      left: box.style.left,
+      top: box.style.top,
+      width: box.style.width,
+      height: box.style.height
+    });
+  });
+  
+  // Save Decorations
+  document.querySelectorAll('.deco-box').forEach(box => {
+    const type = box.dataset.type;
+    let color = '';
+    let text = '';
+    
+    if (type === 'label') {
+        color = box.style.color;
+        // Clean up text
+        const clone = box.cloneNode(true);
+        const rm = clone.querySelector('.deco-remove');
+        const dh = clone.querySelector('.deco-drag-handle');
+        const rh = clone.querySelector('.resize-handle');
+        if(rm) rm.remove();
+        if(dh) dh.remove();
+        if(rh) rh.remove();
+        text = clone.textContent;
+    } else {
+        const visual = box.querySelector('.deco-visual');
+        if (visual) color = visual.style.backgroundColor;
+    }
+    
+    layout.decorations.push({
+      type: type,
+      left: box.style.left,
+      top: box.style.top,
+      width: box.style.width,
+      height: box.style.height,
+      color: color,
+      text: text
+    });
+  });
+  return layout;
+}
+
+function saveLayout() {
+  const layout = getCurrentLayoutData();
+  const json = JSON.stringify(layout, null, 2);
+  const blob = new Blob([json], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'layout.json';
+  a.click();
+}
+
+function loadLayout() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = event => {
+      try {
+        const layout = JSON.parse(event.target.result);
+        applyLayout(layout);
+      } catch(err) {
+        alert('Error loading layout: ' + err);
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function applyLayout(layout) {
+  // Clear current
+  document.getElementById('device-grid').innerHTML = '';
+  
+  // Restore Devices
+  if (layout.devices) {
+      layout.devices.forEach(d => {
+          // We need to recreate the device box. 
+          // Reuse createDeviceDisplay logic but with specific params
+          // For simplicity, we'll just set the select value and call create, then move it
+          const select = document.getElementById('device-select');
+          select.value = d.device;
+          createDeviceDisplay(); // This creates it at default pos
+          
+          // Find the newly created box (last one)
+          const boxes = document.querySelectorAll('.device-box');
+          const newBox = boxes[boxes.length - 1];
+          if (newBox) {
+              newBox.style.left = d.left;
+              newBox.style.top = d.top;
+              if(d.width) newBox.style.width = d.width;
+              if(d.height) newBox.style.height = d.height;
+          }
+      });
+  }
+  
+  // Restore Decorations
+  if (layout.decorations) {
+      layout.decorations.forEach(d => {
+          const select = document.getElementById('deco-select');
+          const colorInput = document.getElementById('deco-color');
+          
+          select.value = d.type;
+          if (d.color) colorInput.value = rgbToHex(d.color) || d.color;
+          
+          createDecoration();
+          
+          const boxes = document.querySelectorAll('.deco-box');
+          const newBox = boxes[boxes.length - 1];
+          if (newBox) {
+              newBox.style.left = d.left;
+              newBox.style.top = d.top;
+              if(d.width) newBox.style.width = d.width;
+              if(d.height) newBox.style.height = d.height;
+              
+              if (d.type === 'label' && d.text) {
+                  // Restore text content carefully preserving handle/remove btn
+                  // Actually createDecoration adds them, so we just update the text node
+                  // But text node is mixed. Simplest is to set textContent then re-add buttons?
+                  // Or just find the text node.
+                  // Let's just set innerHTML to text + buttons
+                  // Re-creating buttons is safer
+                  newBox.childNodes.forEach(n => {
+                      if (n.nodeType === 3) n.textContent = d.text;
+                  });
+              }
+          }
+      });
+  }
+}
+
+// ===== Draggable Logic =====
+let isDraggingDeco = false; // Global flag for dragging
+
+function makeDraggable(el) {
+  const header = el.querySelector('.device-header');
+  if (!header) return;
+
+  let isDragging = false;
+  let startX, startY, initialLeft, initialTop;
+
+  header.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    const style = window.getComputedStyle(el);
+    initialLeft = parseInt(style.left, 10);
+    if (isNaN(initialLeft)) initialLeft = el.offsetLeft;
+    initialTop = parseInt(style.top, 10);
+    if (isNaN(initialTop)) initialTop = el.offsetTop;
+    el.style.zIndex = 1000;
+    header.style.cursor = 'grabbing';
+    e.stopPropagation(); // Prevent viewport pan
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    // Adjust delta by scale
+    const dx = (e.clientX - startX) / scale;
+    const dy = (e.clientY - startY) / scale;
+    el.style.left = `${initialLeft + dx}px`;
+    el.style.top = `${initialTop + dy}px`;
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      header.style.cursor = 'move';
+      el.style.zIndex = '';
+    }
+  });
+}
+
+// ===== Resizable Logic =====
+let resizingState = null;
+
+function makeResizable(el) {
+  const handle = el.querySelector('.resize-handle');
+  if (!handle) return;
+
+  handle.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    e.stopPropagation(); // Prevent drag or pan
+    
+    // Ensure selection
+    if (el.classList.contains('deco-box')) selectDeco(el);
+    
+    resizingState = {
+      el: el,
+      startX: e.clientX,
+      startY: e.clientY,
+      startW: parseInt(el.style.width || window.getComputedStyle(el).width, 10),
+      startH: parseInt(el.style.height || window.getComputedStyle(el).height, 10)
+    };
+  });
+}
+
+window.addEventListener('mousemove', (e) => {
+  if (resizingState) {
+    e.preventDefault();
+    const dx = (e.clientX - resizingState.startX) / scale;
+    const dy = (e.clientY - resizingState.startY) / scale;
+    
+    resizingState.el.style.width = `${Math.max(20, resizingState.startW + dx)}px`;
+    resizingState.el.style.height = `${Math.max(20, resizingState.startH + dy)}px`;
+  } else if (isPanning) {
+    // Existing pan logic
+    e.preventDefault();
+    panX = e.clientX - startPanX;
+    panY = e.clientY - startPanY;
+    updateTransform();
+  } else if (isDraggingDeco) {
+     // We need to refactor dragging to be global too if we want to be clean, 
+     // but for now let's leave it as is, or merge it?
+     // The existing dragging logic is inside closures. 
+     // Let's just handle resizing here.
+  }
+});
+
+window.addEventListener('mouseup', () => {
+  resizingState = null;
+  if (isPanning) {
+    isPanning = false;
+    viewport.style.cursor = 'grab';
+  }
+});
+
+// Initialize draggable on existing boxes (if any)
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.device-box').forEach(box => {
+      makeDraggable(box);
+      makeResizable(box);
+  });
+});
+</script>
