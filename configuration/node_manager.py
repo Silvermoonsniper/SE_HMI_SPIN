@@ -8,6 +8,26 @@ from frappy.client import SecopClient
 NODES_FILE = os.path.join(os.path.dirname(__file__), 'nodes.json')
 DEVICE_PARAMS_FILE = os.path.join(os.path.dirname(__file__), 'device_params.json')
 
+def is_running_in_docker():
+    """Check if the application is running inside a Docker container."""
+    return os.path.exists('/.dockerenv') or os.path.exists('/run/.containerenv')
+
+def resolve_host(host):
+    """
+    Resolve the host address based on whether we're running in Docker.
+    - On macOS/Windows: localhost -> host.docker.internal
+    - On Linux: localhost -> host.docker.internal (requires --add-host in docker-compose)
+    """
+    if not is_running_in_docker():
+        return host
+    
+    # If not localhost, return as-is
+    if host not in ('localhost', '127.0.0.1'):
+        return host
+    
+    # In Docker, use host.docker.internal to access host services
+    return 'host.docker.internal'
+
 def extract_modules_and_parameters(data, prefix=""):
     modules = data.get("modules", {})
     
@@ -24,12 +44,31 @@ def extract_modules_and_parameters(data, prefix=""):
         parameter_list = []
         writable_list = []
         command_list = []
+        param_info_map = {}
 
         for param_name, param_info in params.items():
             datainfo = param_info.get("datainfo", {})
             dtype = datainfo.get("type")
         
             parameter_list.append(param_name)
+            
+            # Extract datainfo for enum parameters
+            if datainfo:
+                param_metadata = {}
+                # Check if it's an enum type
+                if "members" in datainfo:
+                    param_metadata["members"] = datainfo["members"]
+                # Store type info
+                if "type" in datainfo:
+                    param_metadata["type"] = datainfo["type"]
+                # Store min/max for numeric types
+                if "min" in datainfo:
+                    param_metadata["min"] = datainfo["min"]
+                if "max" in datainfo:
+                    param_metadata["max"] = datainfo["max"]
+                
+                if param_metadata:
+                    param_info_map[param_name] = param_metadata
             
             if dtype == 'command':
                 command_list.append(param_name)
@@ -41,13 +80,16 @@ def extract_modules_and_parameters(data, prefix=""):
             "params": writable_list,
             "commands": command_list,
             "original_name": module_name,
-            "interface_classes": module_info.get("interface_classes", [])
+            "interface_classes": module_info.get("interface_classes", []),
+            "param_info": param_info_map
         }
 
     return module_list, parameter_map, device_data_map
 
 def connect_and_fetch_params(host, port):
-    url = f"{host}:{port}"
+    # Resolve the host for Docker environment
+    resolved_host = resolve_host(host)
+    url = f"{resolved_host}:{port}"
     # No prefix for device names as per user request
     prefix = "" 
     print(f"Connecting to {url}...")

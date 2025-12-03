@@ -5,6 +5,27 @@ from frappy.client import SecopClient
 
 NODES_FILE = os.path.join(os.path.dirname(__file__), 'nodes.json')
 
+def is_running_in_docker():
+    """Check if the application is running inside a Docker container."""
+    return os.path.exists('/.dockerenv') or os.path.exists('/run/.containerenv')
+
+def resolve_host(host):
+    """
+    Resolve the host address based on whether we're running in Docker.
+    - Both macOS and Linux: localhost -> host.docker.internal
+    - We use extra_hosts in docker-compose.yml to make this work on Linux
+    """
+    if not is_running_in_docker():
+        return host
+    
+    # If not localhost, return as-is
+    if host not in ('localhost', '127.0.0.1'):
+        return host
+    
+    # In Docker, always use host.docker.internal
+    # (configured via extra_hosts in docker-compose.yml for Linux)
+    return 'host.docker.internal'
+
 def extract_modules_and_parameters(data, prefix=""):
     modules = data.get("modules", {})
     
@@ -44,7 +65,9 @@ def extract_modules_and_parameters(data, prefix=""):
     return module_list, parameter_map, device_data_map
 
 def connect_node(host, port):
-    url = f"{host}:{port}"
+    # Resolve the host for Docker environment
+    resolved_host = resolve_host(host)
+    url = f"{resolved_host}:{port}"
     prefix = ""
     print(f"Connecting to {url}...")
     
@@ -92,8 +115,9 @@ for node in nodes:
     # Merge into global data
     all_device_data.update(dev_data)
     
-    # Configure Spin devices
-    url = f"{host}:{port}"
+    # Configure Spin devices - use resolved host for the connection URL
+    resolved_host = resolve_host(host)
+    url = f"{resolved_host}:{port}"
     for original_name, unique_name in mod_list:
         params = []
         for para_name in para_map.get(unique_name, []):
@@ -110,7 +134,7 @@ dev_config['nodemanager'] = Device('nodemanager://localhost', pollinterval=1.0)
 
 config = Config()
 config.server = '0.0.0.0:8000'
-config.control_url = 'http://localhost:8080/'
+config.control_url = 'http://0.0.0.0:8000/'
 config.plugins = [os.path.abspath(os.path.join(os.path.dirname(__file__), 'node_manager.py'))]
 config.pages = {
     'default': Page('../content/system.html', readonly=False),

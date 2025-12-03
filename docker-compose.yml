@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  se_hmi_spin:
+    build: .
+    container_name: se_hmi_spin
+    ports:
+      - "8080:8000"
+    volumes:
+      # Mount configuration files to persist data
+      - ./configuration/nodes.json:/app/configuration/nodes.json
+      - ./configuration/device_params.json:/app/configuration/device_params.json
+      # Mount content directory for live updates during development
+      - ./content:/app/content
+    environment:
+      - PYTHONUNBUFFERED=1
+    # Add host.docker.internal mapping for Linux compatibility
+    # On macOS/Windows this is automatic, but Linux needs it explicitly
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    networks:
+      - se_hmi_network
+
+networks:
+  se_hmi_network:
+    driver: bridge

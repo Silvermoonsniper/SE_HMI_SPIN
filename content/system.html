@@ -595,12 +595,15 @@ input.control-input {
     <div id="body-{{DOM_ID}}" style="display:none;">
       <div class="control-section">
         <div class="control-field">
-          <select id="param-select-{{DOM_ID}}" class="control-input" aria-label="Parameter">
+          <select id="param-select-{{DOM_ID}}" class="control-input" aria-label="Parameter" onchange="onParamSelectChange('{{DEVICE}}', '{{DOM_ID}}')">
             <option value="">--</option>
           </select>
-          <input type="text" id="param-value-{{DOM_ID}}" class="control-input" placeholder="val" />
+          <div id="param-input-container-{{DOM_ID}}" style="display: flex; gap: 4px; flex: 1;">
+            <input type="text" id="param-value-{{DOM_ID}}" class="control-input" placeholder="val" style="flex: 1;" />
+          </div>
           <button class="control-button" onclick="sendSelectedParam('{{DEVICE}}', '{{DOM_ID}}')">Set</button>
         </div>
+        <div id="param-current-value-{{DOM_ID}}" style="font-size: 11px; color: #666; margin-top: 4px; min-height: 16px;"></div>
       </div>
       
       <div id="commands-{{DOM_ID}}" class="commands-section"></div>
@@ -638,6 +641,7 @@ let connectedNodes = [];
 let scale = 1;
 let panX = 0;
 let panY = 0;
+const STORAGE_KEY = 'gas_system_layouts';
 
 function setBackgroundImage() {
   const input = document.getElementById('conn-bg-url');
@@ -857,6 +861,83 @@ function sendSelectedParam(device, domId) {
   }
 }
 
+function onParamSelectChange(device, domId) {
+  const paramSelect = document.getElementById('param-select-' + domId);
+  const param = paramSelect.value;
+  
+  if (!param) {
+    updateParamDisplay(device, domId, null);
+    return;
+  }
+  
+  // Update display with current value
+  updateParamDisplay(device, domId, param);
+}
+
+function updateParamDisplay(device, domId, param) {
+  const currentValueDiv = document.getElementById('param-current-value-' + domId);
+  const inputContainer = document.getElementById('param-input-container-' + domId);
+  
+  if (!param || !currentValueDiv || !inputContainer) {
+    if (currentValueDiv) currentValueDiv.innerHTML = '';
+    return;
+  }
+  
+  // Get current value from latestValues
+  const data = latestValues[device] || {};
+  const entry = data[param];
+  
+  if (!entry || entry.value === undefined) {
+    currentValueDiv.innerHTML = `<em>Current: (no data)</em>`;
+    // Keep text input
+    inputContainer.innerHTML = '<input type="text" id="param-value-' + domId + '" class="control-input" placeholder="val" style="flex: 1;" />';
+    return;
+  }
+  
+  const value = entry.value;
+  const unit = entry.unit || '';
+  
+  // Format current value display
+  let displayValue;
+  if (Array.isArray(value)) {
+    displayValue = '[' + value.join(', ') + ']';
+  } else if (typeof value === 'object' && value !== null) {
+    displayValue = JSON.stringify(value);
+  } else {
+    displayValue = String(value);
+  }
+  
+  currentValueDiv.innerHTML = `Current: <strong>${displayValue}</strong>${unit ? ' ' + unit : ''}`;
+  
+  // Check if parameter has enum values in WRITABLE_PARAMS
+  const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
+  
+  console.log('updateParamDisplay:', device, param);
+  console.log('Full deviceInfo for', device, ':', JSON.stringify(deviceInfo, null, 2));
+  
+  const paramInfo = deviceInfo && deviceInfo.param_info && deviceInfo.param_info[param] ? deviceInfo.param_info[param] : null;
+  
+  console.log('paramInfo:', paramInfo);
+  
+  // If parameter has enum members, show dropdown instead of text input
+  if (paramInfo && paramInfo.type === 'enum' && paramInfo.members) {
+    // members is an object with enum_name: value pairs
+    const enumNames = Object.keys(paramInfo.members);
+    console.log('Creating enum dropdown with members:', enumNames);
+    let selectHtml = '<select id="param-value-' + domId + '" class="control-input" style="flex: 1;">';
+    selectHtml += '<option value="">-- Select --</option>';
+    enumNames.forEach(enumName => {
+      const selected = enumName === String(value) ? ' selected' : '';
+      selectHtml += `<option value="${enumName}"${selected}>${enumName}</option>`;
+    });
+    selectHtml += '</select>';
+    inputContainer.innerHTML = selectHtml;
+  } else {
+    // Use text input for other types
+    inputContainer.innerHTML = '<input type="text" id="param-value-' + domId + '" class="control-input" placeholder="val" style="flex: 1;" />';
+  }
+}
+
 // ===== Extra Parameters Panel =====
 const latestValues = {};
 
@@ -880,27 +961,125 @@ function renderExtra(device) {
     return;
   }
   
+  // Get parameter metadata if available
+  const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
+  
   let html = '';
   for (let k of filteredKeys) {
     const entry = data[k];
-    const v = entry && entry.value !== undefined ? entry.value : '—';
+    let v = entry && entry.value !== undefined ? entry.value : '—';
     const u = entry && entry.unit ? (' ' + entry.unit) : '';
-    html += `<div class="extra-row"><div>${k}</div><div>${String(v)}${u}</div></div>`;
+    
+    // Format value based on type
+    let displayValue;
+    if (Array.isArray(v)) {
+      displayValue = '[' + v.join(', ') + ']';
+    } else if (typeof v === 'object' && v !== null) {
+      displayValue = JSON.stringify(v);
+    } else {
+      displayValue = String(v);
+    }
+    
+    html += `<div class="extra-row"><div>${k}</div><div>${displayValue}${u}</div></div>`;
   }
   panel.innerHTML = html;
 }
 
+function handleExpansion(box, originalHeight) {
+    requestAnimationFrame(() => {
+        const newHeight = box.offsetHeight;
+        const heightIncrease = newHeight - originalHeight;
+
+        if (heightIncrease > 0) {
+            const boxRect = box.getBoundingClientRect();
+            const containerRect = box.parentElement.getBoundingClientRect();
+
+            document.querySelectorAll('.device-box, .deco-box').forEach(otherEl => {
+                if (otherEl.id === box.id) return;
+
+                const otherRect = otherEl.getBoundingClientRect();
+
+                // Check if otherEl is below the expanding box and horizontally overlapping
+                const isBelow = otherRect.top > boxRect.top;
+                const isHorizontallyOverlapping = (boxRect.left < otherRect.right && boxRect.right > otherRect.left);
+
+                if (isBelow && isHorizontallyOverlapping) {
+                    const currentTop = otherRect.top - containerRect.top;
+                    const newTop = currentTop + heightIncrease;
+
+                    otherEl.style.transition = 'top 0.2s ease-out';
+                    otherEl.style.top = newTop + 'px';
+                    
+                    setTimeout(() => { otherEl.style.transition = ''; }, 200);
+                }
+            });
+        }
+    });
+}
+
+function handleCollapse(box, originalHeight) {
+    requestAnimationFrame(() => {
+        const newHeight = box.offsetHeight;
+        const heightReduction = originalHeight - newHeight;
+
+        if (heightReduction > 0) {
+            const boxRect = box.getBoundingClientRect();
+            const containerRect = box.parentElement.getBoundingClientRect();
+
+            document.querySelectorAll('.device-box, .deco-box').forEach(otherEl => {
+                if (otherEl.id === box.id) return;
+
+                const otherRect = otherEl.getBoundingClientRect();
+
+                // Check if otherEl is below the collapsing box and horizontally overlapping
+                const isBelow = otherRect.top > boxRect.top;
+                const isHorizontallyOverlapping = (boxRect.left < otherRect.right && boxRect.right > otherRect.left);
+
+                if (isBelow && isHorizontallyOverlapping) {
+                    const currentTop = otherRect.top - containerRect.top;
+                    const newTop = currentTop - heightReduction;
+
+                    otherEl.style.transition = 'top 0.2s ease-out';
+                    otherEl.style.top = newTop + 'px';
+                    
+                    setTimeout(() => { otherEl.style.transition = ''; }, 200);
+                }
+            });
+        }
+    });
+}
+
 function toggleExtra(device) {
-  const id = deviceDomId(device);
-  const panel = document.getElementById('extra-' + id);
-  const btn = document.getElementById('toggle-' + id);
-  if (!panel || !btn) return;
+  const domId = deviceDomId(device);
+  const panel = document.getElementById('extra-' + domId);
+  const btn = document.getElementById('toggle-' + domId);
+  const box = document.getElementById('box-' + domId);
+  if (!panel || !btn || !box) return;
+
+  const isOpening = !panel.classList.contains('open');
+  const originalHeight = box.offsetHeight;
   
-  const open = panel.classList.toggle('open');
-  panel.setAttribute('aria-hidden', open ? 'false' : 'true');
-  btn.textContent = open ? 'Close ▴' : 'More ▾';
+  if (isOpening) {
+    renderExtra(device);
+  }
   
-  if (open) renderExtra(device);
+  panel.classList.toggle('open');
+  panel.setAttribute('aria-hidden', isOpening ? 'false' : 'true');
+  btn.textContent = isOpening ? 'Close ▴' : 'More ▾';
+  
+  // Force reflow
+  box.offsetHeight;
+  
+  // Wait for DOM to update
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (isOpening) {
+        handleExpansion(box, originalHeight);
+      } else {
+        handleCollapse(box, originalHeight);
+      }
+    });
+  });
 }
 
 function toggleDeviceBody(domId) {
@@ -908,18 +1087,28 @@ function toggleDeviceBody(domId) {
   const btn = document.getElementById('expand-btn-' + domId);
   const box = document.getElementById('box-' + domId);
   
-  if (!body || !btn) return;
+  if (!body || !btn || !box) return;
   
-  if (body.style.display === 'none') {
+  const isExpanding = body.style.display === 'none';
+  const originalHeight = box.offsetHeight;
+
+  if (isExpanding) {
     body.style.display = 'block';
     btn.textContent = '▲';
-    // Reset height to auto to allow expansion if it was fixed
-    if (box.style.height) box.style.height = 'auto';
+    box.style.height = 'auto';
+    
+    // Wait for DOM to update
+    requestAnimationFrame(() => {
+      handleExpansion(box, originalHeight);
+    });
   } else {
     body.style.display = 'none';
     btn.textContent = '▼';
-    // Reset height to auto to allow shrinking
     box.style.height = 'auto';
+    
+    requestAnimationFrame(() => {
+      handleCollapse(box, originalHeight);
+    });
   }
 }
 
@@ -1291,9 +1480,17 @@ window.addEventListener('spinupdate', function(event) {
     };
     
     const domId = deviceDomId(device);
+    
+    // Update extra panel if open
     const panel = document.getElementById('extra-' + domId);
     if (panel && panel.classList.contains('open')) {
       renderExtra(device);
+    }
+    
+    // Update parameter display if this parameter is currently selected
+    const paramSelect = document.getElementById('param-select-' + domId);
+    if (paramSelect && paramSelect.value === param) {
+      updateParamDisplay(device, domId, param);
     }
   } catch (e) { 
     console.error('cache spinupdate failed', e); 
