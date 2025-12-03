@@ -2,6 +2,7 @@ from spin.device import BaseDevice
 from spin.backend import Reply
 import json
 import os
+import asyncio
 from frappy.client import SecopClient
 
 NODES_FILE = os.path.join(os.path.dirname(__file__), 'nodes.json')
@@ -39,7 +40,8 @@ def extract_modules_and_parameters(data, prefix=""):
         device_data_map[unique_name] = {
             "params": writable_list,
             "commands": command_list,
-            "original_name": module_name
+            "original_name": module_name,
+            "interface_classes": module_info.get("interface_classes", [])
         }
 
     return module_list, parameter_map, device_data_map
@@ -55,11 +57,11 @@ def connect_and_fetch_params(host, port):
         client.connect()
         
         mod_list, para_map, dev_data = extract_modules_and_parameters(client.descriptive_data, prefix)
-        return dev_data
+        return mod_list, para_map, dev_data
             
     except Exception as e:
         print(f"Failed to connect to {url}: {e}")
-        return {}
+        return None, None, None
 
 class NodeManagerDevice(BaseDevice):
     def init(self):
@@ -87,6 +89,10 @@ class NodeManagerDevice(BaseDevice):
                 pass
         self.run_task(self.send_param('device_params', data, ''))
 
+    async def _clear_status(self):
+        await asyncio.sleep(3)
+        await self.send_param('status', '', '')
+
     async def handle_request(self, request):
         # request.key is 'nodemanager.something'
         cmd = request.key.split('.')[-1]
@@ -100,6 +106,14 @@ class NodeManagerDevice(BaseDevice):
                 host = data.get('host')
                 port = data.get('port')
                 
+                # Verify connection first
+                mod_list, para_map, new_dev_data = connect_and_fetch_params(host, port)
+                if not new_dev_data:
+                    msg = f"Failed to connect to node {host}:{port}"
+                    self.run_task(self.send_param('status', msg, ''))
+                    self.run_task(self._clear_status())
+                    return Reply(request.connection, request.key, request.transform, 'error', msg)
+
                 # Update nodes.json
                 nodes = []
                 if os.path.exists(NODES_FILE):
@@ -120,8 +134,7 @@ class NodeManagerDevice(BaseDevice):
                     with open(NODES_FILE, 'w') as f:
                         json.dump(nodes, f, indent=2)
                 
-                # Fetch params from new node and update device_params.json
-                new_dev_data = connect_and_fetch_params(host, port)
+                # Update device_params.json with fetched data
                 if new_dev_data:
                     all_data = {}
                     if os.path.exists(DEVICE_PARAMS_FILE):
@@ -140,9 +153,15 @@ class NodeManagerDevice(BaseDevice):
 
                 self.update_nodes_param()
                 
+                msg = "Node added successfully. Please restart server to use new devices."
+                self.run_task(self.send_param('status', msg, ''))
+                self.run_task(self._clear_status())
+                
                 return Reply(request.connection, request.key, request.transform, 'ack', 
-                             {"status": "ok", "message": "Node added. Please restart server."})
+                             {"status": "ok", "message": msg})
             except Exception as e:
+                self.run_task(self.send_param('status', f"Error: {str(e)}", ''))
+                self.run_task(self._clear_status())
                 return Reply(request.connection, request.key, request.transform, 'error', str(e))
 
         elif cmd == 'list_nodes':

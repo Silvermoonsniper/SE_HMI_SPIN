@@ -37,7 +37,8 @@ def extract_modules_and_parameters(data, prefix=""):
         device_data_map[unique_name] = {
             "params": writable_list,
             "commands": command_list,
-            "original_name": module_name
+            "original_name": module_name,
+            "interface_classes": module_info.get("interface_classes", [])
         }
 
     return module_list, parameter_map, device_data_map
@@ -60,27 +61,31 @@ def connect_node(host, port):
 
 # Load nodes configuration
 nodes_file = NODES_FILE
-nodes = []
-if os.path.exists(nodes_file):
+if not os.path.exists(nodes_file):
+    # Create an empty nodes.json if it doesn't exist
+    with open(nodes_file, 'w') as f:
+        json.dump([], f)
+    nodes = []
+else:
     try:
         with open(nodes_file, 'r') as f:
             nodes = json.load(f)
-    except Exception as e:
-        print(f"Error loading nodes.json: {e}")
+    except (json.JSONDecodeError, FileNotFoundError):
+        print(f"Warning: Could not decode {nodes_file}. Starting with no nodes.")
+        nodes = []
 
+# If nodes.json is empty, you might want to add a default node.
+# For now, we'll just proceed.
 if not nodes:
-    print("No nodes configured in nodes.json. Using default.")
-    # Don't force default if file exists but empty, only if no file/config
-    # But here we just proceed.
+    print("No nodes configured in nodes.json.")
 
 all_device_data = {}
 dev_config = {}
 
-# Initial connection
+# Connect to each node and configure devices
 for node in nodes:
     host = node.get("host", "localhost")
     port = node.get("port", 10801)
-    url = f"{host}:{port}"
     
     mod_list, para_map, dev_data = connect_node(host, port)
     
@@ -88,9 +93,10 @@ for node in nodes:
     all_device_data.update(dev_data)
     
     # Configure Spin devices
+    url = f"{host}:{port}"
     for original_name, unique_name in mod_list:
         params = []
-        for para_name in para_map[unique_name]:
+        for para_name in para_map.get(unique_name, []):
             params.append(Param(para_name))
         
         dev_config[unique_name] = Device(

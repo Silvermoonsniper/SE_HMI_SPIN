@@ -122,13 +122,11 @@ body {
   margin: 20px 0;
   border: 1px dashed #e0e0e0;
   background: #eef;
-  overflow: hidden;
-  cursor: grab;
+  overflow: auto;
+  /* cursor: grab; -- Removed to avoid interfering with device dragging */
 }
 
-.viewport:active {
-  cursor: grabbing;
-}
+/* Removed .viewport:active cursor to avoid conflicts */
 
 .canvas { 
   position: absolute;
@@ -159,9 +157,26 @@ body {
   /* Custom resizing */
   overflow: hidden;
   min-width: 140px;
-  min-height: 100px;
+  min-height: 50px;
   z-index: 10;
   font-size: 11px;
+}
+
+.expand-btn {
+  width: 100%;
+  text-align: center;
+  cursor: pointer;
+  font-size: 10px;
+  color: #888;
+  background: #f9f9f9;
+  border-top: 1px solid #eee;
+  padding: 2px 0;
+  line-height: 1;
+  margin-top: 4px;
+}
+.expand-btn:hover {
+  background: #eee;
+  color: #333;
 }
 
 .resize-handle {
@@ -304,11 +319,19 @@ body {
 
 .control-input {
   flex: 1;
-  padding: 4px 6px;
+  padding: 1px 2px;
+  height: 17px;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 11px;
   background: white;
+  box-sizing: border-box;
+}
+
+/* Specific size for the value input field */
+input.control-input {
+  max-width: 60px;
+  height: 14px; 
 }
 .device-field {
   display: flex;
@@ -505,14 +528,14 @@ body {
     </div>
 
     <button class="conn-btn" onclick="addNodeConnection()">Add Node Connection</button>
-    <button id="enter-system-btn" class="conn-btn" style="margin-top: 10px; background: #28a745; display: none;" onclick="enterSystem()">Configure New System Layout / Edit System Layout</button>
+    <button id="enter-system-btn" class="conn-btn" style="margin-top: 10px; background: #28a745;" onclick="enterSystem()">Configure New System Layout / Edit System Layout</button>
   </div>
 </div>
 
 <div id="main-panel">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-    <h3 style="margin:0;">Gas Dosing Control</h3>
-    <button onclick="disconnectNode()" style="padding:4px 8px; background:#dc3545; color:white; border:none; border-radius:4px; cursor:pointer;">Disconnect</button>
+    <h3 style="margin:0;">Configure your system layout</h3>
+    <button onclick="disconnectNode()" style="padding:4px 8px; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer;">Back</button>
   </div>
 
 <div id="device-manager" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; gap: 10px; align-items: center;">
@@ -545,8 +568,8 @@ body {
   <button onclick="loadLayout()" style="padding: 4px 8px; font-size:11px;">Load File</button>
 </div>
 
-<div class="viewport" id="viewport">
-  <div class="canvas" id="device-grid">
+<div class="viewport" id="viewport" style="overflow: auto; position: relative;">
+  <div id="device-grid" style="width: 3000px; height: 2000px; position: relative; background: #fdfdfd;">
     <!-- Devices will be added here -->
   </div>
 </div>
@@ -559,27 +582,32 @@ body {
       <button onclick="removeDevice('{{DOM_ID}}')" style="margin-left:auto; background:none; border:none; color:#999; cursor:pointer; font-weight:bold; padding:0 4px; font-size:14px; line-height:1;">&times;</button>
     </div>
     <div class="device-field">
-      <div>Value / Target</div>
+      <div>Val / Target / Gas</div>
       <div class="device-value">
-        <span id="val-{{DOM_ID}}" class="inline-small" data-spin='@{{DEVICE}} "%s {unit}"'>--</span> / 
-        <span id="target-{{DOM_ID}}" class="inline-small" data-spin='@{{DEVICE}}.target "%s {unit}"'>--</span>
+        <span id="val-{{DOM_ID}}" class="inline-small" data-spin='@{{DEVICE}} "%s {unit}"'>--</span> <span class="sep-1">/</span> 
+        <span id="target-{{DOM_ID}}" class="inline-small" data-spin='@{{DEVICE}}.target "%s {unit}"'>--</span> <span class="sep-2">/</span> 
+        <span id="gas-{{DOM_ID}}" class="inline-small" data-spin='@{{DEVICE}}._gastype "%s"'>--</span>
       </div>
     </div>
 
-    <div class="control-section">
-      <div class="control-field">
-        <select id="param-select-{{DOM_ID}}" class="control-input" aria-label="Parameter">
-          <option value="">--</option>
-        </select>
-        <input type="text" id="param-value-{{DOM_ID}}" class="control-input" placeholder="val" style="max-width:70px;" />
-        <button class="control-button" onclick="sendSelectedParam('{{DEVICE}}', '{{DOM_ID}}')">Set</button>
-      </div>
-    </div>
-    
-    <div id="commands-{{DOM_ID}}" class="commands-section"></div>
+    <div class="expand-btn" id="expand-btn-{{DOM_ID}}" onclick="toggleDeviceBody('{{DOM_ID}}')">▼</div>
 
-    <div style="margin-top:8px; display:flex; gap:8px; align-items:center;"><button class="toggle-btn" id="toggle-{{DOM_ID}}" onclick="toggleExtra('{{DEVICE}}')">More ▾</button></div>
-    <div id="extra-{{DOM_ID}}" class="extra-panel" aria-hidden="true"></div>
+    <div id="body-{{DOM_ID}}" style="display:none;">
+      <div class="control-section">
+        <div class="control-field">
+          <select id="param-select-{{DOM_ID}}" class="control-input" aria-label="Parameter">
+            <option value="">--</option>
+          </select>
+          <input type="text" id="param-value-{{DOM_ID}}" class="control-input" placeholder="val" />
+          <button class="control-button" onclick="sendSelectedParam('{{DEVICE}}', '{{DOM_ID}}')">Set</button>
+        </div>
+      </div>
+      
+      <div id="commands-{{DOM_ID}}" class="commands-section"></div>
+
+      <div style="margin-top:8px; display:flex; gap:8px; align-items:center;"><button class="toggle-btn" id="toggle-{{DOM_ID}}" onclick="toggleExtra('{{DEVICE}}')">More ▾</button></div>
+      <div id="extra-{{DOM_ID}}" class="extra-panel" aria-hidden="true"></div>
+    </div>
     <div class="resize-handle"></div>
   </div>
 </template>
@@ -607,6 +635,9 @@ body {
 
 // ===== Connection Panel Logic =====
 let connectedNodes = [];
+let scale = 1;
+let panX = 0;
+let panY = 0;
 
 function setBackgroundImage() {
   const input = document.getElementById('conn-bg-url');
@@ -653,7 +684,7 @@ function addNodeConnection() {
   
   if (window.Spin) {
       Spin.send_request('nodemanager.add_node', "", "input", "set", {host: ip, port: port});
-      alert('Request sent. Please restart the server to apply changes.');
+      // Alert will be handled by nodemanager.status update
       document.getElementById('conn-ip').value = '';
   } else {
       alert('Not connected to Spin server.');
@@ -669,7 +700,6 @@ function fetchNodesList() {
 function updateConnectedNodesList() {
     const listDiv = document.getElementById('connected-nodes-list');
     const ul = document.getElementById('nodes-ul');
-    const enterBtn = document.getElementById('enter-system-btn');
     
     ul.innerHTML = '';
     connectedNodes.forEach(node => {
@@ -682,10 +712,8 @@ function updateConnectedNodesList() {
     
     if (connectedNodes.length > 0) {
         listDiv.style.display = 'block';
-        enterBtn.style.display = 'inline-block';
     } else {
         listDiv.style.display = 'none';
-        enterBtn.style.display = 'none';
     }
 }
 
@@ -693,17 +721,11 @@ function updateConnectedNodesList() {
 document.addEventListener('DOMContentLoaded', fetchNodesList);
 
 function enterSystem() {
-  if (connectedNodes.length === 0) {
-      alert('No nodes connected.');
-      return;
-  }
-  
-  console.log('Entering system with nodes:', connectedNodes);
-  debug('Entering system with nodes: ' + connectedNodes.join(', '));
-  
-  // Switch panels
+  // This function is now only for switching views.
+  // The button is always visible.
   document.getElementById('connection-panel').style.display = 'none';
   document.getElementById('main-panel').style.display = 'block';
+  debug('Switched to main layout panel.');
 }
 
 function connectToNode() {
@@ -729,6 +751,14 @@ window.addEventListener('spinupdate', function(event) {
         if (nodes && Array.isArray(nodes)) {
             connectedNodes = nodes.map(n => `${n.host}:${n.port}`);
             updateConnectedNodesList();
+        }
+        return;
+    }
+
+    if (key === 'nodemanager.status') {
+        var msg = event.detail.value;
+        if (msg) {
+            alert(msg);
         }
         return;
     }
@@ -774,6 +804,10 @@ window.addEventListener('spinupdate', function(event) {
         // Target update
         var targetEl = document.getElementById('target-' + domId);
         if (targetEl) targetEl.textContent = formatted;
+    } else if (param === '_gastype') {
+        // Gas type update
+        var gasEl = document.getElementById('gas-' + domId);
+        if (gasEl) gasEl.textContent = formatted;
     }
     
     // Log update to UI for debugging
@@ -869,6 +903,26 @@ function toggleExtra(device) {
   if (open) renderExtra(device);
 }
 
+function toggleDeviceBody(domId) {
+  const body = document.getElementById('body-' + domId);
+  const btn = document.getElementById('expand-btn-' + domId);
+  const box = document.getElementById('box-' + domId);
+  
+  if (!body || !btn) return;
+  
+  if (body.style.display === 'none') {
+    body.style.display = 'block';
+    btn.textContent = '▲';
+    // Reset height to auto to allow expansion if it was fixed
+    if (box.style.height) box.style.height = 'auto';
+  } else {
+    body.style.display = 'none';
+    btn.textContent = '▼';
+    // Reset height to auto to allow shrinking
+    box.style.height = 'auto';
+  }
+}
+
 // ===== Device Management =====
 var WRITABLE_PARAMS = null; 
 
@@ -893,9 +947,9 @@ function populateDeviceList(data) {
   });
 }
 
-function createDeviceDisplay() {
+function createDeviceDisplay(deviceNameOverride) {
   const select = document.getElementById('device-select');
-  const device = select.value;
+  const device = deviceNameOverride || select.value;
   if (!device) {
     alert('Please select a device first.');
     return;
@@ -903,7 +957,7 @@ function createDeviceDisplay() {
   
   const domId = deviceDomId(device);
   if (document.getElementById('box-' + domId)) {
-    alert('Display for ' + device + ' already exists.');
+    // alert('Display for ' + device + ' already exists.');
     return;
   }
   
@@ -930,6 +984,35 @@ function createDeviceDisplay() {
   
   document.getElementById('device-grid').appendChild(newBox);
   
+  // Custom display logic based on device type
+  const lowerDev = device.toLowerCase();
+  const labelDiv = newBox.querySelector('.device-field > div:first-child');
+  const targetSpan = newBox.querySelector(`#target-${domId}`);
+  const gasSpan = newBox.querySelector(`#gas-${domId}`);
+  const sep1 = newBox.querySelector('.sep-1');
+  const sep2 = newBox.querySelector('.sep-2');
+
+  let isReadable = false;
+  if (WRITABLE_PARAMS && WRITABLE_PARAMS[device] && WRITABLE_PARAMS[device].interface_classes) {
+      if (WRITABLE_PARAMS[device].interface_classes.includes('Readable')) {
+          isReadable = true;
+      }
+  }
+
+  if (isReadable) {
+      // Show only Value
+      if (labelDiv) labelDiv.textContent = 'Val';
+      if (targetSpan) targetSpan.style.display = 'none';
+      if (gasSpan) gasSpan.style.display = 'none';
+      if (sep1) sep1.style.display = 'none';
+      if (sep2) sep2.style.display = 'none';
+  } else if (lowerDev.includes('backpress') || lowerDev.includes('temp')) {
+      // Show only Value and Target
+      if (labelDiv) labelDiv.textContent = 'Val / Target';
+      if (gasSpan) gasSpan.style.display = 'none';
+      if (sep2) sep2.style.display = 'none';
+  }
+
   // Initialize draggable & resizable
   makeDraggable(newBox);
   makeResizable(newBox);
@@ -1248,15 +1331,48 @@ window.addEventListener('spinupdate', function(event) {
 
 // ===== Context Menu Logic =====
 let contextMenuTarget = null;
-const ctxMenu = document.getElementById('context-menu');
-const ctxColor = document.getElementById('ctx-color-picker');
+let ctxMenu = null;
+let ctxColor = null;
+
+// Initialize context menu elements after DOM loads
+document.addEventListener('DOMContentLoaded', () => {
+  ctxMenu = document.getElementById('context-menu');
+  ctxColor = document.getElementById('ctx-color-picker');
+  
+  // Set up color picker listener
+  if (ctxColor) {
+    ctxColor.addEventListener('input', (e) => {
+      if (contextMenuTarget) {
+        const color = e.target.value;
+        if (contextMenuTarget.dataset.type === 'label') {
+          contextMenuTarget.style.color = color;
+        } else {
+          const visual = contextMenuTarget.querySelector('.deco-visual');
+          if (visual) visual.style.backgroundColor = color;
+        }
+      }
+    });
+  }
+  
+  // Set up remove button listener
+  const ctxRemoveBtn = document.getElementById('ctx-remove-btn');
+  if (ctxRemoveBtn) {
+    ctxRemoveBtn.addEventListener('click', () => {
+      if (contextMenuTarget) {
+        contextMenuTarget.remove();
+        contextMenuTarget = null;
+        if (ctxMenu) ctxMenu.style.display = 'none';
+      }
+    });
+  }
+});
 
 // Hide menu on left click elsewhere
 document.addEventListener('mousedown', (e) => {
   // Only handle left clicks for closing
   if (e.button !== 0) return;
   
-  if (ctxMenu.style.display === 'block' && !ctxMenu.contains(e.target)) {
+  if (ctxMenu && ctxMenu.style.display === 'block' && !ctxMenu.contains(e.target)) {
     ctxMenu.style.display = 'none';
   }
 });
@@ -1264,7 +1380,7 @@ document.addEventListener('mousedown', (e) => {
 // Delegate contextmenu event
 document.addEventListener('contextmenu', (e) => {
   const box = e.target.closest('.deco-box');
-  if (box) {
+  if (box && ctxMenu && ctxColor) {
     e.preventDefault();
     contextMenuTarget = box;
     
@@ -1291,30 +1407,7 @@ document.addEventListener('contextmenu', (e) => {
   }
 });
 
-if (ctxColor) {
-    ctxColor.addEventListener('input', (e) => {
-        if (contextMenuTarget) {
-            const color = e.target.value;
-            if (contextMenuTarget.dataset.type === 'label') {
-                contextMenuTarget.style.color = color;
-            } else {
-                const visual = contextMenuTarget.querySelector('.deco-visual');
-                if (visual) visual.style.backgroundColor = color;
-            }
-        }
-    });
-}
-
-const ctxRemoveBtn = document.getElementById('ctx-remove-btn');
-if (ctxRemoveBtn) {
-    ctxRemoveBtn.addEventListener('click', () => {
-        if (contextMenuTarget) {
-            contextMenuTarget.remove();
-            contextMenuTarget = null;
-            ctxMenu.style.display = 'none';
-        }
-    });
-}
+// Removed duplicate listeners - now in DOMContentLoaded above
 
 function rgbToHex(col) {
     if(!col) return null;
@@ -1328,96 +1421,66 @@ function rgbToHex(col) {
 }
 
 // ===== Pan & Zoom Logic =====
-let scale = 1;
-let panX = 0;
-let panY = 0;
-const viewport = document.getElementById('viewport');
-const canvas = document.getElementById('device-grid');
+// Variables moved to top of script
+// let scale = 1;
+// let panX = 0;
+// let panY = 0;
 
 function updateTransform() {
-  canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+  // Disabled
 }
 
 function zoomCanvas(delta) {
-  const newScale = Math.max(0.1, Math.min(5, scale + delta));
-  // Zoom towards center of viewport
-  const rect = viewport.getBoundingClientRect();
-  const cx = rect.width / 2;
-  const cy = rect.height / 2;
-  
-  // Adjust pan to keep center stable
-  panX = cx - (cx - panX) * (newScale / scale);
-  panY = cy - (cy - panY) * (newScale / scale);
-  
-  scale = newScale;
-  updateTransform();
+  // Disabled
 }
 
 function toggleAnimation() {
-  const c = document.getElementById('device-grid');
-  c.classList.toggle('animated');
+  // Disabled
 }
 
 function resetView() {
-  scale = 1;
-  panX = 0;
-  panY = 0;
-  updateTransform();
+  // Disabled
 }
 
 // Pan Event Listeners
 let isPanning = false;
 let startPanX, startPanY;
 
-viewport.addEventListener('mousedown', (e) => {
-  // Only pan if clicking directly on viewport or canvas (not on items)
-  if (e.target === viewport || e.target === canvas) {
-    isPanning = true;
-    startPanX = e.clientX - panX;
-    startPanY = e.clientY - panY;
-    viewport.style.cursor = 'grabbing';
-  }
+// Initialize listeners when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    // No pan/zoom listeners
 });
 
-window.addEventListener('mousemove', (e) => {
-  if (isPanning) {
-    e.preventDefault();
-    panX = e.clientX - startPanX;
-    panY = e.clientY - startPanY;
-    updateTransform();
-  }
-});
+// window.addEventListener('mousemove', (e) => {
+//   if (isPanning) {
+//     e.preventDefault();
+//     panX = e.clientX - startPanX;
+//     panY = e.clientY - startPanY;
+//     updateTransform();
+//   }
+// });
 
 window.addEventListener('mouseup', () => {
   if (isPanning) {
     isPanning = false;
-    viewport.style.cursor = 'grab';
+    const vp = document.getElementById('viewport');
+    if (vp) vp.style.cursor = 'grab';
   }
 });
 
-// Wheel Zoom
-viewport.addEventListener('wheel', (e) => {
-  if (e.ctrlKey || e.metaKey) {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    
-    // Zoom towards mouse pointer
-    const rect = viewport.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    
-    const newScale = Math.max(0.1, Math.min(5, scale + delta));
-    
-    panX = mx - (mx - panX) * (newScale / scale);
-    panY = my - (my - panY) * (newScale / scale);
-    
-    scale = newScale;
-    updateTransform();
-  }
-});
+// Wheel Zoom - DISABLED (zoom/pan features removed)
+// const viewport = document.getElementById('viewport');
+// if (viewport) {
+//   viewport.addEventListener('wheel', (e) => {
+//     if (e.ctrlKey || e.metaKey) {
+//       e.preventDefault();
+//       // Zoom logic disabled
+//     }
+//   });
+// }
 
 // ===== Save/Load Layout =====
-const STORAGE_KEY = 'system_layouts';
+// STORAGE_KEY is declared at top of script
 
 function getStoredLayouts() {
   try {
@@ -1623,51 +1686,51 @@ function applyLayout(layout) {
 }
 
 // ===== Draggable Logic =====
-let isDraggingDeco = false; // Global flag for dragging
 
 function makeDraggable(el) {
   const header = el.querySelector('.device-header');
   if (!header) return;
 
-  let isDragging = false;
-  let startX, startY, initialLeft, initialTop;
-
   header.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
-    isDragging = true;
-    startX = e.clientX;
-    startY = e.clientY;
-    const style = window.getComputedStyle(el);
-    initialLeft = parseInt(style.left, 10);
-    if (isNaN(initialLeft)) initialLeft = el.offsetLeft;
-    initialTop = parseInt(style.top, 10);
-    if (isNaN(initialTop)) initialTop = el.offsetTop;
+    if (e.button !== 0) return; // Only left click
+    
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startLeft = el.offsetLeft;
+    const startTop = el.offsetTop;
+    const currentScale = scale || 1;
+
     el.style.zIndex = 1000;
     header.style.cursor = 'grabbing';
-    e.stopPropagation(); // Prevent viewport pan
-  });
+    document.body.style.cursor = 'grabbing';
 
-  window.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    e.preventDefault();
-    // Adjust delta by scale
-    const dx = (e.clientX - startX) / scale;
-    const dy = (e.clientY - startY) / scale;
-    el.style.left = `${initialLeft + dx}px`;
-    el.style.top = `${initialTop + dy}px`;
-  });
+    function onMouseMove(e) {
+      e.preventDefault();
+      const dx = (e.clientX - startX) / currentScale;
+      const dy = (e.clientY - startY) / currentScale;
+      
+      el.style.left = `${startLeft + dx}px`;
+      el.style.top = `${startTop + dy}px`;
+    }
 
-  window.addEventListener('mouseup', () => {
-    if (isDragging) {
-      isDragging = false;
+    function onMouseUp() {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      
       header.style.cursor = 'move';
+      document.body.style.cursor = '';
       el.style.zIndex = '';
     }
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   });
 }
 
 // ===== Resizable Logic =====
-let resizingState = null;
 
 function makeResizable(el) {
   const handle = el.querySelector('.resize-handle');
@@ -1675,50 +1738,36 @@ function makeResizable(el) {
 
   handle.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
-    e.stopPropagation(); // Prevent drag or pan
-    
-    // Ensure selection
+    e.stopPropagation();
+    e.preventDefault();
+
+    // Ensure selection if it's a decoration
     if (el.classList.contains('deco-box')) selectDeco(el);
-    
-    resizingState = {
-      el: el,
-      startX: e.clientX,
-      startY: e.clientY,
-      startW: parseInt(el.style.width || window.getComputedStyle(el).width, 10),
-      startH: parseInt(el.style.height || window.getComputedStyle(el).height, 10)
-    };
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = parseInt(el.style.width || window.getComputedStyle(el).width, 10);
+    const startH = parseInt(el.style.height || window.getComputedStyle(el).height, 10);
+    const currentScale = scale || 1;
+
+    function onMouseMove(e) {
+      e.preventDefault();
+      const dx = (e.clientX - startX) / currentScale;
+      const dy = (e.clientY - startY) / currentScale;
+      
+      el.style.width = `${Math.max(20, startW + dx)}px`;
+      el.style.height = `${Math.max(20, startH + dy)}px`;
+    }
+
+    function onMouseUp() {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    }
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   });
 }
-
-window.addEventListener('mousemove', (e) => {
-  if (resizingState) {
-    e.preventDefault();
-    const dx = (e.clientX - resizingState.startX) / scale;
-    const dy = (e.clientY - resizingState.startY) / scale;
-    
-    resizingState.el.style.width = `${Math.max(20, resizingState.startW + dx)}px`;
-    resizingState.el.style.height = `${Math.max(20, resizingState.startH + dy)}px`;
-  } else if (isPanning) {
-    // Existing pan logic
-    e.preventDefault();
-    panX = e.clientX - startPanX;
-    panY = e.clientY - startPanY;
-    updateTransform();
-  } else if (isDraggingDeco) {
-     // We need to refactor dragging to be global too if we want to be clean, 
-     // but for now let's leave it as is, or merge it?
-     // The existing dragging logic is inside closures. 
-     // Let's just handle resizing here.
-  }
-});
-
-window.addEventListener('mouseup', () => {
-  resizingState = null;
-  if (isPanning) {
-    isPanning = false;
-    viewport.style.cursor = 'grab';
-  }
-});
 
 // Initialize draggable on existing boxes (if any)
 document.addEventListener('DOMContentLoaded', () => {
@@ -1726,5 +1775,10 @@ document.addEventListener('DOMContentLoaded', () => {
       makeDraggable(box);
       makeResizable(box);
   });
+
+  // TEST: Auto-create MFC box for testing
+  setTimeout(() => {
+      createDeviceDisplay('massflow_contr1');
+  }, 500);
 });
 </script>
