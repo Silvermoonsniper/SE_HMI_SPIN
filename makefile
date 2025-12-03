@@ -17,4 +17,4 @@ clean:  ## 🧹 Clean up project
 
 
 demo_GUI: venv
-	source .venv/bin/activate; spin -c /home/samplechanger/SE_HMI_spin/se_hmi_spin/configuration -v
+	source .venv/bin/activate; spin -c ./configuration -v
