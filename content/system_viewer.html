@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>System Viewer</title>
+  <style>
+    /* Gas Dosing System Styles */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f9f9f9;
+      overflow: hidden;
+    }
+    
+    #viewer-header {
+      background: #2c3e50;
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    #layout-name {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    
+    .back-btn {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    
+    .back-btn:hover {
+      background: #c0392b;
+    }
+    
+    #viewport {
+      width: 100vw;
+      height: calc(100vh - 50px);
+      overflow: auto;
+      background: #f5f5f5;
+    }
+    
+    #device-grid {
+      width: 3000px;
+      height: 2000px;
+      position: relative;
+      background: #fdfdfd;
+    }
+    
+    /* Device Box Styles */
+    .device-box {
+      position: absolute;
+      background: white;
+      border: 2px solid #ccc;
+      border-radius: 6px;
+      padding: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      min-width: 250px;
+    }
+    
+    .device-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .device-title {
+      font-weight: bold;
+      font-size: 13px;
+      color: #333;
+    }
+    
+    .status-badge {
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: bold;
+    }
+    
+    .state-ok { background: #d4edda; color: #155724; }
+    .state-warn { background: #fff3cd; color: #856404; }
+    .state-err { background: #f8d7da; color: #721c24; }
+    
+    .device-field {
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+    
+    .device-value {
+      color: #007bff;
+      font-weight: 600;
+    }
+    
+    /* Decoration Styles */
+    .deco-box {
+      position: absolute;
+    }
+    
+    /* Valve Icon Styles */
+    .valve-icon {
+      position: absolute;
+      cursor: default;
+    }
+    
+    /* Hide interactive elements in viewer mode */
+    .device-header button,
+    .expand-btn,
+    .deco-remove,
+    .deco-drag-handle,
+    .resize-handle {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewer-header">
+    <div id="layout-name">Loading...</div>
+    <button class="back-btn" onclick="goBack()">Back to Connection Page</button>
+  </div>
+  
+  <div id="viewport">
+    <div id="device-grid">
+      <!-- Layout will be loaded here -->
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'gas_dosing_layouts';
+    
+    function getStoredLayouts() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : {};
+    }
+    
+    function goBack() {
+      window.location.href = '/';
+    }
+    
+    // Load the selected layout from sessionStorage
+    window.addEventListener('DOMContentLoaded', () => {
+      const layoutName = sessionStorage.getItem('selectedLayout');
+      
+      if (!layoutName) {
+        alert('No layout selected');
+        goBack();
+        return;
+      }
+      
+      const layouts = getStoredLayouts();
+      const layout = layouts[layoutName];
+      
+      if (!layout) {
+        alert('Layout not found');
+        goBack();
+        return;
+      }
+      
+      // Set the layout name in header
+      document.getElementById('layout-name').textContent = layoutName;
+      
+      // Apply the layout (read-only)
+      applyLayoutReadOnly(layout);
+      
+      // Initialize Spin connection when available
+      setTimeout(() => {
+        if (window.Spin && window.Spin.init) {
+          try {
+            Spin.init();
+          } catch (e) {
+            console.error('Spin init error:', e);
+          }
+        }
+      }, 500);
+    });
+    
+    function applyLayoutReadOnly(layout) {
+      const grid = document.getElementById('device-grid');
+      
+      // Restore Devices
+      if (layout.devices) {
+        layout.devices.forEach(d => {
+          createDeviceBox(d);
+        });
+      }
+      
+      // Restore Valve Icons
+      if (layout.valveIcons) {
+        layout.valveIcons.forEach(v => {
+          createValveIcon(v);
+        });
+      }
+      
+      // Restore Decorations
+      if (layout.decorations) {
+        layout.decorations.forEach(d => {
+          createDecorationBox(d);
+        });
+      }
+    }
+    
+    function createDeviceBox(data) {
+      const box = document.createElement('div');
+      box.className = 'device-box';
+      box.id = data.id;
+      box.style.position = 'absolute';
+      box.style.left = data.left;
+      box.style.top = data.top;
+      box.style.width = data.width || '280px';
+      box.style.height = data.height || 'auto';
+      
+      box.innerHTML = `
+        <div class="device-header">
+          <div class="device-title">${data.device}</div>
+          <div id="status-${data.id}" class="status-badge state-warn">connecting...</div>
+        </div>
+        <div class="device-field">
+          <div>Val / Target / Gas</div>
+          <div class="device-value">
+            <span data-spin='@${data.device} "%s {unit}"'>--</span> / 
+            <span data-spin='@${data.device}.target "%s {unit}"'>--</span> / 
+            <span data-spin='@${data.device}._gastype "%s"'>--</span>
+          </div>
+        </div>
+      `;
+      
+      document.getElementById('device-grid').appendChild(box);
+    }
+    
+    function createValveIcon(data) {
+      const icon = document.createElement('div');
+      icon.className = 'valve-icon';
+      icon.id = data.id;
+      icon.style.position = 'absolute';
+      icon.style.left = data.left;
+      icon.style.top = data.top;
+      icon.style.width = data.width || '80px';
+      icon.style.height = data.height || '100px';
+      
+      // Image container
+      const imgContainer = document.createElement('div');
+      imgContainer.style.cssText = 'width: 80px; height: 80px; position: relative;';
+      
+      // Determine if it's a switch or valve based on field name
+      const isSwitch = data.field && data.field.toLowerCase().includes('switch');
+      
+      const img = document.createElement('img');
+      if (isSwitch) {
+        img.src = '4_way_rotation_valve.png';
+        img.style.cssText = 'width: 100%; height: 100%; object-fit: contain; transform: rotate(0deg); transition: transform 0.3s ease;';
+      } else {
+        img.src = 'magnetic_valve_on.png';
+        img.style.cssText = 'width: 100%; height: 100%; object-fit: contain;';
+      }
+      imgContainer.appendChild(img);
+      
+      // Label
+      const label = document.createElement('div');
+      label.style.cssText = 'font-size: 10px; color: #333; text-align: center; margin-top: 4px; font-weight: 600;';
+      label.textContent = data.field;
+      
+      // Hidden data-spin element for value updates
+      const valueDisplay = document.createElement('div');
+      valueDisplay.style.display = 'none';
+      valueDisplay.setAttribute('data-spin', `@${data.device}.target.${data.field}`);
+      
+      icon.appendChild(imgContainer);
+      icon.appendChild(label);
+      icon.appendChild(valueDisplay);
+      
+      document.getElementById('device-grid').appendChild(icon);
+    }
+    
+    function createDecorationBox(data) {
+      const box = document.createElement('div');
+      box.className = 'deco-box';
+      box.dataset.type = data.type;
+      box.style.position = 'absolute';
+      box.style.left = data.left;
+      box.style.top = data.top;
+      box.style.width = data.width || '200px';
+      box.style.height = data.height || '4px';
+      
+      if (data.type === 'gas-line') {
+        box.style.background = data.color || '#ccc';
+        box.style.border = '1px solid #999';
+      } else if (data.type === 'gas-line-v') {
+        box.style.background = data.color || '#ccc';
+        box.style.border = '1px solid #999';
+      } else if (data.type === 'label') {
+        box.style.color = data.color || '#333';
+        box.style.fontSize = '14px';
+        box.style.fontWeight = 'bold';
+        box.style.height = 'auto';
+        box.textContent = data.text || 'Label';
+      }
+      
+      document.getElementById('device-grid').appendChild(box);
+    }
+  </script>
+</body>
+</html>

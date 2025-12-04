@@ -1,0 +1,2603 @@
+<style>
+/* Gas Dosing System Styles */
+
+/* X-ray beam animation keyframes */
+@keyframes xrayBeam {
+  0% { transform: translateX(-100%) rotate(45deg); opacity: 0.3; }
+  50% { opacity: 0.6; }
+  100% { transform: translateX(200%) rotate(45deg); opacity: 0.3; }
+}
+
+@keyframes particleFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  50% { transform: translate(30px, -40px) scale(1.2); opacity: 0.8; }
+}
+
+@keyframes moleculeRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes waveform {
+  0%, 100% { d: path('M 0 50 Q 25 40, 50 50 T 100 50'); }
+  50% { d: path('M 0 50 Q 25 60, 50 50 T 100 50'); }
+}
+
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Panels */
+#connection-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: #f0f2f5;
+  position: relative;
+  overflow: hidden;
+}
+
+.bg-decoration {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1fr;
+  grid-template-rows: 1fr 1.5fr 1fr;
+  gap: 20px;
+  padding: 20px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bg-img {
+  background-color: #e1e4e8;
+  background-size: cover;
+  background-position: center;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  transition: all 0.5s ease;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.bg-img.tl { 
+  grid-area: 1 / 1 / 2 / 2; 
+  transform-origin: top left;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+.bg-img.tr { 
+  grid-area: 1 / 3 / 2 / 4; 
+  transform-origin: top right;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+.bg-img.c  { 
+  grid-area: 2 / 2 / 3 / 3; 
+  opacity: 1; 
+  box-shadow: 0 12px 36px rgba(0,0,0,0.15);
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+.bg-img.bl { 
+  grid-area: 3 / 1 / 4 / 2; 
+  transform-origin: bottom left;
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+.bg-img.br { 
+  grid-area: 3 / 3 / 4 / 4; 
+  transform-origin: bottom right;
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+/* Subtle hover animation */
+#connection-panel:hover .bg-img.tl { transform: scale(1.02) translate(-5px, -5px); }
+#connection-panel:hover .bg-img.tr { transform: scale(1.02) translate(5px, -5px); }
+#connection-panel:hover .bg-img.bl { transform: scale(1.02) translate(-5px, 5px); }
+#connection-panel:hover .bg-img.br { transform: scale(1.02) translate(5px, 5px); }
+
+#main-panel {
+  display: none;
+  padding: 20px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.conn-box {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  width: 300px;
+  text-align: center;
+  position: relative;
+  z-index: 10;
+  border: 1px solid rgba(255,255,255,0.5);
+}
+
+.conn-field {
+  margin-bottom: 15px;
+  text-align: left;
+}
+
+.conn-field label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #555;
+  font-size: 12px;
+}
+
+.conn-field input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.conn-btn {
+  width: 100%;
+  padding: 10px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.conn-btn:hover {
+  background: #0056b3;
+}
+
+/* Viewport for Pan/Zoom */
+.viewport {
+  position: relative;
+  width: 100%;
+  height: 75vh;
+  margin: 20px 0;
+  border: 1px dashed #e0e0e0;
+  background: #eef;
+  overflow: auto;
+  /* cursor: grab; -- Removed to avoid interfering with device dragging */
+}
+
+/* Removed .viewport:active cursor to avoid conflicts */
+
+.canvas { 
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3000px; /* Large virtual size */
+  height: 2000px;
+  background: linear-gradient(135deg, #0a1929 0%, #1a237e 50%, #0d47a1 100%);
+  transform-origin: 0 0;
+  /* Subtle grid pattern */
+  background-image: 
+    linear-gradient(rgba(100, 150, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 150, 255, 0.1) 1px, transparent 1px);
+  background-size: 50px 50px;
+  overflow: hidden;
+}
+
+/* Animated background elements */
+.canvas::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 30%, rgba(0, 255, 255, 0.1) 0%, transparent 25%),
+    radial-gradient(circle at 80% 70%, rgba(255, 100, 255, 0.1) 0%, transparent 25%),
+    radial-gradient(circle at 50% 50%, rgba(100, 200, 255, 0.08) 0%, transparent 30%);
+  animation: particleFloat 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* X-ray beam effect */
+.canvas::after {
+  content: '';
+  position: absolute;
+  top: -100%;
+  left: -50%;
+  width: 200%;
+  height: 300%;
+  background: linear-gradient(45deg, 
+    transparent 40%, 
+    rgba(100, 200, 255, 0.15) 45%, 
+    rgba(150, 220, 255, 0.25) 50%, 
+    rgba(100, 200, 255, 0.15) 55%, 
+    transparent 60%);
+  animation: xrayBeam 12s linear infinite;
+  pointer-events: none;
+}
+
+.device-box {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  border: none; /* Removed border */
+  border-radius: 8px;
+  padding: 8px;
+  width: 180px; /* Compact width */
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  background: rgba(255, 255, 255, 0.95); /* Semi-transparent */
+  
+  /* Allow dropdown menus to appear outside the box */
+  overflow: visible;
+  min-width: 140px;
+  min-height: 50px;
+  z-index: 10;
+  font-size: 11px;
+}
+
+.expand-btn {
+  width: 100%;
+  text-align: center;
+  cursor: pointer;
+  font-size: 10px;
+  color: #888;
+  background: #f9f9f9;
+  border-top: 1px solid #eee;
+  padding: 2px 0;
+  line-height: 1;
+  margin-top: 4px;
+}
+.expand-btn:hover {
+  background: #eee;
+  color: #333;
+}
+
+.resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 50%, #999 50%);
+  z-index: 20;
+}
+
+.device-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #eee;
+  
+  /* Enable dragging handle */
+  cursor: move;
+  user-select: none;
+  background: #f1f1f1; 
+  margin: -4px -4px 4px -4px;
+  padding: 4px 6px;
+  border-radius: 3px 3px 0 0;
+}
+
+.device-title { 
+  font-weight: 700; 
+  font-size: 11px;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-badge {
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 9px;
+  color: #fff;
+}
+
+.state-ok { background: #28a745; }
+.state-warn { background: #ffc107; color: #222; }
+.state-busy { background: #17a2b8; }
+.state-error { background: #dc3545; }
+
+.device-field { 
+  display: flex; 
+  justify-content: space-between; 
+  padding: 2px 0; 
+  font-size: 11px;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.device-value { 
+  font-weight: 700; 
+  color: #0066cc; 
+  font-size: 12px;
+}
+
+.set-btn:hover { 
+  background: #f2f2f2; 
+}
+
+.set-btn:focus { 
+  outline: 2px solid #c8d7ff; 
+}
+
+.toggle-btn { 
+  margin-left: 0; 
+  padding: 2px 8px; 
+  border-radius: 3px; 
+  border: 1px solid #999; 
+  background: #f0f0f0; 
+  color: #333; 
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.toggle-btn:hover { 
+  background: #e0e0e0;
+  border-color: #666;
+}
+
+.toggle-btn:focus { 
+  outline: 2px solid #c8d7ff; 
+}
+
+.extra-panel { 
+  max-height: 0; 
+  overflow: hidden; 
+  transition: max-height 0.25s ease; 
+  margin-top: 4px; 
+  border-top: 1px dashed #eee; 
+}
+
+.extra-panel.open { 
+  max-height: 300px; 
+  overflow: auto; 
+  padding-top: 4px; 
+}
+
+.extra-row { 
+  display: flex; 
+  justify-content: space-between; 
+  padding: 2px 0; 
+  border-bottom: 1px solid #f5f5f5; 
+  font-size: 11px; 
+}
+
+.control-section {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #eee;
+  background: transparent;
+  padding: 6px 4px;
+  margin: 6px -6px 0 -6px;
+}
+
+.control-field {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+  align-items: center;
+  font-size: 11px;
+}
+
+.control-label {
+  min-width: 60px;
+  font-weight: 600;
+  color: #555;
+  font-size: 11px;
+}
+
+.control-input {
+  flex: 1;
+  padding: 1px 2px;
+  height: 17px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 11px;
+  background: white;
+  box-sizing: border-box;
+}
+
+/* Make sure select dropdowns are visible */
+select.control-input {
+  height: 22px;
+  padding: 2px 4px;
+  min-width: 80px;
+  cursor: pointer;
+  appearance: auto;
+  -webkit-appearance: menulist;
+  -moz-appearance: menulist;
+}
+
+select.control-input option {
+  padding: 4px;
+  background: white;
+  color: black;
+}
+
+/* Specific size for the value input field */
+input.control-input {
+  max-width: 60px;
+  height: 14px; 
+}
+.device-field {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 12px;
+  border-bottom: 1px solid #f7f7f7;
+  align-items: center;
+}
+.device-value {
+  font-weight: 700;
+  color: #0066cc;
+  font-size: 12px;
+}
+.inline-small { font-size: 11px; color: #004085; }
+.control-button { 
+  padding: 2px 6px; 
+  background: #0066cc; 
+  color: #ffffff; 
+  border: 1px solid #0052a3; 
+  border-radius: 3px; 
+  cursor: pointer; 
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.control-button:hover { 
+  background: #0052a3; 
+}
+
+.commands-section {
+  padding: 8px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: #fff;
+  border-top: 1px solid #eee;
+}
+
+.cmd-btn {
+  padding: 4px 8px;
+  font-size: 11px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.cmd-btn:hover { background: #5a6268; }
+
+/* Decoration Styles */
+.deco-box {
+  position: absolute;
+  top: 50px;
+  left: 50px;
+  z-index: 5;
+  /* Custom resizing */
+  overflow: visible; 
+  min-width: 20px;
+  min-height: 20px;
+}
+
+.deco-box.selected {
+  outline: 2px dashed #007bff;
+}
+
+.deco-visual {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.deco-type-line .deco-visual {
+  height: 6px;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 3px;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.deco-type-line-v .deco-visual {
+  width: 6px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 3px;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.deco-label {
+  border: 1px dashed transparent;
+  padding: 2px 4px;
+  font-weight: bold;
+  color: #333;
+  min-width: 50px;
+  min-height: 20px;
+  white-space: nowrap;
+}
+.deco-label:hover {
+  border-color: #ccc;
+}
+.deco-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  background: red;
+  color: white;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 14px;
+  font-size: 12px;
+  cursor: pointer;
+  display: none;
+  z-index: 20;
+}
+.deco-drag-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 50%;
+  cursor: move;
+  display: none;
+  z-index: 15;
+}
+.resize-handle {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 12px;
+  height: 12px;
+  background: rgba(0,0,0,0.35);
+  border-radius: 2px;
+  cursor: se-resize;
+  z-index: 20;
+  display: none;
+}
+
+.deco-box:hover .deco-remove,
+.deco-box:hover .deco-drag-handle,
+.deco-box:hover .resize-handle,
+.deco-box.selected .resize-handle,
+.device-box:hover .resize-handle {
+  display: block;
+}
+
+@keyframes grid-flow {
+  0% { background-position: 0 0, 0 0; }
+  100% { background-position: 50px 50px, 50px 50px; }
+}
+
+.canvas.animated {
+  animation: grid-flow 5s linear infinite;
+}
+</style>
+
+<div id="connection-panel">
+  <div class="bg-decoration">
+    <div class="bg-img tl">
+      <svg width="80%" height="80%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <!-- X-ray beam icon -->
+        <circle cx="50" cy="50" r="45" fill="none" stroke="white" stroke-width="2" opacity="0.3"/>
+        <line x1="20" y1="50" x2="80" y2="50" stroke="white" stroke-width="4" opacity="0.8"/>
+        <line x1="50" y1="20" x2="50" y2="80" stroke="white" stroke-width="4" opacity="0.8"/>
+        <circle cx="50" cy="50" r="15" fill="white" opacity="0.6"/>
+        <text x="50" y="95" text-anchor="middle" fill="white" font-size="8" opacity="0.9">X-Ray Source</text>
+      </svg>
+    </div>
+    <div class="bg-img tr">
+      <svg width="80%" height="80%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <!-- Sample chamber icon -->
+        <rect x="25" y="30" width="50" height="40" fill="none" stroke="white" stroke-width="3" rx="5"/>
+        <circle cx="50" cy="50" r="8" fill="white" opacity="0.7"/>
+        <line x1="50" y1="42" x2="50" y2="30" stroke="white" stroke-width="2"/>
+        <line x1="50" y1="58" x2="50" y2="70" stroke="white" stroke-width="2"/>
+        <text x="50" y="95" text-anchor="middle" fill="white" font-size="8" opacity="0.9">Sample Chamber</text>
+      </svg>
+    </div>
+    <div class="bg-img bl">
+      <svg width="80%" height="80%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <!-- Gas flow icon -->
+        <path d="M 20 50 Q 35 30, 50 50 T 80 50" fill="none" stroke="white" stroke-width="3"/>
+        <polygon points="80,50 75,45 75,55" fill="white"/>
+        <circle cx="30" cy="50" r="4" fill="white" opacity="0.6"/>
+        <circle cx="50" cy="50" r="4" fill="white" opacity="0.6"/>
+        <circle cx="70" cy="50" r="4" fill="white" opacity="0.6"/>
+        <text x="50" y="95" text-anchor="middle" fill="white" font-size="8" opacity="0.9">Gas Flow</text>
+      </svg>
+    </div>
+    <div class="bg-img br">
+      <svg width="80%" height="80%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <!-- Temperature/Pressure control icon -->
+        <rect x="35" y="20" width="30" height="50" fill="none" stroke="white" stroke-width="3" rx="3"/>
+        <rect x="40" y="35" width="20" height="25" fill="white" opacity="0.5"/>
+        <line x1="50" y1="25" x2="50" y2="32" stroke="white" stroke-width="2"/>
+        <text x="50" y="95" text-anchor="middle" fill="white" font-size="8" opacity="0.9">Environment</text>
+      </svg>
+    </div>
+  </div>
+  <div class="conn-box">
+    <h1 style="margin-top:0; margin-bottom:20px; color:#333; font-size:28px;">GSE-UI</h1>
+    
+    <!-- Framework Description -->
+    <div style="background: #e8f4f8; border-left: 4px solid #17a2b8; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
+      <div style="font-size: 13px; color: #0c5460; line-height: 1.6;">
+        <strong>General Sample Envrinoment User Interface Framework with SECoP (GSE-UI)</strong><br>
+        This interface provides user ability to design specific system layout for differnet 
+        experiment control system using SECoP, tango device, and also connecting to existing 
+        GUI after their design. It is created on the basis of spin-hmi framework from FRM II, TU Munich.
+      </div>
+    </div>
+    
+    <!-- SEC Nodes Information -->
+    <div id="nodes-info-box" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
+      <div style="font-size: 12px; font-weight: bold; color: #495057; margin-bottom: 8px;">
+        Available SEC Nodes:
+      </div>
+      <div id="nodes-info-content" style="font-size: 11px; color: #6c757d;">
+        Loading...
+      </div>
+    </div>
+
+    <!-- Discovered Nodes -->
+    <div id="discovered-nodes-box" style="display:none; background: #e8f4f8; border: 1px solid #b8daff; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
+      <div style="font-size: 12px; font-weight: bold; color: #0c5460; margin-bottom: 8px;">
+        Discovered Nodes:
+      </div>
+      <div id="discovered-nodes-content" style="font-size: 11px; color: #333;">
+        <!-- Discovered nodes will be listed here -->
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="display: flex; gap: 10px;">
+        <button class="conn-btn" style="background: #17a2b8; font-size: 14px; padding: 10px; flex: 1;" onclick="discoverNodes()">
+          Discover Nodes
+        </button>
+        <button class="conn-btn" style="background: #28a745; font-size: 14px; padding: 10px; flex: 1;" onclick="connectToGUI()">
+          Connect to GUI
+        </button>
+    </div>
+  </div>
+</div>
+
+<div id="main-panel">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+    <h3 style="margin:0;">Configure your system layout</h3>
+    <button onclick="disconnectNode()" style="padding:4px 8px; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer;">Back</button>
+  </div>
+
+<div id="device-manager" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; gap: 10px; align-items: center;">
+  <label for="device-select" style="font-weight: bold; font-size: 12px;">Add Device:</label>
+  <select id="device-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; min-width: 150px;">
+    <option value="">-- Select Module --</option>
+  </select>
+  <button onclick="createDeviceDisplay()" style="padding: 4px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Create Display</button>
+</div>
+
+<div id="decoration-manager" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; gap: 10px; align-items: center;">
+  <label for="deco-select" style="font-weight: bold; font-size: 12px;">Add Decoration:</label>
+  <select id="deco-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; min-width: 150px;">
+    <option value="">-- Select Decoration --</option>
+    <option value="gas-line">Gas Line (Horizontal)</option>
+    <option value="gas-line-v">Gas Line (Vertical)</option>
+    <option value="label">Text Label</option>
+  </select>
+  <input type="color" id="deco-color" value="#cccccc" style="width: 30px; height: 24px; padding: 0; border: none; cursor: pointer;" title="Choose Color">
+  <button onclick="createDecoration()" style="padding: 4px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Create Decoration</button>
+  
+  <div style="width:1px; height:20px; background:#ddd; margin:0 10px;"></div>
+  
+  <button onclick="zoomCanvas(0.1)" style="padding: 4px 8px; font-weight:bold;" title="Zoom In">+</button>
+  <button onclick="zoomCanvas(-0.1)" style="padding: 4px 8px; font-weight:bold;" title="Zoom Out">-</button>
+  <button onclick="resetView()" style="padding: 4px 8px; font-size:11px;">Reset View</button>
+  <button onclick="saveLayout()" style="margin-left:10px; padding: 4px 8px; font-size:11px;">Save File</button>
+  <button onclick="saveLayoutAsPreset()" style="padding: 4px 8px; font-size:11px;">Save Preset</button>
+  <button onclick="loadLayout()" style="padding: 4px 8px; font-size:11px;">Load File</button>
+</div>
+
+<div class="viewport" id="viewport" style="overflow: auto; position: relative;">
+  <div id="device-grid" style="width: 3000px; height: 2000px; position: relative; background: #fdfdfd;">
+    <!-- Devices will be added here -->
+  </div>
+</div>
+
+<template id="device-template">
+  <div class="device-box" id="box-{{DOM_ID}}">
+    <div class="device-header">
+      <div class="device-title">{{TITLE}}</div>
+      <div id="status-{{DOM_ID}}" class="status-badge state-warn">connecting...</div>
+      <button onclick="removeDevice('{{DOM_ID}}')" style="margin-left:auto; background:none; border:none; color:#999; cursor:pointer; font-weight:bold; padding:0 4px; font-size:14px; line-height:1;">&times;</button>
+    </div>
+    <div class="device-field">
+      <div>Val / Target / Gas</div>
+      <div class="device-value">
+        <span id="val-{{DOM_ID}}" class="inline-small" data-spin='@{{DEVICE}} "%s {unit}"'>--</span> <span class="sep-1">/</span> 
+        <span id="target-{{DOM_ID}}" class="inline-small" data-spin='@{{DEVICE}}.target "%s {unit}"'>--</span> <span class="sep-2">/</span> 
+        <span id="gas-{{DOM_ID}}" class="inline-small" data-spin='@{{DEVICE}}._gastype "%s"'>--</span>
+      </div>
+    </div>
+
+    <div class="expand-btn" id="expand-btn-{{DOM_ID}}" onclick="toggleDeviceBody('{{DOM_ID}}')">▼</div>
+
+    <div id="body-{{DOM_ID}}" style="display:block;">
+      <div class="control-section">
+        <div class="control-field">
+          <select id="param-select-{{DOM_ID}}" class="control-input" aria-label="Parameter" onchange="onParamSelectChange('{{DEVICE}}', '{{DOM_ID}}')">
+            <option value="">--</option>
+          </select>
+          <div id="param-input-container-{{DOM_ID}}" style="display: flex; gap: 4px; flex: 1;">
+            <input type="text" id="param-value-{{DOM_ID}}" class="control-input" placeholder="val" style="flex: 1;" />
+          </div>
+          <button class="control-button" onclick="sendSelectedParam('{{DEVICE}}', '{{DOM_ID}}')">Set</button>
+        </div>
+        <div id="param-current-value-{{DOM_ID}}" style="font-size: 11px; color: #666; margin-top: 4px; min-height: 16px;"></div>
+      </div>
+      
+      <div id="commands-{{DOM_ID}}" class="commands-section"></div>
+
+      <div style="margin-top:8px; display:flex; gap:8px; align-items:center;"><button class="toggle-btn" id="toggle-{{DOM_ID}}" onclick="toggleExtra('{{DEVICE}}')">More ▾</button></div>
+      <div id="extra-{{DOM_ID}}" class="extra-panel" aria-hidden="true"></div>
+    </div>
+    <div class="resize-handle"></div>
+  </div>
+</template>
+
+<!-- Valve Controller Template -->
+<template id="valve-controller-template">
+  <div class="device-box" id="box-{{DOM_ID}}">
+    <div class="device-header">
+      <div class="device-title">{{TITLE}}</div>
+      <div id="status-{{DOM_ID}}" class="status-badge state-warn">connecting...</div>
+      <button onclick="removeDevice('{{DOM_ID}}')" style="margin-left:auto; background:none; border:none; color:#999; cursor:pointer; font-weight:bold; padding:0 4px; font-size:14px; line-height:1;">&times;</button>
+    </div>
+    
+    <!-- Valves container will be populated dynamically -->
+    <div id="valves-container-{{DOM_ID}}" style="padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px;">
+    </div>
+
+    <div class="expand-btn" id="expand-btn-{{DOM_ID}}" onclick="toggleDeviceBody('{{DOM_ID}}')">▼</div>
+
+    <div id="body-{{DOM_ID}}" style="display:block;">
+      <div id="commands-{{DOM_ID}}" class="commands-section"></div>
+      <div style="margin-top:8px; display:flex; gap:8px; align-items:center;"><button class="toggle-btn" id="toggle-{{DOM_ID}}" onclick="toggleExtra('{{DEVICE}}')">More ▾</button></div>
+      <div id="extra-{{DOM_ID}}" class="extra-panel" aria-hidden="true"></div>
+    </div>
+    <div class="resize-handle"></div>
+  </div>
+</template>
+
+<!-- Log Info removed -->
+</div>
+
+<!-- Context Menu -->
+<div id="context-menu" style="display:none; position:absolute; z-index:2000; background:white; border:1px solid #ccc; box-shadow:2px 2px 5px rgba(0,0,0,0.2); padding:8px; border-radius:4px; min-width:120px;">
+  <div style="margin-bottom:8px; font-size:12px; font-weight:bold; border-bottom:1px solid #eee; padding-bottom:4px;">Edit Decoration</div>
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+      <label style="font-size:11px; color:#333;">Color:</label>
+      <input type="color" id="ctx-color-picker" style="width:40px; height:20px; border:none; padding:0; cursor:pointer;">
+  </div>
+  <button id="ctx-remove-btn" style="width:100%; background:#dc3545; color:white; border:none; padding:4px; border-radius:3px; cursor:pointer; font-size:11px;">Remove</button>
+</div>
+
+<script>
+/**
+ * Gas Dosing System - JavaScript Logic
+ * Handles device status updates, value sending, and extra parameters panel
+ */
+
+// ===== Connection Panel Logic =====
+let scale = 1;
+let panX = 0;
+let panY = 0;
+const STORAGE_KEY = 'gas_system_layouts';
+
+function setBackgroundImage() {
+  const input = document.getElementById('conn-bg-url');
+  const raw = input.value.trim();
+  const urls = raw.split(',').map(u => u.trim()).filter(u => u);
+  
+  const imgs = document.querySelectorAll('.bg-img');
+  
+  if (urls.length > 0) {
+    imgs.forEach((img, i) => {
+      // Cycle through URLs if fewer than 5
+      let url = urls[i % urls.length];
+      img.style.backgroundImage = `url('${url}')`;
+    });
+    localStorage.setItem('system_bg', raw);
+  } else {
+    imgs.forEach(img => img.style.backgroundImage = '');
+    localStorage.removeItem('system_bg');
+  }
+}
+
+function loadSavedBackground() {
+  const raw = localStorage.getItem('system_bg');
+  if (raw) {
+    const urls = raw.split(',').map(u => u.trim()).filter(u => u);
+    const imgs = document.querySelectorAll('.bg-img');
+    imgs.forEach((img, i) => {
+      let url = urls[i % urls.length];
+      img.style.backgroundImage = `url('${url}')`;
+    });
+    const input = document.getElementById('conn-bg-url');
+    if (input) input.value = raw;
+  }
+}
+
+function addNodeConnection() {
+  const ip = document.getElementById('conn-ip').value;
+  const port = document.getElementById('conn-port').value;
+  
+  if (!ip || !port) {
+    alert('Please enter both IP and Port.');
+    return;
+  }
+  
+  if (window.Spin) {
+      Spin.send_request('nodemanager.add_node', "", "input", "set", {host: ip, port: port});
+      // Alert will be handled by nodemanager.status update
+      document.getElementById('conn-ip').value = '';
+  } else {
+      alert('Not connected to Spin server.');
+  }
+}
+
+function fetchNodesList() {
+    if (window.Spin) {
+        Spin.send_request('nodemanager.list_nodes', "", "read", "read", null);
+    }
+}
+
+// Call fetchNodesList on load and display nodes info
+document.addEventListener('DOMContentLoaded', () => {
+  // Wait for Spin to initialize before fetching nodes
+  waitForSpin(() => {
+    loadNodesInfo();
+  });
+});
+
+function waitForSpin(callback) {
+  // Wait for Spin to be ready and connected
+  const checkSpin = () => {
+    if (window.Spin && window.Spin.current_socket && window.Spin.current_socket.readyState === WebSocket.OPEN && typeof window.Spin.send_request === 'function') {
+      callback();
+    } else {
+      setTimeout(checkSpin, 200);
+    }
+  };
+  checkSpin();
+}
+
+function discoverNodes() {
+    if (window.Spin && window.Spin.send_request) {
+        const contentDiv = document.getElementById('discovered-nodes-content');
+        contentDiv.textContent = 'Discovering SECoP nodes via UDP broadcast...';
+        document.getElementById('discovered-nodes-box').style.display = 'block';
+        Spin.send_request('nodemanager.discover_nodes', '', 'read', 'read', null);
+    } else {
+        alert('Connection to server not ready.');
+    }
+}
+
+function displayDiscoveredNodes(nodes) {
+    const contentDiv = document.getElementById('discovered-nodes-content');
+    if (!nodes || nodes.length === 0) {
+        contentDiv.textContent = 'No new nodes found on the network.';
+        return;
+    }
+
+    let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+    nodes.forEach(node => {
+        const nodeName = `${node.host}:${node.port}`;
+        html += `<li style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #e9ecef;">
+            <span>${node.equipment_id || 'Unknown Device'} (${nodeName})</span>
+            <button onclick="addNodeConnectionAuto('${node.host}', ${node.port})" style="font-size:10px; padding: 2px 6px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;">Add</button>
+        </li>`;
+    });
+    html += '</ul>';
+    contentDiv.innerHTML = html;
+}
+
+function loadNodesInfo() {
+  // Use Spin API to get the list of nodes
+  if (window.Spin && window.Spin.send_request) {
+    document.getElementById('nodes-info-content').textContent = 'Loading...';
+    window.Spin.send_request('nodemanager.list_nodes', '', 'read', 'read', null);
+  } else {
+    // Spin not ready yet, show placeholder
+    document.getElementById('nodes-info-content').textContent = 'Connecting to server...';
+  }
+}
+
+function displayNodesInfo(nodesList) {
+  const infoContent = document.getElementById('nodes-info-content');
+  
+  if (!nodesList || nodesList.length === 0) {
+    infoContent.textContent = 'No nodes configured';
+    return;
+  }
+  
+  let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+  nodesList.forEach((node, index) => {
+    const nodeName = `${node.host}:${node.port}`;
+    html += `<li style="padding: 4px 0; border-bottom: 1px solid #e9ecef;">
+      <strong>Node ${index + 1}:</strong> ${nodeName}
+    </li>`;
+  });
+  html += '</ul>';
+  infoContent.innerHTML = html;
+}
+
+function connectToGUI() {
+  // Check if Spin is ready before connecting
+  if (!window.Spin || !window.Spin.current_socket || window.Spin.current_socket.readyState !== WebSocket.OPEN) {
+    alert('Connection to server not ready. Please wait a moment and try again.');
+    return;
+  }
+  // Just switch to the main panel. The devices will be populated based on the connection.
+  enterSystem();
+}
+
+function addNodeConnectionAuto(host, port) {
+  // Automated version of addNodeConnection without prompts
+  if (window.Spin && window.Spin.send_request) {
+      const data = { host: host, port: port.toString() };
+      window.Spin.send_request('nodemanager.add_node', '', 'input', 'set', data);
+      // Optionally provide feedback to the user
+      const btn = event.target;
+      if(btn) {
+        btn.textContent = 'Added!';
+        btn.disabled = true;
+        btn.style.background = '#6c757d';
+      }
+  }
+}
+
+function enterSystem() {
+  // This function is now only for switching views.
+  // The button is always visible.
+  document.getElementById('connection-panel').style.display = 'none';
+  document.getElementById('main-panel').style.display = 'block';
+  
+  // Fetch device params when entering the system to ensure dropdown is populated
+  fetchDeviceParams();
+}
+
+function connectToNode() {
+    // Legacy function kept if needed, but redirected to addNodeConnection logic if called
+    addNodeConnection();
+}
+
+function disconnectNode() {
+  document.getElementById('main-panel').style.display = 'none';
+  document.getElementById('connection-panel').style.display = 'flex';
+  // Clear nodes? Or keep them? User probably wants to keep them or reset.
+  // For now, let's keep them so they can add more or re-enter.
+}
+
+// ===== Status Badge Updates =====
+window.addEventListener('spinupdate', function(event) {
+  try {
+    var key = event.detail.key || '';
+    
+    if (key === 'nodemanager.discovered_nodes') {
+        displayDiscoveredNodes(event.detail.value);
+        return;
+    }
+
+    if (key === 'nodemanager.nodes') {
+        var nodes = event.detail.value;
+        if (nodes && Array.isArray(nodes)) {
+            displayNodesInfo(nodes);
+        }
+        return;
+    }
+
+    if (key === 'nodemanager.status') {
+        var msg = event.detail.value;
+        if (msg) {
+            alert(msg);
+        }
+        return;
+    }
+
+    if (key === 'nodemanager.device_params') {
+        var data = event.detail.value;
+        if (data) {
+            WRITABLE_PARAMS = data;
+            populateDeviceList(data);
+        }
+        return;
+    }
+
+    var state = event.detail.state || '';
+    var state_str = event.detail.state_str || '';
+    
+    // Extract device name (everything before the first dot)
+    var device = key.split('.')[0];
+    var param = key.includes('.') ? key.split('.').slice(1).join('.') : '';
+    var domId = deviceDomId(device);
+    
+    // 1. Update Status Badge
+    var statusEl = document.getElementById('status-' + domId);
+    if (statusEl && (state || state_str)) {
+      statusEl.textContent = state_str || state || 'unknown';
+      statusEl.className = 'status-badge ' + (state ? ('state-' + state) : 'state-warn');
+    } else {
+       // Debug if element missing
+       // debug('Missing status el for ' + domId);
+    }
+
+    // 2. Update Value/Target Fields (Manual update for dynamic elements)
+    var val = event.detail.value;
+    var unit = event.detail.unit || '';
+    var formatted = (val !== undefined && val !== null) ? (val + (unit ? ' ' + unit : '')) : '--';
+
+    if (param === '' || param === 'value') {
+        // Main value update
+        var valEl = document.getElementById('val-' + domId);
+        if (valEl) valEl.textContent = formatted;
+    } else if (param === 'target') {
+        // Target update
+        var targetEl = document.getElementById('target-' + domId);
+        if (targetEl) targetEl.textContent = formatted;
+    } else if (param === '_gastype') {
+        // Gas type update
+        var gasEl = document.getElementById('gas-' + domId);
+        if (gasEl) gasEl.textContent = formatted;
+    }
+    
+  } catch(e) { 
+    console.error('status update error', e);
+  }
+});
+
+// ===== Send Values to Backend =====
+function sendValue(key, inputElementId) {
+  try {
+    const inputEl = document.getElementById(inputElementId);
+    if (!inputEl) return;
+    const value = inputEl.value.trim();
+    if (!value) return;
+    let finalValue = isNaN(value) ? value : parseFloat(value);
+    Spin.send_request(key, "", "input", "", finalValue);
+    console.log('Sent', key, '=', finalValue);
+    inputEl.value = '';
+  } catch(e) { 
+    console.error('sendValue failed', e); 
+  }
+}
+
+function sendSelectedParam(device, domId) {
+  try {
+    const paramSelect = document.getElementById('param-select-' + domId);
+    const valueInput = document.getElementById('param-value-' + domId);
+    if (!paramSelect || !valueInput) return;
+    
+    const param = paramSelect.value;
+    const value = valueInput.value.trim();
+    
+    if (!param) { alert('Please select a parameter first'); return; }
+    if (!value) { alert('Please enter a value'); return; }
+    
+    let finalValue = isNaN(value) ? value : parseFloat(value);
+    const key = device + '.' + param;
+    Spin.send_request(key, "", "input", "", finalValue);
+    console.log('Set parameter:', key, '=', finalValue);
+    valueInput.value = '';
+  } catch(e) {
+    console.error('sendSelectedParam failed', e);
+  }
+}
+
+function onParamSelectChange(device, domId) {
+  const paramSelect = document.getElementById('param-select-' + domId);
+  const param = paramSelect.value;
+  
+  if (!param) {
+    updateParamDisplay(device, domId, null);
+    return;
+  }
+  
+  // Update display with current value
+  updateParamDisplay(device, domId, param);
+}
+
+function updateParamDisplay(device, domId, param) {
+  const currentValueDiv = document.getElementById('param-current-value-' + domId);
+  const inputContainer = document.getElementById('param-input-container-' + domId);
+  
+  if (!param || !currentValueDiv || !inputContainer) {
+    if (currentValueDiv) currentValueDiv.innerHTML = '';
+    return;
+  }
+  
+  // Get current value from latestValues
+  const data = latestValues[device] || {};
+  const entry = data[param];
+  
+  if (!entry || entry.value === undefined) {
+    currentValueDiv.innerHTML = `<em>Current: (no data)</em>`;
+    // Keep text input
+    inputContainer.innerHTML = '<input type="text" id="param-value-' + domId + '" class="control-input" placeholder="val" style="flex: 1;" />';
+    return;
+  }
+  
+  const value = entry.value;
+  const unit = entry.unit || '';
+  
+  // Format current value display
+  let displayValue;
+  if (Array.isArray(value)) {
+    displayValue = '[' + value.join(', ') + ']';
+  } else if (typeof value === 'object' && value !== null) {
+    displayValue = JSON.stringify(value);
+  } else {
+    displayValue = String(value);
+  }
+  
+  currentValueDiv.innerHTML = `Current: <strong>${displayValue}</strong>${unit ? ' ' + unit : ''}`;
+  
+  // Check if parameter has enum values in WRITABLE_PARAMS
+  const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
+  
+  console.log('updateParamDisplay:', device, param);
+  console.log('Full deviceInfo for', device, ':', JSON.stringify(deviceInfo, null, 2));
+  
+  const paramInfo = deviceInfo && deviceInfo.param_info && deviceInfo.param_info[param] ? deviceInfo.param_info[param] : null;
+  
+  console.log('paramInfo:', paramInfo);
+  
+  // If parameter has enum members, show dropdown instead of text input
+  if (paramInfo && paramInfo.type === 'enum' && paramInfo.members) {
+    // members is an object with enum_name: value pairs
+    const enumNames = Object.keys(paramInfo.members);
+    console.log('Creating enum dropdown with members:', enumNames);
+    let selectHtml = '<select id="param-value-' + domId + '" class="control-input" style="flex: 1;">';
+    selectHtml += '<option value="">-- Select --</option>';
+    enumNames.forEach(enumName => {
+      const selected = enumName === String(value) ? ' selected' : '';
+      selectHtml += `<option value="${enumName}"${selected}>${enumName}</option>`;
+    });
+    selectHtml += '</select>';
+    inputContainer.innerHTML = selectHtml;
+  } else {
+    // Use text input for other types
+    inputContainer.innerHTML = '<input type="text" id="param-value-' + domId + '" class="control-input" placeholder="val" style="flex: 1;" />';
+  }
+}
+
+// ===== Extra Parameters Panel =====
+const latestValues = {};
+
+function deviceDomId(device) {
+  // Use the full device name, just sanitized for DOM ID safety
+  // This ensures consistency regardless of the naming convention
+  return device.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function renderExtra(device) {
+  const id = deviceDomId(device);
+  const panel = document.getElementById('extra-' + id);
+  if (!panel) return;
+  
+  const data = latestValues[device] || {};
+  const keys = Object.keys(data).sort();
+  const filteredKeys = keys.filter(k => k !== 'value' && k !== 'target');
+  
+  if (filteredKeys.length === 0) {
+    panel.innerHTML = '<div class="extra-row"><em>No additional parameters</em></div>';
+    return;
+  }
+  
+  // Get parameter metadata if available
+  const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
+  
+  let html = '';
+  for (let k of filteredKeys) {
+    const entry = data[k];
+    let v = entry && entry.value !== undefined ? entry.value : '—';
+    const u = entry && entry.unit ? (' ' + entry.unit) : '';
+    
+    // Format value based on type
+    let displayValue;
+    if (Array.isArray(v)) {
+      displayValue = '[' + v.join(', ') + ']';
+    } else if (typeof v === 'object' && v !== null) {
+      displayValue = JSON.stringify(v);
+    } else {
+      displayValue = String(v);
+    }
+    
+    html += `<div class="extra-row"><div>${k}</div><div>${displayValue}${u}</div></div>`;
+  }
+  panel.innerHTML = html;
+}
+
+function handleExpansion(box, originalHeight) {
+    requestAnimationFrame(() => {
+        const newHeight = box.offsetHeight;
+        const heightIncrease = newHeight - originalHeight;
+
+        if (heightIncrease > 0) {
+            const boxRect = box.getBoundingClientRect();
+            const containerRect = box.parentElement.getBoundingClientRect();
+
+            document.querySelectorAll('.device-box, .deco-box').forEach(otherEl => {
+                if (otherEl.id === box.id) return;
+
+                const otherRect = otherEl.getBoundingClientRect();
+
+                // Check if otherEl is below the expanding box and horizontally overlapping
+                const isBelow = otherRect.top > boxRect.top;
+                const isHorizontallyOverlapping = (boxRect.left < otherRect.right && boxRect.right > otherRect.left);
+
+                if (isBelow && isHorizontallyOverlapping) {
+                    const currentTop = otherRect.top - containerRect.top;
+                    const newTop = currentTop + heightIncrease;
+
+                    otherEl.style.transition = 'top 0.2s ease-out';
+                    otherEl.style.top = newTop + 'px';
+                    
+                    setTimeout(() => { otherEl.style.transition = ''; }, 200);
+                }
+            });
+        }
+    });
+}
+
+function handleCollapse(box, originalHeight) {
+    requestAnimationFrame(() => {
+        const newHeight = box.offsetHeight;
+        const heightReduction = originalHeight - newHeight;
+
+        if (heightReduction > 0) {
+            const boxRect = box.getBoundingClientRect();
+            const containerRect = box.parentElement.getBoundingClientRect();
+
+            document.querySelectorAll('.device-box, .deco-box').forEach(otherEl => {
+                if (otherEl.id === box.id) return;
+
+                const otherRect = otherEl.getBoundingClientRect();
+
+                // Check if otherEl is below the collapsing box and horizontally overlapping
+                const isBelow = otherRect.top > boxRect.top;
+                const isHorizontallyOverlapping = (boxRect.left < otherRect.right && boxRect.right > otherRect.left);
+
+                if (isBelow && isHorizontallyOverlapping) {
+                    const currentTop = otherRect.top - containerRect.top;
+                    const newTop = currentTop - heightReduction;
+
+                    otherEl.style.transition = 'top 0.2s ease-out';
+                    otherEl.style.top = newTop + 'px';
+                    
+                    setTimeout(() => { otherEl.style.transition = ''; }, 200);
+                }
+            });
+        }
+    });
+}
+
+function toggleExtra(device) {
+  const domId = deviceDomId(device);
+  const panel = document.getElementById('extra-' + domId);
+  const btn = document.getElementById('toggle-' + domId);
+  const box = document.getElementById('box-' + domId);
+  if (!panel || !btn || !box) return;
+
+  const isOpening = !panel.classList.contains('open');
+  const originalHeight = box.offsetHeight;
+  
+  if (isOpening) {
+    renderExtra(device);
+  }
+  
+  panel.classList.toggle('open');
+  panel.setAttribute('aria-hidden', isOpening ? 'false' : 'true');
+  btn.textContent = isOpening ? 'Close ▴' : 'More ▾';
+  
+  // Force reflow
+  box.offsetHeight;
+  
+  // Wait for DOM to update
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (isOpening) {
+        handleExpansion(box, originalHeight);
+      } else {
+        handleCollapse(box, originalHeight);
+      }
+    });
+  });
+}
+
+function toggleDeviceBody(domId) {
+  const body = document.getElementById('body-' + domId);
+  const btn = document.getElementById('expand-btn-' + domId);
+  const box = document.getElementById('box-' + domId);
+  
+  if (!body || !btn || !box) return;
+  
+  const isExpanding = body.style.display === 'none';
+  const originalHeight = box.offsetHeight;
+
+  if (isExpanding) {
+    body.style.display = 'block';
+    btn.textContent = '▲';
+    box.style.height = 'auto';
+    
+    // Wait for DOM to update
+    requestAnimationFrame(() => {
+      handleExpansion(box, originalHeight);
+    });
+  } else {
+    body.style.display = 'none';
+    btn.textContent = '▼';
+    box.style.height = 'auto';
+    
+    requestAnimationFrame(() => {
+      handleCollapse(box, originalHeight);
+    });
+  }
+}
+
+// ===== Device Management =====
+var WRITABLE_PARAMS = null; 
+
+function fetchDeviceParams() {
+    if (window.Spin) {
+        Spin.send_request('nodemanager.get_device_params', "", "read", "read", null);
+    }
+}
+
+function populateDeviceList(data) {
+  const select = document.getElementById('device-select');
+  if (!select) return;
+  
+  // Clear existing (except first)
+  while (select.options.length > 1) select.remove(1);
+  
+  Object.keys(data).sort().forEach(device => {
+    const option = document.createElement('option');
+    option.value = device;
+    option.text = device;
+    select.add(option);
+  });
+}
+
+function createDeviceDisplay(deviceNameOverride) {
+  const select = document.getElementById('device-select');
+  const device = deviceNameOverride || select.value;
+  if (!device) {
+    alert('Please select a device first.');
+    return;
+  }
+  
+  const domId = deviceDomId(device);
+  if (document.getElementById('box-' + domId)) {
+    // alert('Display for ' + device + ' already exists.');
+    return;
+  }
+  
+  // Get the original device name for display (without SEC node prefix)
+  const deviceData = WRITABLE_PARAMS[device];
+  const displayName = deviceData && deviceData.original_name ? deviceData.original_name : device;
+  
+  // Check if this is a valve_controller device - check both original_name and full device name
+  const isValveController = (displayName && displayName.toLowerCase().includes('valve_controller')) || 
+                            device.toLowerCase().includes('valve_controller');
+  
+  const templateId = isValveController ? 'valve-controller-template' : 'device-template';
+  const template = document.getElementById(templateId);
+  const clone = template.content.cloneNode(true);
+  
+  // Replace placeholders in HTML
+  const tempDiv = document.createElement('div');
+  tempDiv.appendChild(clone);
+  let html = tempDiv.innerHTML;
+  
+  html = html.replace(/{{DOM_ID}}/g, domId)
+             .replace(/{{DEVICE}}/g, device)
+             .replace(/{{TITLE}}/g, displayName);
+             
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = html;
+  const newBox = wrapper.firstElementChild;
+  
+  // Position it intelligently
+  const count = document.querySelectorAll('.device-box').length;
+  newBox.style.top = (20 + count * 110) + 'px'; // Stack vertically
+  newBox.style.left = '20px';
+  
+  document.getElementById('device-grid').appendChild(newBox);
+  
+  // Custom display logic based on device type
+  const lowerDev = device.toLowerCase();
+  const labelDiv = newBox.querySelector('.device-field > div:first-child');
+  const targetSpan = newBox.querySelector(`#target-${domId}`);
+  const gasSpan = newBox.querySelector(`#gas-${domId}`);
+  const sep1 = newBox.querySelector('.sep-1');
+  const sep2 = newBox.querySelector('.sep-2');
+
+  let isReadable = false;
+  if (WRITABLE_PARAMS && WRITABLE_PARAMS[device] && WRITABLE_PARAMS[device].interface_classes) {
+      if (WRITABLE_PARAMS[device].interface_classes.includes('Readable')) {
+          isReadable = true;
+      }
+  }
+
+  if (isReadable) {
+      // Show only Value
+      if (labelDiv) labelDiv.textContent = 'Val';
+      if (targetSpan) targetSpan.style.display = 'none';
+      if (gasSpan) gasSpan.style.display = 'none';
+      if (sep1) sep1.style.display = 'none';
+      if (sep2) sep2.style.display = 'none';
+  } else if (lowerDev.includes('backpress') || lowerDev.includes('temp')) {
+      // Show only Value and Target
+      if (labelDiv) labelDiv.textContent = 'Val / Target';
+      if (gasSpan) gasSpan.style.display = 'none';
+      if (sep2) sep2.style.display = 'none';
+  }
+
+  // Initialize draggable & resizable
+  makeDraggable(newBox);
+  makeResizable(newBox);
+  
+  // Populate params/commands
+  if (WRITABLE_PARAMS && WRITABLE_PARAMS[device]) {
+    populateParamsForDevice(device, WRITABLE_PARAMS[device], domId);
+  }
+  
+  // Trigger Spin to bind new data-spin elements if possible
+  if (window.Spin) {
+      if (window.Spin.reload) {
+          debug('Calling Spin.reload()');
+          window.Spin.reload();
+      } else {
+          debug('Warn: Spin.reload not found');
+          // Fallback: Try to manually trigger a scan if we can guess the method
+          // or maybe we need to re-init?
+          if (window.Spin.init) {
+             debug('Calling Spin.init()');
+             window.Spin.init();
+          }
+      }
+  } else {
+      debug('Error: window.Spin not found');
+  }
+  
+  // For valve_controller, setup valve displays after Spin connects
+  if (isValveController) {
+      setTimeout(() => setupValveController(device, domId), 1000);
+  }
+}
+
+async function setupValveController(device, domId) {
+  console.log(`Setting up valve controller: ${device}, domId: ${domId}`);
+  debug(`Setting up valve controller: ${device}, domId: ${domId}`);
+  
+  // Get the value parameter from latestValues (populated by Spin updates)
+  // Wait a bit for Spin to populate the data
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  
+  const data = latestValues[device];
+  debug(`Latest values for ${device}: ${JSON.stringify(data)}`);
+  
+  if (!data) {
+    debug(`Valve controller ${device} has no data yet`);
+    return;
+  }
+  
+  // Try to find the struct in 'value' or 'target'
+  // Prefer 'target' if 'value' is missing or empty, as logs showed target has the data
+  let valueEntry = data.value;
+  let paramName = 'value';
+  if ((!valueEntry || !valueEntry.value) && data.target) {
+      debug('Value parameter missing or empty, using target parameter instead');
+      valueEntry = data.target;
+      paramName = 'target';
+  }
+  
+  if (!valueEntry || !valueEntry.value) {
+    debug(`Valve controller ${device} has no value/target data`);
+    return;
+  }
+  
+  const valueData = valueEntry.value;
+  
+  debug(`Value data type: ${typeof valueData}, value: ${JSON.stringify(valueData)}`);
+  
+  if (!valueData || typeof valueData !== 'object') {
+    debug(`Valve controller ${device} value is not a struct, got: ${typeof valueData}`);
+    return;
+  }
+  
+  debug(`Found valve fields: ${Object.keys(valueData).join(', ')}`);
+  
+  // Remove the valve controller box itself since we'll create individual valves
+  const controllerBox = document.getElementById(`box-${domId}`);
+  if (controllerBox) {
+    debug(`Removing controller box: box-${domId}`);
+    controllerBox.remove();
+  }
+  
+  // Create a separate draggable SVG icon for each valve (no box)
+  Object.keys(valueData).forEach((fieldName, index) => {
+      console.log(`Creating valve icon for field: ${fieldName}, index: ${index}`);
+      const lowerField = fieldName.toLowerCase();
+      const isSwitch = lowerField.includes('switch');
+      const isValve = lowerField.includes('valve') || fieldName.startsWith('V');
+      
+      console.log(`Field ${fieldName}: isSwitch=${isSwitch}, isValve=${isValve}`);
+      
+      if (!isSwitch && !isValve) return; // Skip non-valve fields
+      
+      const valveDomId = `${domId}_${fieldName}`;
+      
+      // Create a simple draggable SVG container (no device box)
+      const valveIcon = document.createElement('div');
+      valveIcon.className = 'valve-icon';
+      valveIcon.id = `icon-${valveDomId}`;
+      valveIcon.style.position = 'absolute';
+      valveIcon.style.width = '80px';
+      valveIcon.style.height = '100px';
+      valveIcon.style.top = (20 + index * 120) + 'px';
+      valveIcon.style.left = '20px';
+      valveIcon.style.cursor = 'pointer';
+      valveIcon.style.userSelect = 'none';
+      
+      // Image Container
+      const imgContainer = document.createElement('div');
+      imgContainer.id = `img-${valveDomId}`;
+      imgContainer.style.cssText = 'width: 80px; height: 80px; position: relative;';
+      
+      if (isSwitch) {
+        // Switch image - rotates based on position (circle with two separate arcs)
+        const img = document.createElement('img');
+        // Circle with two separate arcs touching the circle edge
+        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2MiwgNTMpIj48Y2lyY2xlIGN4PSIwIiBjeT0iMCIgcj0iNDUiIGZpbGw9IiNmZmRkMDAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PCEtLSBBcmMgdG91Y2hpbmcgbGVmdC1ib3R0b20gcGFydCBvZiBjaXJjbGUgLS0+PHBhdGggZD0iTSAtMzEuOCAyMi41IFEgLTE1IDE1IDAgMCBRIC0xNSAtMTUgLTIyLjUgLTMxLjgiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48IS0tIEFyYyB0b3VjaGluZyByaWdodC11cHBlciBwYXJ0IG9mIGNpcmNsZSAtLT48cGF0aCBkPSJNIDIyLjUgMzEuOCBRIDE1IDE1IDAgMCBRIDE1IC0xNSAzMS44IC0yMi41IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMyIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9nPjwvc3ZnPg==';
+        img.style.cssText = 'width: 100%; height: 100%; object-fit: contain; transform: rotate(0deg); transition: transform 0.3s ease;';
+        img.onerror = () => console.error(`Failed to load switch image: ${img.src}`);
+        img.onload = () => console.log(`Loaded switch image for ${fieldName}`);
+        imgContainer.appendChild(img);
+        
+        // Click to toggle between position 0 and 1
+        imgContainer.onclick = () => {
+          const data = latestValues[device];
+          let currentValue = 0;
+          if (data && data[paramName] && data[paramName].value && data[paramName].value[fieldName] !== undefined) {
+            currentValue = data[paramName].value[fieldName];
+          }
+          const newValue = currentValue === 0 ? 1 : 0;
+          setValveField(device, fieldName, newValue);
+          updateSwitchRotation(imgContainer, newValue);
+        };
+      } else if (isValve) {
+        // Valve image - SVG with two triangles pointing toward each other (touching at tips)
+        const img = document.createElement('img');
+        img.id = `valve-img-${valveDomId}`;
+        // Two triangles with points touching in the center: ◄ ►
+        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzAwN2JmZiIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMDA3YmZmIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==';
+        img.style.cssText = 'width: 100%; height: 100%; object-fit: contain;';
+        img.onerror = () => console.error(`Failed to load valve image: ${img.src}`);
+        img.onload = () => console.log(`Loaded valve image for ${fieldName}`);
+        imgContainer.appendChild(img);
+        
+        // Click to toggle valve ON/OFF
+        imgContainer.onclick = () => {
+          const data = latestValues[device];
+          let currentValue = 0;
+          if (data && data[paramName] && data[paramName].value && data[paramName].value[fieldName] !== undefined) {
+            currentValue = data[paramName].value[fieldName];
+          }
+          const newValue = currentValue ? 0 : 1;
+          setValveField(device, fieldName, newValue);
+          // Immediately update the visual
+          updateValveImage(valveDomId, newValue === 1);
+        };
+      }
+      
+      // Label below the icon
+      const label = document.createElement('div');
+      label.style.cssText = 'font-size: 10px; color: #333; text-align: center; margin-top: 4px; font-weight: 600;';
+      label.textContent = fieldName;
+      
+      // Resize handle
+      const resizeHandle = document.createElement('div');
+      resizeHandle.style.cssText = 'position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; background: #007bff; cursor: nwse-resize; border-radius: 2px; opacity: 0.7;';
+      resizeHandle.title = 'Resize';
+      
+      // Hidden data-spin element for value updates
+      const valueDisplay = document.createElement('div');
+      valueDisplay.id = `valve-${valveDomId}`;
+      valueDisplay.style.display = 'none';
+      valueDisplay.setAttribute('data-spin', `@${device}.${paramName}.${fieldName}`);
+      
+      valveIcon.appendChild(imgContainer);
+      valveIcon.appendChild(label);
+      valveIcon.appendChild(resizeHandle);
+      valveIcon.appendChild(valueDisplay);
+      
+      // Add to grid
+      const grid = document.getElementById('device-grid');
+      console.log(`Adding valve icon ${valveIcon.id} to grid:`, grid);
+      if (grid) {
+        grid.appendChild(valveIcon);
+        console.log(`Successfully added valve icon ${valveIcon.id}`);
+      } else {
+        console.error('device-grid not found!');
+      }
+      
+      // Make it draggable (simple drag without device-box features)
+      makeValveIconDraggable(valveIcon);
+      makeValveIconResizable(valveIcon, imgContainer);
+    });
+    
+    // Reload Spin to bind the new data-spin attributes
+    if (window.Spin && window.Spin.reload) {
+      window.Spin.reload();
+    }
+    
+    // Set up listeners for value updates to update images
+    setupValveImageListeners(device, domId);
+}
+
+function updateSwitchRotation(imgContainer, position) {
+  const img = imgContainer.querySelector('img');
+  if (img) {
+    const rotation = position * 90; // 0 or 90 degrees
+    img.style.transform = `rotate(${rotation}deg)`;
+  }
+}
+
+function updateValveImage(valveDomId, isOpen) {
+  const img = document.querySelector(`#valve-img-${valveDomId}`);
+  if (img) {
+    // Change to green when open, blue when closed
+    if (isOpen) {
+      // Green triangles for open valve
+      img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==';
+    } else {
+      // Blue triangles for closed valve
+      img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzAwN2JmZiIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMDA3YmZmIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==';
+    }
+  }
+}
+
+function setupValveImageListeners(device, domId) {
+  // Listen for updates and update image states
+  window.addEventListener('spinupdate', function(event) {
+    try {
+      const key = event.detail.key || '';
+      if (!key.startsWith(device)) return;
+      
+      const parts = key.split('.');
+      if (parts.length < 3) return;
+      
+      const paramName = parts[1]; // 'value' or 'target'
+      const fieldName = parts[2]; // e.g., 'V1_1', 'Switch1'
+      
+      const valveDomId = `${domId}_${fieldName}`;
+      const imgContainer = document.getElementById(`img-${valveDomId}`);
+      
+      if (!imgContainer) return;
+      
+      const value = event.detail.value;
+      const lowerField = fieldName.toLowerCase();
+      
+      if (lowerField.includes('switch')) {
+        // Update switch rotation
+        updateSwitchRotation(imgContainer, value);
+      } else {
+        // Update valve appearance
+        updateValveImage(valveDomId, value === 1 || value === true);
+      }
+    } catch (e) {
+      console.error('Image update error', e);
+    }
+  });
+}
+
+function makeValveIconDraggable(el) {
+  let isDragging = false;
+  let startX, startY, initialLeft, initialTop;
+
+  el.addEventListener('mousedown', (e) => {
+    // Only start drag if clicking on the element itself, not the image
+    if (e.target.tagName === 'IMG' || e.target.closest('img')) return;
+    
+    if (e.button !== 0) return;
+    
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    const style = window.getComputedStyle(el);
+    initialLeft = parseInt(style.left, 10) || el.offsetLeft;
+    initialTop = parseInt(style.top, 10) || el.offsetTop;
+    
+    el.style.zIndex = 1000;
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    el.style.left = `${initialLeft + dx}px`;
+    el.style.top = `${initialTop + dy}px`;
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      el.style.zIndex = '10';
+    }
+  });
+}
+
+function makeValveIconResizable(valveIcon, imgContainer) {
+  const resizeHandle = valveIcon.querySelector('div[title="Resize"]');
+  if (!resizeHandle) return;
+  
+  let isResizing = false;
+  let startX, startY, initialWidth, initialHeight;
+  
+  resizeHandle.addEventListener('mousedown', (e) => {
+    e.stopPropagation(); // Prevent dragging when resizing
+    isResizing = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    const style = window.getComputedStyle(imgContainer);
+    initialWidth = parseInt(style.width, 10);
+    initialHeight = parseInt(style.height, 10);
+    
+    e.preventDefault();
+  });
+  
+  window.addEventListener('mousemove', (e) => {
+    if (!isResizing) return;
+    e.preventDefault();
+    
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    
+    // Keep aspect ratio approximately square
+    const newSize = Math.max(40, initialWidth + dx);
+    imgContainer.style.width = `${newSize}px`;
+    imgContainer.style.height = `${newSize}px`;
+    valveIcon.style.width = `${newSize}px`;
+    valveIcon.style.height = `${newSize + 20}px`; // +20 for label
+  });
+  
+  window.addEventListener('mouseup', () => {
+    if (isResizing) {
+      isResizing = false;
+    }
+  });
+}
+
+function setValveField(device, fieldName, value) {
+  debug(`Setting ${device} ${fieldName} to ${value}`);
+  
+  if (window.Spin) {
+    // Get current struct from latestValues to merge
+    const data = latestValues[device];
+    let currentStruct = {};
+    
+    // Try to get from target first (writable), then value
+    if (data && data.target && data.target.value) {
+        currentStruct = {...data.target.value};
+    } else if (data && data.value && data.value.value) {
+        currentStruct = {...data.value.value};
+    }
+    
+    // Update the specific field
+    currentStruct[fieldName] = value;
+    
+    // Send to .target
+    Spin.send_request(`${device}.target`, "", "input", "", currentStruct);
+  } else {
+    // Fallback: send directly
+    fetch(`/api/${device}/target`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({[fieldName]: value})
+    }).catch(err => {
+      debug(`Error setting valve field: ${err}`);
+    });
+  }
+}
+
+function removeDevice(domId) {
+  const el = document.getElementById('box-' + domId);
+  if (el) el.remove();
+}
+
+// ===== Decoration Logic =====
+let selectedDeco = null;
+
+function selectDeco(el) {
+  if (selectedDeco) selectedDeco.classList.remove('selected');
+  selectedDeco = el;
+  if (el) {
+    el.classList.add('selected');
+    // Sync color picker
+    const picker = document.getElementById('deco-color');
+    if (picker) {
+        let color;
+        if (el.dataset.type === 'label') {
+            color = el.style.color;
+        } else {
+            const visual = el.querySelector('.deco-visual');
+            if (visual) color = visual.style.backgroundColor;
+        }
+        // Convert rgb to hex if needed, but simple assignment might work if it's hex
+        // For now, we assume the user sets it via picker so it's hex, or we don't sync back perfectly
+        // if it's rgb. But let's try.
+        if (color && color.startsWith('#')) picker.value = color;
+    }
+  }
+}
+
+// Initialize listeners for selection and color
+document.addEventListener('DOMContentLoaded', () => {
+    const grid = document.getElementById('device-grid');
+    if (grid) {
+        grid.addEventListener('mousedown', (e) => {
+            if (e.target === grid) selectDeco(null);
+        });
+    }
+    
+    const picker = document.getElementById('deco-color');
+    if (picker) {
+        picker.addEventListener('input', (e) => {
+            if (selectedDeco) {
+                const color = e.target.value;
+                if (selectedDeco.dataset.type === 'label') {
+                    selectedDeco.style.color = color;
+                } else {
+                    const visual = selectedDeco.querySelector('.deco-visual');
+                    if (visual) visual.style.backgroundColor = color;
+                }
+            }
+        });
+    }
+});
+
+function makeDraggable(el) {
+  let isDragging = false;
+  let isResizing = false;
+  let startX, startY, initialLeft, initialTop, initialWidth, initialHeight;
+  
+  // Make the whole element draggable (except when resizing or interacting with form elements)
+  el.addEventListener('mousedown', (e) => {
+    // Don't drag if clicking on interactive elements
+    if (e.target.classList.contains('deco-remove')) return;
+    if (e.target.classList.contains('resize-handle')) return;
+    if (e.target.tagName === 'SELECT') return;
+    if (e.target.tagName === 'INPUT') return;
+    if (e.target.tagName === 'BUTTON') return;
+    if (e.target.tagName === 'TEXTAREA') return;
+    if (e.target.closest('.control-section')) return; // Don't drag when clicking in control area
+    
+    if (e.button !== 0) return; // Only left click
+    
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    const style = window.getComputedStyle(el);
+    initialLeft = parseInt(style.left, 10) || 0;
+    initialTop = parseInt(style.top, 10) || 0;
+    
+    el.style.zIndex = '1000';
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  
+  // Add resize handle if it doesn't exist
+  let resizeHandle = el.querySelector('.resize-handle');
+  if (!resizeHandle && el.dataset.type !== 'label') {
+    resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    el.appendChild(resizeHandle);
+    
+    resizeHandle.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      if (e.button !== 0) return;
+      
+      isResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      
+      const style = window.getComputedStyle(el);
+      initialWidth = parseInt(style.width, 10);
+      initialHeight = parseInt(style.height, 10);
+      
+      e.preventDefault();
+    });
+  }
+  
+  window.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+      e.preventDefault();
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      el.style.left = `${initialLeft + dx}px`;
+      el.style.top = `${initialTop + dy}px`;
+    } else if (isResizing) {
+      e.preventDefault();
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      el.style.width = `${Math.max(20, initialWidth + dx)}px`;
+      el.style.height = `${Math.max(20, initialHeight + dy)}px`;
+    }
+  });
+  
+  window.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      el.style.zIndex = '5';
+    }
+    if (isResizing) {
+      isResizing = false;
+    }
+  });
+}
+
+function makeResizable(el) {
+  const resizeHandle = el.querySelector('.resize-handle');
+  if (!resizeHandle) return;
+  
+  let isResizing = false;
+  let startX, startY, initialWidth, initialHeight;
+  
+  resizeHandle.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (e.button !== 0) return; // Only left click
+    
+    isResizing = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    const style = window.getComputedStyle(el);
+    initialWidth = parseInt(style.width, 10);
+    initialHeight = parseInt(style.height, 10);
+  });
+  
+  const onMouseMove = (e) => {
+    if (!isResizing) return;
+    e.preventDefault();
+    
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    
+    el.style.width = `${Math.max(150, initialWidth + dx)}px`;
+    el.style.height = `${Math.max(80, initialHeight + dy)}px`;
+  };
+  
+  const onMouseUp = () => {
+    if (isResizing) {
+      isResizing = false;
+    }
+  };
+  
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+}
+
+function createDecoration() {
+  const select = document.getElementById('deco-select');
+  const colorInput = document.getElementById('deco-color');
+  const type = select.value;
+  const color = colorInput ? colorInput.value : '#cccccc';
+  
+  if (!type) {
+    alert('Please select a decoration type.');
+    return;
+  }
+
+  const id = 'deco-' + Date.now();
+  const wrapper = document.createElement('div');
+  wrapper.className = 'deco-box';
+  wrapper.id = id;
+  wrapper.dataset.type = type;
+  
+  // Selection logic
+  wrapper.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      selectDeco(wrapper);
+  });
+  
+  if (type === 'gas-line') {
+    wrapper.classList.add('deco-type-line');
+    wrapper.style.width = '100px';
+    wrapper.style.height = '20px';
+    
+    const visual = document.createElement('div');
+    visual.className = 'deco-visual';
+    visual.style.backgroundColor = color;
+    visual.style.border = '1px solid #999';
+    wrapper.appendChild(visual);
+    
+  } else if (type === 'gas-line-v') {
+    wrapper.classList.add('deco-type-line-v');
+    wrapper.style.width = '20px';
+    wrapper.style.height = '100px';
+    
+    const visual = document.createElement('div');
+    visual.className = 'deco-visual';
+    visual.style.backgroundColor = color;
+    visual.style.border = '1px solid #999';
+    wrapper.appendChild(visual);
+    
+  } else if (type === 'label') {
+    wrapper.classList.add('deco-label');
+    wrapper.contentEditable = true;
+    wrapper.textContent = 'Label';
+    wrapper.style.color = color;
+    wrapper.style.resize = 'none'; 
+  }
+
+  // Remove button
+  const removeBtn = document.createElement('div');
+  removeBtn.className = 'deco-remove';
+  removeBtn.innerHTML = '&times;';
+  removeBtn.onclick = function(e) {
+    e.stopPropagation(); // Prevent bubbling
+    wrapper.remove();
+  };
+
+  wrapper.appendChild(removeBtn);
+  
+  // Position randomly or in a default location
+  wrapper.style.left = '100px';
+  wrapper.style.top = '100px';
+  
+  // Append to device-grid
+  const grid = document.getElementById('device-grid');
+  if (grid) {
+    grid.appendChild(wrapper);
+  } else {
+    console.error('device-grid element not found!');
+    return;
+  }
+  
+  // Make it draggable
+  makeDraggable(wrapper);
+}
+
+function populateParamsForDevice(device, info, domId) {
+    // 1. Populate Parameters
+    const select = document.getElementById('param-select-' + domId);
+    
+    if (select && info.params) {
+      // Clear existing (except first)
+      while (select.options.length > 1) select.remove(1);
+      
+      info.params.sort().forEach(param => {
+        if (param === 'value') return;
+        const option = document.createElement('option');
+        option.value = param;
+        option.text = param;
+        select.add(option);
+      });
+    }
+
+    // 2. Populate Commands
+    const cmdContainer = document.getElementById('commands-' + domId);
+    if (cmdContainer && info.commands) {
+      cmdContainer.innerHTML = '';
+      if (info.commands.length === 0) {
+        cmdContainer.style.display = 'none';
+      } else {
+        cmdContainer.style.display = 'flex';
+        info.commands.sort().forEach(cmd => {
+          const btn = document.createElement('button');
+          btn.className = 'cmd-btn';
+          btn.textContent = cmd;
+          btn.title = `Execute ${cmd}`;
+          btn.onclick = () => sendCommand(device, cmd);
+          cmdContainer.appendChild(btn);
+        });
+      }
+    }
+}
+
+function sendCommand(device, cmd) {
+  if (confirm(`Execute command '${cmd}' on ${device}?`)) {
+      const key = device + '.' + cmd;
+      Spin.send_request(key, "", "input", "", null);
+      console.log('Sent command:', key);
+  }
+}
+
+// Cache values for extra panel
+window.addEventListener('spinupdate', function(event) {
+  try {
+    const key = event.detail.key;
+    if (!key) return;
+    const parts = key.split('.');
+    if (parts.length < 2) return;
+    const device = parts[0];
+    const param = parts.slice(1).join('.');
+    
+    if (!latestValues[device]) latestValues[device] = {};
+    latestValues[device][param] = { 
+      value: event.detail.value, 
+      unit: event.detail.unit, 
+      state: event.detail.state, 
+      state_str: event.detail.state_str 
+    };
+    
+    const domId = deviceDomId(device);
+    
+    // Update extra panel if open
+    const panel = document.getElementById('extra-' + domId);
+    if (panel && panel.classList.contains('open')) {
+      renderExtra(device);
+    }
+    
+    // Update parameter display if this parameter is currently selected
+    const paramSelect = document.getElementById('param-select-' + domId);
+    if (paramSelect && paramSelect.value === param) {
+      updateParamDisplay(device, domId, param);
+    }
+  } catch (e) { 
+    console.error('cache spinupdate failed', e); 
+  }
+});
+
+// ===== Debug Logging (Removed) =====
+function debug(msg) {
+  // console.log(msg);
+}
+
+debug('✓ Page initialized');
+updateLayoutList();
+loadSavedBackground();
+fetchNodesList();
+fetchDeviceParams();
+
+// Listen for Spin lifecycle events
+window.addEventListener('spinstartup', function() { debug('✓ Spin startup event fired'); });
+window.addEventListener('spinconnect', function() { 
+    debug('✓ WebSocket connected to Spin backend');
+    fetchNodesList();
+});
+
+window.addEventListener('spindisconnect', function() { debug('⚠ WebSocket disconnected from backend'); });
+window.addEventListener('spinupdate', function(event) {
+  var val = event.detail.value;
+  debug('✓ Data update: ' + event.detail.key + ' = ' + JSON.stringify(val));
+});
+
+// ===== Context Menu Logic =====
+let contextMenuTarget = null;
+let ctxMenu = null;
+let ctxColor = null;
+
+// Initialize context menu elements after DOM loads
+document.addEventListener('DOMContentLoaded', () => {
+  ctxMenu = document.getElementById('context-menu');
+  ctxColor = document.getElementById('ctx-color-picker');
+  
+  // Set up color picker listener
+  if (ctxColor) {
+    ctxColor.addEventListener('input', (e) => {
+      if (contextMenuTarget) {
+        const color = e.target.value;
+        if (contextMenuTarget.dataset.type === 'label') {
+          contextMenuTarget.style.color = color;
+        } else {
+          const visual = contextMenuTarget.querySelector('.deco-visual');
+          if (visual) visual.style.backgroundColor = color;
+        }
+      }
+    });
+  }
+  
+  // Set up remove button listener
+  const ctxRemoveBtn = document.getElementById('ctx-remove-btn');
+  if (ctxRemoveBtn) {
+    ctxRemoveBtn.addEventListener('click', () => {
+      if (contextMenuTarget) {
+        contextMenuTarget.remove();
+        contextMenuTarget = null;
+        if (ctxMenu) ctxMenu.style.display = 'none';
+      }
+    });
+  }
+});
+
+// Hide menu on left click elsewhere
+document.addEventListener('mousedown', (e) => {
+  // Only handle left clicks for closing
+  if (e.button !== 0) return;
+  
+  if (ctxMenu && ctxMenu.style.display === 'block' && !ctxMenu.contains(e.target)) {
+    ctxMenu.style.display = 'none';
+  }
+});
+
+// Delegate contextmenu event
+document.addEventListener('contextmenu', (e) => {
+  const box = e.target.closest('.deco-box');
+  if (box && ctxMenu && ctxColor) {
+    e.preventDefault();
+    contextMenuTarget = box;
+    
+    // Set current color in picker
+    let currentColor = '#cccccc';
+    
+    if (box.dataset.type === 'label') {
+        // Try to get color from style
+        if (box.style.color) currentColor = rgbToHex(box.style.color) || box.style.color;
+    } else {
+        const visual = box.querySelector('.deco-visual');
+        if (visual && visual.style.backgroundColor) {
+             currentColor = rgbToHex(visual.style.backgroundColor) || visual.style.backgroundColor;
+        }
+    }
+    // Ensure it's a valid hex for input type=color
+    if (currentColor.startsWith('rgb')) currentColor = rgbToHex(currentColor);
+    if (!currentColor.startsWith('#')) currentColor = '#cccccc'; // Fallback
+    
+    ctxColor.value = currentColor;
+
+    ctxMenu.style.left = e.pageX + 'px';
+    ctxMenu.style.top = e.pageY + 'px';
+    ctxMenu.style.display = 'block';
+  }
+});
+
+// Removed duplicate listeners - now in DOMContentLoaded above
+
+function rgbToHex(col) {
+    if(!col) return null;
+    if(col.startsWith('#')) return col;
+    const rgb = col.match(/\d+/g);
+    if (!rgb || rgb.length < 3) return null;
+    const r = parseInt(rgb[0]).toString(16).padStart(2, '0');
+    const g = parseInt(rgb[1]).toString(16).padStart(2, '0');
+    const b = parseInt(rgb[2]).toString(16).padStart(2, '0');
+    return '#' + r + g + b;
+}
+
+// ===== Pan & Zoom Logic =====
+// Variables moved to top of script
+// let scale = 1;
+// let panX = 0;
+// let panY = 0;
+
+function updateTransform() {
+  // Disabled
+}
+
+var currentZoom = 1.0;
+
+function zoomCanvas(delta) {
+  if (typeof currentZoom !== 'number' || isNaN(currentZoom)) {
+    currentZoom = 1.0;
+  }
+  currentZoom = Math.max(0.3, Math.min(3.0, currentZoom + delta));
+  const grid = document.getElementById('device-grid');
+  if (grid) {
+    grid.style.transform = `scale(${currentZoom})`;
+    grid.style.transformOrigin = '0 0';
+    const baseWidth = 3000;
+    const baseHeight = 2000;
+    grid.style.width = `${baseWidth}px`;
+    grid.style.height = `${baseHeight}px`;
+  }
+}
+
+function toggleAnimation() {
+  // Animation feature removed
+}
+
+function resetView() {
+  currentZoom = 1.0;
+  const grid = document.getElementById('device-grid');
+  if (grid) {
+    grid.style.transform = 'scale(1)';
+  }
+  const viewport = document.getElementById('viewport');
+  if (viewport) {
+    viewport.scrollLeft = 0;
+    viewport.scrollTop = 0;
+  }
+}
+
+// Pan Event Listeners
+let isPanning = false;
+let startPanX, startPanY;
+
+// Initialize listeners when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    // No pan/zoom listeners
+});
+
+// window.addEventListener('mousemove', (e) => {
+//   if (isPanning) {
+//     e.preventDefault();
+//     panX = e.clientX - startPanX;
+//     panY = e.clientY - startPanY;
+//     updateTransform();
+//   }
+// });
+
+window.addEventListener('mouseup', () => {
+  if (isPanning) {
+    isPanning = false;
+    const vp = document.getElementById('viewport');
+    if (vp) vp.style.cursor = 'grab';
+  }
+});
+
+// Wheel Zoom - DISABLED (zoom/pan features removed)
+// const viewport = document.getElementById('viewport');
+// if (viewport) {
+//   viewport.addEventListener('wheel', (e) => {
+//     if (e.ctrlKey || e.metaKey) {
+//       e.preventDefault();
+//       // Zoom logic disabled
+//     }
+//   });
+// }
+
+// ===== Save/Load Layout =====
+// STORAGE_KEY is declared at top of script
+
+function getStoredLayouts() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.error('Error reading localStorage', e);
+    return {};
+  }
+}
+
+function updateLayoutList() {
+  const select = document.getElementById('conn-layout-select');
+  if (!select) return;
+  
+  // Keep first option
+  while (select.options.length > 1) select.remove(1);
+  
+  const layouts = getStoredLayouts();
+  Object.keys(layouts).sort().forEach(name => {
+    const option = document.createElement('option');
+    option.value = name;
+    option.text = name;
+    select.add(option);
+  });
+}
+
+function saveLayoutAsPreset() {
+  const name = prompt('Enter a name for this layout preset:');
+  if (!name) return;
+  
+  const layout = getCurrentLayoutData();
+  const layouts = getStoredLayouts();
+  layouts[name] = layout;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
+  
+  alert('Layout "' + name + '" saved!');
+  updateLayoutList();
+}
+
+function loadSelectedLayout() {
+  const select = document.getElementById('conn-layout-select');
+  const name = select.value;
+  if (!name) {
+    alert('Please select a layout preset.');
+    return;
+  }
+  
+  const layouts = getStoredLayouts();
+  if (layouts[name]) {
+    // Store the selected layout name in sessionStorage so the viewer page can load it
+    sessionStorage.setItem('selectedLayout', name);
+    
+    // Navigate to viewer page using the Spin page route
+    window.location.href = '/?page=viewer';
+  } else {
+    alert('Layout not found.');
+  }
+}
+
+function getCurrentLayoutData() {
+  const layout = {
+    devices: [],
+    valveIcons: [],
+    decorations: []
+  };
+  
+  // Save Devices (regular device boxes)
+  document.querySelectorAll('.device-box').forEach(box => {
+    const title = box.querySelector('.device-title').textContent;
+    layout.devices.push({
+      id: box.id,
+      device: title,
+      left: box.style.left,
+      top: box.style.top,
+      width: box.style.width,
+      height: box.style.height
+    });
+  });
+  
+  // Save Valve Icons (individual valve/switch icons)
+  document.querySelectorAll('.valve-icon').forEach(icon => {
+    const label = icon.querySelector('div:nth-child(2)');
+    const fieldName = label ? label.textContent : '';
+    const deviceMatch = icon.id.match(/^icon-(.+?)_(.+)$/);
+    if (deviceMatch) {
+      layout.valveIcons.push({
+        id: icon.id,
+        device: deviceMatch[1], // e.g., "sim_gas_dosing_valve_controller"
+        field: deviceMatch[2],   // e.g., "V1_1"
+        left: icon.style.left,
+        top: icon.style.top,
+        width: icon.style.width,
+        height: icon.style.height
+      });
+    }
+  });
+  
+  // Save Decorations
+  document.querySelectorAll('.deco-box').forEach(box => {
+    const type = box.dataset.type;
+    let color = '';
+    let text = '';
+    
+    if (type === 'label') {
+        color = box.style.color;
+        // Clean up text
+        const clone = box.cloneNode(true);
+        const rm = clone.querySelector('.deco-remove');
+        const dh = clone.querySelector('.deco-drag-handle');
+        const rh = clone.querySelector('.resize-handle');
+        if(rm) rm.remove();
+        if(dh) dh.remove();
+        if(rh) rh.remove();
+        text = clone.textContent;
+    } else {
+        const visual = box.querySelector('.deco-visual');
+        if (visual) color = visual.style.backgroundColor;
+    }
+    
+    layout.decorations.push({
+      type: type,
+      left: box.style.left,
+      top: box.style.top,
+      width: box.style.width,
+      height: box.style.height,
+      color: color,
+      text: text
+    });
+  });
+  return layout;
+}
+
+function saveLayout() {
+  const layout = getCurrentLayoutData();
+  const json = JSON.stringify(layout, null, 2);
+  const blob = new Blob([json], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'layout.json';
+  a.click();
+}
+
+function loadLayout() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = event => {
+      try {
+        const layout = JSON.parse(event.target.result);
+        applyLayout(layout);
+      } catch(err) {
+        alert('Error loading layout: ' + err);
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function applyLayout(layout) {
+  // Clear current
+  document.getElementById('device-grid').innerHTML = '';
+  
+  // Restore Devices
+  if (layout.devices) {
+      layout.devices.forEach(d => {
+          // We need to recreate the device box. 
+          // Reuse createDeviceDisplay logic but with specific params
+          // For simplicity, we'll just set the select value and call create, then move it
+          const select = document.getElementById('device-select');
+          select.value = d.device;
+          createDeviceDisplay(); // This creates it at default pos
+          
+          // Find the newly created box (last one)
+          const boxes = document.querySelectorAll('.device-box');
+          const newBox = boxes[boxes.length - 1];
+          if (newBox) {
+              newBox.style.left = d.left;
+              newBox.style.top = d.top;
+              if(d.width) newBox.style.width = d.width;
+              if(d.height) newBox.style.height = d.height;
+          }
+      });
+  }
+  
+  // Restore Decorations
+  if (layout.decorations) {
+      layout.decorations.forEach(d => {
+          const select = document.getElementById('deco-select');
+          const colorInput = document.getElementById('deco-color');
+          
+          select.value = d.type;
+          if (d.color) colorInput.value = rgbToHex(d.color) || d.color;
+          
+          createDecoration();
+          
+          const boxes = document.querySelectorAll('.deco-box');
+          const newBox = boxes[boxes.length - 1];
+          if (newBox) {
+              newBox.style.left = d.left;
+              newBox.style.top = d.top;
+              if(d.width) newBox.style.width = d.width;
+              if(d.height) newBox.style.height = d.height;
+              
+              if (d.type === 'label' && d.text) {
+                  // Restore text content carefully preserving handle/remove btn
+                  // Actually createDecoration adds them, so we just update the text node
+                  // But text node is mixed. Simplest is to set textContent then re-add buttons?
+                  // Or just find the text node.
+                  // Let's just set innerHTML to text + buttons
+                  // Re-creating buttons is safer
+                  newBox.childNodes.forEach(n => {
+                      if (n.nodeType === 3) n.textContent = d.text;
+                  });
+              }
+          }
+      });
+  }
+}
+</script>

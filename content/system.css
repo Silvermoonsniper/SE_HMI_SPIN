@@ -1,0 +1,172 @@
+/* Gas Dosing System Styles */
+
+body {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+  background: #f9f9f9;
+}
+
+.device-grid { 
+  display: flex; 
+  gap: 16px; 
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+
+.device-box {
+  border: 2px solid #333;
+  border-radius: 8px;
+  padding: 12px;
+  width: 320px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  background: #ffffff;
+}
+
+.device-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #eee;
+}
+
+.device-title { 
+  font-weight: 700; 
+  font-size: 16px;
+  color: #333;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  color: #fff;
+}
+
+.state-ok { background: #28a745; }
+.state-warn { background: #ffc107; color: #222; }
+.state-busy { background: #17a2b8; }
+.state-error { background: #dc3545; }
+
+.device-field { 
+  display: flex; 
+  justify-content: space-between; 
+  padding: 6px 0; 
+  font-size: 13px;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.device-value { 
+  font-weight: 700;
+  color: #0066cc;
+}
+
+.set-btn { 
+  margin-left: 8px; 
+  padding: 6px 8px; 
+  border-radius: 4px; 
+  border: 1px solid #bbb; 
+  background: #ffffff; 
+  color: #000000; 
+  cursor: pointer; 
+}
+
+.set-btn:hover { 
+  background: #f2f2f2; 
+}
+
+.set-btn:focus { 
+  outline: 2px solid #c8d7ff; 
+}
+
+.toggle-btn { 
+  margin-left: 0; 
+  padding: 6px 12px; 
+  border-radius: 4px; 
+  border: 1px solid #999; 
+  background: #f0f0f0; 
+  color: #333; 
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.toggle-btn:hover { 
+  background: #e0e0e0;
+  border-color: #666;
+}
+
+.toggle-btn:focus { 
+  outline: 2px solid #c8d7ff; 
+}
+
+.extra-panel { 
+  max-height: 0; 
+  overflow: hidden; 
+  transition: max-height 0.25s ease; 
+  margin-top: 8px; 
+  border-top: 1px dashed #eee; 
+}
+
+.extra-panel.open { 
+  max-height: 300px; 
+  overflow: auto; 
+  padding-top: 8px; 
+}
+
+.extra-row { 
+  display: flex; 
+  justify-content: space-between; 
+  padding: 6px 0; 
+  border-bottom: 1px solid #f5f5f5; 
+  font-size: 13px; 
+}
+
+.control-section { 
+  margin-top: 12px; 
+  padding-top: 12px; 
+  border-top: 2px solid #eee;
+  background: #f8f9fa;
+  padding: 12px;
+  margin: 12px -12px 0 -12px;
+  border-radius: 0 0 6px 6px;
+}
+
+.control-field { 
+  display: flex; 
+  gap: 8px; 
+  margin-bottom: 8px; 
+  align-items: center; 
+  font-size: 12px; 
+}
+
+.control-label { 
+  min-width: 75px; 
+  font-weight: 600;
+  color: #555;
+}
+
+.control-input { 
+  flex: 1; 
+  padding: 5px 8px; 
+  border: 1px solid #ccc; 
+  border-radius: 4px; 
+  font-size: 12px;
+  background: white;
+}
+
+.control-button { 
+  padding: 5px 12px; 
+  background: #0066cc; 
+  color: #ffffff; 
+  border: 1px solid #0052a3; 
+  border-radius: 4px; 
+  cursor: pointer; 
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.control-button:hover { 
+  background: #0052a3; 
+}
