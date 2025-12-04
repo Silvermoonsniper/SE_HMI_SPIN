@@ -1,7 +1,12 @@
 from spin.config import Config, Device, Page, Param
 import json
 import os
+import asyncio
 from frappy.client import SecopClient
+
+# Increase asyncio stream reader limit to handle large plotly parameters
+# Default is 64KB, we increase to 10MB
+asyncio.streams._DEFAULT_LIMIT = 10 * 1024 * 1024
 
 NODES_FILE = os.path.join(os.path.dirname(__file__), 'nodes.json')
 
@@ -68,14 +73,24 @@ def connect_node(host, port):
     # Resolve the host for Docker environment
     resolved_host = resolve_host(host)
     url = f"{resolved_host}:{port}"
-    prefix = ""
     print(f"Connecting to {url}...")
     
     try:
+        # Create client and connect
         client = SecopClient(url)
         client.connect()
         
+        # Extract the equipment_id (SEC node name) to use as prefix
+        equipment_id = client.descriptive_data.get("equipment_id", "")
+        # Use equipment_id as prefix to create unique device names
+        prefix = equipment_id if equipment_id else ""
+        
         mod_list, para_map, dev_data = extract_modules_and_parameters(client.descriptive_data, prefix)
+        
+        # Print the ready message with the node name
+        if equipment_id:
+            print(f"{equipment_id} ready")
+        
         return mod_list, para_map, dev_data
             
     except Exception as e:
@@ -138,6 +153,7 @@ config.control_url = 'http://0.0.0.0:8000/'
 config.plugins = [os.path.abspath(os.path.join(os.path.dirname(__file__), 'node_manager.py'))]
 config.pages = {
     'default': Page('../content/system.html', readonly=False),
+    'viewer': Page('../content/system_viewer.html', readonly=True),
 }
 
 config.devices = dev_config

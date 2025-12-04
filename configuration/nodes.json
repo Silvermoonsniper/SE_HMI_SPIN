@@ -6,9 +6,5 @@
   {
     "host": "localhost",
     "port": 10802
-  },
-  {
-    "host": "localhost",
-    "port": 10805
   }
 ]

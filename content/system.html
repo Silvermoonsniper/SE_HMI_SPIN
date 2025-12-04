@@ -1,11 +1,33 @@
 <style>
 /* Gas Dosing System Styles */
 
+/* X-ray beam animation keyframes */
+@keyframes xrayBeam {
+  0% { transform: translateX(-100%) rotate(45deg); opacity: 0.3; }
+  50% { opacity: 0.6; }
+  100% { transform: translateX(200%) rotate(45deg); opacity: 0.3; }
+}
+
+@keyframes particleFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  50% { transform: translate(30px, -40px) scale(1.2); opacity: 0.8; }
+}
+
+@keyframes moleculeRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes waveform {
+  0%, 100% { d: path('M 0 50 Q 25 40, 50 50 T 100 50'); }
+  50% { d: path('M 0 50 Q 25 60, 50 50 T 100 50'); }
+}
+
 body {
   font-family: Arial, sans-serif;
   margin: 0;
   padding: 0;
-  background: #f9f9f9;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   height: 100vh;
   overflow: hidden;
 }
@@ -42,13 +64,38 @@ body {
   box-shadow: 0 8px 24px rgba(0,0,0,0.1);
   transition: all 0.5s ease;
   opacity: 0.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
-.bg-img.tl { grid-area: 1 / 1 / 2 / 2; transform-origin: top left; }
-.bg-img.tr { grid-area: 1 / 3 / 2 / 4; transform-origin: top right; }
-.bg-img.c  { grid-area: 2 / 2 / 3 / 3; opacity: 1; box-shadow: 0 12px 36px rgba(0,0,0,0.15); }
-.bg-img.bl { grid-area: 3 / 1 / 4 / 2; transform-origin: bottom left; }
-.bg-img.br { grid-area: 3 / 3 / 4 / 4; transform-origin: bottom right; }
+.bg-img.tl { 
+  grid-area: 1 / 1 / 2 / 2; 
+  transform-origin: top left;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+.bg-img.tr { 
+  grid-area: 1 / 3 / 2 / 4; 
+  transform-origin: top right;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+.bg-img.c  { 
+  grid-area: 2 / 2 / 3 / 3; 
+  opacity: 1; 
+  box-shadow: 0 12px 36px rgba(0,0,0,0.15);
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+.bg-img.bl { 
+  grid-area: 3 / 1 / 4 / 2; 
+  transform-origin: bottom left;
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+.bg-img.br { 
+  grid-area: 3 / 3 / 4 / 4; 
+  transform-origin: bottom right;
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
 
 /* Subtle hover animation */
 #connection-panel:hover .bg-img.tl { transform: scale(1.02) translate(-5px, -5px); }
@@ -134,28 +181,63 @@ body {
   left: 0;
   width: 3000px; /* Large virtual size */
   height: 2000px;
-  background: #fdfdfd;
+  background: linear-gradient(135deg, #0a1929 0%, #1a237e 50%, #0d47a1 100%);
   transform-origin: 0 0;
-  /* Grid pattern for better orientation */
+  /* Subtle grid pattern */
   background-image: 
-    linear-gradient(#eee 1px, transparent 1px),
-    linear-gradient(90deg, #eee 1px, transparent 1px);
+    linear-gradient(rgba(100, 150, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 150, 255, 0.1) 1px, transparent 1px);
   background-size: 50px 50px;
+  overflow: hidden;
+}
+
+/* Animated background elements */
+.canvas::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 30%, rgba(0, 255, 255, 0.1) 0%, transparent 25%),
+    radial-gradient(circle at 80% 70%, rgba(255, 100, 255, 0.1) 0%, transparent 25%),
+    radial-gradient(circle at 50% 50%, rgba(100, 200, 255, 0.08) 0%, transparent 30%);
+  animation: particleFloat 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* X-ray beam effect */
+.canvas::after {
+  content: '';
+  position: absolute;
+  top: -100%;
+  left: -50%;
+  width: 200%;
+  height: 300%;
+  background: linear-gradient(45deg, 
+    transparent 40%, 
+    rgba(100, 200, 255, 0.15) 45%, 
+    rgba(150, 220, 255, 0.25) 50%, 
+    rgba(100, 200, 255, 0.15) 55%, 
+    transparent 60%);
+  animation: xrayBeam 12s linear infinite;
+  pointer-events: none;
 }
 
 .device-box {
   position: absolute;
   top: 20px;
   left: 20px;
-  border: 1px solid #666;
-  border-radius: 4px;
-  padding: 4px;
+  border: none; /* Removed border */
+  border-radius: 8px;
+  padding: 8px;
   width: 180px; /* Compact width */
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  background: rgba(255, 255, 255, 0.95); /* Semi-transparent */
   
-  /* Custom resizing */
-  overflow: hidden;
+  /* Allow dropdown menus to appear outside the box */
+  overflow: visible;
   min-width: 140px;
   min-height: 50px;
   z-index: 10;
@@ -328,6 +410,23 @@ body {
   box-sizing: border-box;
 }
 
+/* Make sure select dropdowns are visible */
+select.control-input {
+  height: 22px;
+  padding: 2px 4px;
+  min-width: 80px;
+  cursor: pointer;
+  appearance: auto;
+  -webkit-appearance: menulist;
+  -moz-appearance: menulist;
+}
+
+select.control-input option {
+  padding: 4px;
+  background: white;
+  color: black;
+}
+
 /* Specific size for the value input field */
 input.control-input {
   max-width: 60px;
@@ -496,39 +595,89 @@ input.control-input {
 
 <div id="connection-panel">
   <div class="bg-decoration">
-    <div class="bg-img tl"></div>
-    <div class="bg-img tr"></div>
-    <div class="bg-img c"></div>
-    <div class="bg-img bl"></div>
-    <div class="bg-img br"></div>
+    <div class="bg-img tl">
+      <svg width="80%" height="80%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <!-- X-ray beam icon -->
+        <circle cx="50" cy="50" r="45" fill="none" stroke="white" stroke-width="2" opacity="0.3"/>
+        <line x1="20" y1="50" x2="80" y2="50" stroke="white" stroke-width="4" opacity="0.8"/>
+        <line x1="50" y1="20" x2="50" y2="80" stroke="white" stroke-width="4" opacity="0.8"/>
+        <circle cx="50" cy="50" r="15" fill="white" opacity="0.6"/>
+        <text x="50" y="95" text-anchor="middle" fill="white" font-size="8" opacity="0.9">X-Ray Source</text>
+      </svg>
+    </div>
+    <div class="bg-img tr">
+      <svg width="80%" height="80%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <!-- Sample chamber icon -->
+        <rect x="25" y="30" width="50" height="40" fill="none" stroke="white" stroke-width="3" rx="5"/>
+        <circle cx="50" cy="50" r="8" fill="white" opacity="0.7"/>
+        <line x1="50" y1="42" x2="50" y2="30" stroke="white" stroke-width="2"/>
+        <line x1="50" y1="58" x2="50" y2="70" stroke="white" stroke-width="2"/>
+        <text x="50" y="95" text-anchor="middle" fill="white" font-size="8" opacity="0.9">Sample Chamber</text>
+      </svg>
+    </div>
+    <div class="bg-img bl">
+      <svg width="80%" height="80%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <!-- Gas flow icon -->
+        <path d="M 20 50 Q 35 30, 50 50 T 80 50" fill="none" stroke="white" stroke-width="3"/>
+        <polygon points="80,50 75,45 75,55" fill="white"/>
+        <circle cx="30" cy="50" r="4" fill="white" opacity="0.6"/>
+        <circle cx="50" cy="50" r="4" fill="white" opacity="0.6"/>
+        <circle cx="70" cy="50" r="4" fill="white" opacity="0.6"/>
+        <text x="50" y="95" text-anchor="middle" fill="white" font-size="8" opacity="0.9">Gas Flow</text>
+      </svg>
+    </div>
+    <div class="bg-img br">
+      <svg width="80%" height="80%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <!-- Temperature/Pressure control icon -->
+        <rect x="35" y="20" width="30" height="50" fill="none" stroke="white" stroke-width="3" rx="3"/>
+        <rect x="40" y="35" width="20" height="25" fill="white" opacity="0.5"/>
+        <line x1="50" y1="25" x2="50" y2="32" stroke="white" stroke-width="2"/>
+        <text x="50" y="95" text-anchor="middle" fill="white" font-size="8" opacity="0.9">Environment</text>
+      </svg>
+    </div>
   </div>
   <div class="conn-box">
     <h1 style="margin-top:0; margin-bottom:20px; color:#333; font-size:28px;">GSE-UI</h1>
-    <div class="conn-field">
-      <label>IP Address</label>
-      <input type="text" id="conn-ip" value="localhost" placeholder="e.g. 192.168.1.10">
+    
+    <!-- Framework Description -->
+    <div style="background: #e8f4f8; border-left: 4px solid #17a2b8; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
+      <div style="font-size: 13px; color: #0c5460; line-height: 1.6;">
+        <strong>General Sample Envrinoment User Interface Framework with SECoP (GSE-UI)</strong><br>
+        This interface provides user ability to design specific system layout for differnet 
+        experiment control system using SECoP, tango device, and also connecting to existing 
+        GUI after their design. It is created on the basis of spin-hmi framework from FRM II, TU Munich.
+      </div>
     </div>
-    <div class="conn-field">
-      <label>Port</label>
-      <input type="number" id="conn-port" value="10801" placeholder="e.g. 10801">
-    </div>
-    <div class="conn-field">
-      <label>Layout Preset</label>
-      <div style="display:flex; gap:5px;">
-        <select id="conn-layout-select" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:4px;">
-          <option value="">-- Select Layout --</option>
-        </select>
-        <button class="conn-btn" style="width:auto; padding: 0 15px;" onclick="loadSelectedLayout()">Set</button>
+    
+    <!-- SEC Nodes Information -->
+    <div id="nodes-info-box" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
+      <div style="font-size: 12px; font-weight: bold; color: #495057; margin-bottom: 8px;">
+        Available SEC Nodes:
+      </div>
+      <div id="nodes-info-content" style="font-size: 11px; color: #6c757d;">
+        Loading...
       </div>
     </div>
 
-    <div id="connected-nodes-list" style="margin-bottom: 15px; text-align: left; max-height: 100px; overflow-y: auto; border: 1px solid #eee; padding: 5px; display: none; background: rgba(255,255,255,0.5);">
-        <div style="font-size: 11px; font-weight: bold; color: #555; margin-bottom: 5px;">Connected Nodes:</div>
-        <ul id="nodes-ul" style="list-style: none; padding: 0; margin: 0; font-size: 12px;"></ul>
+    <!-- Discovered Nodes -->
+    <div id="discovered-nodes-box" style="display:none; background: #e8f4f8; border: 1px solid #b8daff; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
+      <div style="font-size: 12px; font-weight: bold; color: #0c5460; margin-bottom: 8px;">
+        Discovered Nodes:
+      </div>
+      <div id="discovered-nodes-content" style="font-size: 11px; color: #333;">
+        <!-- Discovered nodes will be listed here -->
+      </div>
     </div>
 
-    <button class="conn-btn" onclick="addNodeConnection()">Add Node Connection</button>
-    <button id="enter-system-btn" class="conn-btn" style="margin-top: 10px; background: #28a745;" onclick="enterSystem()">Configure New System Layout / Edit System Layout</button>
+    <!-- Action Buttons -->
+    <div style="display: flex; gap: 10px;">
+        <button class="conn-btn" style="background: #17a2b8; font-size: 14px; padding: 10px; flex: 1;" onclick="discoverNodes()">
+          Discover Nodes
+        </button>
+        <button class="conn-btn" style="background: #28a745; font-size: 14px; padding: 10px; flex: 1;" onclick="connectToGUI()">
+          Connect to GUI
+        </button>
+    </div>
   </div>
 </div>
 
@@ -559,9 +708,8 @@ input.control-input {
   
   <div style="width:1px; height:20px; background:#ddd; margin:0 10px;"></div>
   
-  <button onclick="zoomCanvas(0.1)" style="padding: 4px 8px; font-weight:bold;">+</button>
-  <button onclick="zoomCanvas(-0.1)" style="padding: 4px 8px; font-weight:bold;">-</button>
-  <button onclick="toggleAnimation()" style="padding: 4px 8px; font-size:11px;">Anim</button>
+  <button onclick="zoomCanvas(0.1)" style="padding: 4px 8px; font-weight:bold;" title="Zoom In">+</button>
+  <button onclick="zoomCanvas(-0.1)" style="padding: 4px 8px; font-weight:bold;" title="Zoom Out">-</button>
   <button onclick="resetView()" style="padding: 4px 8px; font-size:11px;">Reset View</button>
   <button onclick="saveLayout()" style="margin-left:10px; padding: 4px 8px; font-size:11px;">Save File</button>
   <button onclick="saveLayoutAsPreset()" style="padding: 4px 8px; font-size:11px;">Save Preset</button>
@@ -592,7 +740,7 @@ input.control-input {
 
     <div class="expand-btn" id="expand-btn-{{DOM_ID}}" onclick="toggleDeviceBody('{{DOM_ID}}')">▼</div>
 
-    <div id="body-{{DOM_ID}}" style="display:none;">
+    <div id="body-{{DOM_ID}}" style="display:block;">
       <div class="control-section">
         <div class="control-field">
           <select id="param-select-{{DOM_ID}}" class="control-input" aria-label="Parameter" onchange="onParamSelectChange('{{DEVICE}}', '{{DOM_ID}}')">
@@ -615,9 +763,31 @@ input.control-input {
   </div>
 </template>
 
-<hr style="margin: 30px 0;">
-<h3>Log Info</h3>
-<pre id="debug-output" style="background: #f5f5f5; padding: 10px; max-height: 200px; overflow-y: auto; font-size: 11px; border-radius: 4px; border: 1px solid #ddd;">Waiting for page load...</pre>
+<!-- Valve Controller Template -->
+<template id="valve-controller-template">
+  <div class="device-box" id="box-{{DOM_ID}}">
+    <div class="device-header">
+      <div class="device-title">{{TITLE}}</div>
+      <div id="status-{{DOM_ID}}" class="status-badge state-warn">connecting...</div>
+      <button onclick="removeDevice('{{DOM_ID}}')" style="margin-left:auto; background:none; border:none; color:#999; cursor:pointer; font-weight:bold; padding:0 4px; font-size:14px; line-height:1;">&times;</button>
+    </div>
+    
+    <!-- Valves container will be populated dynamically -->
+    <div id="valves-container-{{DOM_ID}}" style="padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px;">
+    </div>
+
+    <div class="expand-btn" id="expand-btn-{{DOM_ID}}" onclick="toggleDeviceBody('{{DOM_ID}}')">▼</div>
+
+    <div id="body-{{DOM_ID}}" style="display:block;">
+      <div id="commands-{{DOM_ID}}" class="commands-section"></div>
+      <div style="margin-top:8px; display:flex; gap:8px; align-items:center;"><button class="toggle-btn" id="toggle-{{DOM_ID}}" onclick="toggleExtra('{{DEVICE}}')">More ▾</button></div>
+      <div id="extra-{{DOM_ID}}" class="extra-panel" aria-hidden="true"></div>
+    </div>
+    <div class="resize-handle"></div>
+  </div>
+</template>
+
+<!-- Log Info removed -->
 </div>
 
 <!-- Context Menu -->
@@ -637,7 +807,6 @@ input.control-input {
  */
 
 // ===== Connection Panel Logic =====
-let connectedNodes = [];
 let scale = 1;
 let panX = 0;
 let panY = 0;
@@ -701,35 +870,119 @@ function fetchNodesList() {
     }
 }
 
-function updateConnectedNodesList() {
-    const listDiv = document.getElementById('connected-nodes-list');
-    const ul = document.getElementById('nodes-ul');
-    
-    ul.innerHTML = '';
-    connectedNodes.forEach(node => {
-        const li = document.createElement('li');
-        li.textContent = node;
-        li.style.padding = '2px 0';
-        li.style.borderBottom = '1px dashed #ccc';
-        ul.appendChild(li);
-    });
-    
-    if (connectedNodes.length > 0) {
-        listDiv.style.display = 'block';
+// Call fetchNodesList on load and display nodes info
+document.addEventListener('DOMContentLoaded', () => {
+  // Wait for Spin to initialize before fetching nodes
+  waitForSpin(() => {
+    loadNodesInfo();
+  });
+});
+
+function waitForSpin(callback) {
+  // Wait for Spin to be ready and connected
+  const checkSpin = () => {
+    if (window.Spin && window.Spin.current_socket && window.Spin.current_socket.readyState === WebSocket.OPEN && typeof window.Spin.send_request === 'function') {
+      callback();
     } else {
-        listDiv.style.display = 'none';
+      setTimeout(checkSpin, 200);
+    }
+  };
+  checkSpin();
+}
+
+function discoverNodes() {
+    if (window.Spin && window.Spin.send_request) {
+        const contentDiv = document.getElementById('discovered-nodes-content');
+        contentDiv.textContent = 'Discovering SECoP nodes via UDP broadcast...';
+        document.getElementById('discovered-nodes-box').style.display = 'block';
+        Spin.send_request('nodemanager.discover_nodes', '', 'read', 'read', null);
+    } else {
+        alert('Connection to server not ready.');
     }
 }
 
-// Call fetchNodesList on load
-document.addEventListener('DOMContentLoaded', fetchNodesList);
+function displayDiscoveredNodes(nodes) {
+    const contentDiv = document.getElementById('discovered-nodes-content');
+    if (!nodes || nodes.length === 0) {
+        contentDiv.textContent = 'No new nodes found on the network.';
+        return;
+    }
+
+    let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+    nodes.forEach(node => {
+        const nodeName = `${node.host}:${node.port}`;
+        html += `<li style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #e9ecef;">
+            <span>${node.equipment_id || 'Unknown Device'} (${nodeName})</span>
+            <button onclick="addNodeConnectionAuto('${node.host}', ${node.port})" style="font-size:10px; padding: 2px 6px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;">Add</button>
+        </li>`;
+    });
+    html += '</ul>';
+    contentDiv.innerHTML = html;
+}
+
+function loadNodesInfo() {
+  // Use Spin API to get the list of nodes
+  if (window.Spin && window.Spin.send_request) {
+    document.getElementById('nodes-info-content').textContent = 'Loading...';
+    window.Spin.send_request('nodemanager.list_nodes', '', 'read', 'read', null);
+  } else {
+    // Spin not ready yet, show placeholder
+    document.getElementById('nodes-info-content').textContent = 'Connecting to server...';
+  }
+}
+
+function displayNodesInfo(nodesList) {
+  const infoContent = document.getElementById('nodes-info-content');
+  
+  if (!nodesList || nodesList.length === 0) {
+    infoContent.textContent = 'No nodes configured';
+    return;
+  }
+  
+  let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+  nodesList.forEach((node, index) => {
+    const nodeName = `${node.host}:${node.port}`;
+    html += `<li style="padding: 4px 0; border-bottom: 1px solid #e9ecef;">
+      <strong>Node ${index + 1}:</strong> ${nodeName}
+    </li>`;
+  });
+  html += '</ul>';
+  infoContent.innerHTML = html;
+}
+
+function connectToGUI() {
+  // Check if Spin is ready before connecting
+  if (!window.Spin || !window.Spin.current_socket || window.Spin.current_socket.readyState !== WebSocket.OPEN) {
+    alert('Connection to server not ready. Please wait a moment and try again.');
+    return;
+  }
+  // Just switch to the main panel. The devices will be populated based on the connection.
+  enterSystem();
+}
+
+function addNodeConnectionAuto(host, port) {
+  // Automated version of addNodeConnection without prompts
+  if (window.Spin && window.Spin.send_request) {
+      const data = { host: host, port: port.toString() };
+      window.Spin.send_request('nodemanager.add_node', '', 'input', 'set', data);
+      // Optionally provide feedback to the user
+      const btn = event.target;
+      if(btn) {
+        btn.textContent = 'Added!';
+        btn.disabled = true;
+        btn.style.background = '#6c757d';
+      }
+  }
+}
 
 function enterSystem() {
   // This function is now only for switching views.
   // The button is always visible.
   document.getElementById('connection-panel').style.display = 'none';
   document.getElementById('main-panel').style.display = 'block';
-  debug('Switched to main layout panel.');
+  
+  // Fetch device params when entering the system to ensure dropdown is populated
+  fetchDeviceParams();
 }
 
 function connectToNode() {
@@ -742,7 +995,6 @@ function disconnectNode() {
   document.getElementById('connection-panel').style.display = 'flex';
   // Clear nodes? Or keep them? User probably wants to keep them or reset.
   // For now, let's keep them so they can add more or re-enter.
-  debug('Disconnected / Returned to setup.');
 }
 
 // ===== Status Badge Updates =====
@@ -750,11 +1002,15 @@ window.addEventListener('spinupdate', function(event) {
   try {
     var key = event.detail.key || '';
     
+    if (key === 'nodemanager.discovered_nodes') {
+        displayDiscoveredNodes(event.detail.value);
+        return;
+    }
+
     if (key === 'nodemanager.nodes') {
         var nodes = event.detail.value;
         if (nodes && Array.isArray(nodes)) {
-            connectedNodes = nodes.map(n => `${n.host}:${n.port}`);
-            updateConnectedNodesList();
+            displayNodesInfo(nodes);
         }
         return;
     }
@@ -772,7 +1028,6 @@ window.addEventListener('spinupdate', function(event) {
         if (data) {
             WRITABLE_PARAMS = data;
             populateDeviceList(data);
-            debug('✓ Device parameters loaded via Spin');
         }
         return;
     }
@@ -814,12 +1069,8 @@ window.addEventListener('spinupdate', function(event) {
         if (gasEl) gasEl.textContent = formatted;
     }
     
-    // Log update to UI for debugging
-    debug('Upd: ' + key + ' -> ' + domId + ' st:' + (state||'-'));
-
   } catch(e) { 
     console.error('status update error', e);
-    debug('Err: ' + e.message);
   }
 });
 
@@ -1150,7 +1401,16 @@ function createDeviceDisplay(deviceNameOverride) {
     return;
   }
   
-  const template = document.getElementById('device-template');
+  // Get the original device name for display (without SEC node prefix)
+  const deviceData = WRITABLE_PARAMS[device];
+  const displayName = deviceData && deviceData.original_name ? deviceData.original_name : device;
+  
+  // Check if this is a valve_controller device - check both original_name and full device name
+  const isValveController = (displayName && displayName.toLowerCase().includes('valve_controller')) || 
+                            device.toLowerCase().includes('valve_controller');
+  
+  const templateId = isValveController ? 'valve-controller-template' : 'device-template';
+  const template = document.getElementById(templateId);
   const clone = template.content.cloneNode(true);
   
   // Replace placeholders in HTML
@@ -1160,7 +1420,7 @@ function createDeviceDisplay(deviceNameOverride) {
   
   html = html.replace(/{{DOM_ID}}/g, domId)
              .replace(/{{DEVICE}}/g, device)
-             .replace(/{{TITLE}}/g, device);
+             .replace(/{{TITLE}}/g, displayName);
              
   const wrapper = document.createElement('div');
   wrapper.innerHTML = html;
@@ -1228,6 +1488,350 @@ function createDeviceDisplay(deviceNameOverride) {
   } else {
       debug('Error: window.Spin not found');
   }
+  
+  // For valve_controller, setup valve displays after Spin connects
+  if (isValveController) {
+      setTimeout(() => setupValveController(device, domId), 1000);
+  }
+}
+
+async function setupValveController(device, domId) {
+  console.log(`Setting up valve controller: ${device}, domId: ${domId}`);
+  debug(`Setting up valve controller: ${device}, domId: ${domId}`);
+  
+  // Get the value parameter from latestValues (populated by Spin updates)
+  // Wait a bit for Spin to populate the data
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  
+  const data = latestValues[device];
+  debug(`Latest values for ${device}: ${JSON.stringify(data)}`);
+  
+  if (!data) {
+    debug(`Valve controller ${device} has no data yet`);
+    return;
+  }
+  
+  // Try to find the struct in 'value' or 'target'
+  // Prefer 'target' if 'value' is missing or empty, as logs showed target has the data
+  let valueEntry = data.value;
+  let paramName = 'value';
+  if ((!valueEntry || !valueEntry.value) && data.target) {
+      debug('Value parameter missing or empty, using target parameter instead');
+      valueEntry = data.target;
+      paramName = 'target';
+  }
+  
+  if (!valueEntry || !valueEntry.value) {
+    debug(`Valve controller ${device} has no value/target data`);
+    return;
+  }
+  
+  const valueData = valueEntry.value;
+  
+  debug(`Value data type: ${typeof valueData}, value: ${JSON.stringify(valueData)}`);
+  
+  if (!valueData || typeof valueData !== 'object') {
+    debug(`Valve controller ${device} value is not a struct, got: ${typeof valueData}`);
+    return;
+  }
+  
+  debug(`Found valve fields: ${Object.keys(valueData).join(', ')}`);
+  
+  // Remove the valve controller box itself since we'll create individual valves
+  const controllerBox = document.getElementById(`box-${domId}`);
+  if (controllerBox) {
+    debug(`Removing controller box: box-${domId}`);
+    controllerBox.remove();
+  }
+  
+  // Create a separate draggable SVG icon for each valve (no box)
+  Object.keys(valueData).forEach((fieldName, index) => {
+      console.log(`Creating valve icon for field: ${fieldName}, index: ${index}`);
+      const lowerField = fieldName.toLowerCase();
+      const isSwitch = lowerField.includes('switch');
+      const isValve = lowerField.includes('valve') || fieldName.startsWith('V');
+      
+      console.log(`Field ${fieldName}: isSwitch=${isSwitch}, isValve=${isValve}`);
+      
+      if (!isSwitch && !isValve) return; // Skip non-valve fields
+      
+      const valveDomId = `${domId}_${fieldName}`;
+      
+      // Create a simple draggable SVG container (no device box)
+      const valveIcon = document.createElement('div');
+      valveIcon.className = 'valve-icon';
+      valveIcon.id = `icon-${valveDomId}`;
+      valveIcon.style.position = 'absolute';
+      valveIcon.style.width = '80px';
+      valveIcon.style.height = '100px';
+      valveIcon.style.top = (20 + index * 120) + 'px';
+      valveIcon.style.left = '20px';
+      valveIcon.style.cursor = 'pointer';
+      valveIcon.style.userSelect = 'none';
+      
+      // Image Container
+      const imgContainer = document.createElement('div');
+      imgContainer.id = `img-${valveDomId}`;
+      imgContainer.style.cssText = 'width: 80px; height: 80px; position: relative;';
+      
+      if (isSwitch) {
+        // Switch image - rotates based on position (circle with two separate arcs)
+        const img = document.createElement('img');
+        // Circle with two separate arcs touching the circle edge
+        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2MiwgNTMpIj48Y2lyY2xlIGN4PSIwIiBjeT0iMCIgcj0iNDUiIGZpbGw9IiNmZmRkMDAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PCEtLSBBcmMgdG91Y2hpbmcgbGVmdC1ib3R0b20gcGFydCBvZiBjaXJjbGUgLS0+PHBhdGggZD0iTSAtMzEuOCAyMi41IFEgLTE1IDE1IDAgMCBRIC0xNSAtMTUgLTIyLjUgLTMxLjgiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48IS0tIEFyYyB0b3VjaGluZyByaWdodC11cHBlciBwYXJ0IG9mIGNpcmNsZSAtLT48cGF0aCBkPSJNIDIyLjUgMzEuOCBRIDE1IDE1IDAgMCBRIDE1IC0xNSAzMS44IC0yMi41IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMyIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9nPjwvc3ZnPg==';
+        img.style.cssText = 'width: 100%; height: 100%; object-fit: contain; transform: rotate(0deg); transition: transform 0.3s ease;';
+        img.onerror = () => console.error(`Failed to load switch image: ${img.src}`);
+        img.onload = () => console.log(`Loaded switch image for ${fieldName}`);
+        imgContainer.appendChild(img);
+        
+        // Click to toggle between position 0 and 1
+        imgContainer.onclick = () => {
+          const data = latestValues[device];
+          let currentValue = 0;
+          if (data && data[paramName] && data[paramName].value && data[paramName].value[fieldName] !== undefined) {
+            currentValue = data[paramName].value[fieldName];
+          }
+          const newValue = currentValue === 0 ? 1 : 0;
+          setValveField(device, fieldName, newValue);
+          updateSwitchRotation(imgContainer, newValue);
+        };
+      } else if (isValve) {
+        // Valve image - SVG with two triangles pointing toward each other (touching at tips)
+        const img = document.createElement('img');
+        img.id = `valve-img-${valveDomId}`;
+        // Two triangles with points touching in the center: ◄ ►
+        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzAwN2JmZiIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMDA3YmZmIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==';
+        img.style.cssText = 'width: 100%; height: 100%; object-fit: contain;';
+        img.onerror = () => console.error(`Failed to load valve image: ${img.src}`);
+        img.onload = () => console.log(`Loaded valve image for ${fieldName}`);
+        imgContainer.appendChild(img);
+        
+        // Click to toggle valve ON/OFF
+        imgContainer.onclick = () => {
+          const data = latestValues[device];
+          let currentValue = 0;
+          if (data && data[paramName] && data[paramName].value && data[paramName].value[fieldName] !== undefined) {
+            currentValue = data[paramName].value[fieldName];
+          }
+          const newValue = currentValue ? 0 : 1;
+          setValveField(device, fieldName, newValue);
+          // Immediately update the visual
+          updateValveImage(valveDomId, newValue === 1);
+        };
+      }
+      
+      // Label below the icon
+      const label = document.createElement('div');
+      label.style.cssText = 'font-size: 10px; color: #333; text-align: center; margin-top: 4px; font-weight: 600;';
+      label.textContent = fieldName;
+      
+      // Resize handle
+      const resizeHandle = document.createElement('div');
+      resizeHandle.style.cssText = 'position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; background: #007bff; cursor: nwse-resize; border-radius: 2px; opacity: 0.7;';
+      resizeHandle.title = 'Resize';
+      
+      // Hidden data-spin element for value updates
+      const valueDisplay = document.createElement('div');
+      valueDisplay.id = `valve-${valveDomId}`;
+      valueDisplay.style.display = 'none';
+      valueDisplay.setAttribute('data-spin', `@${device}.${paramName}.${fieldName}`);
+      
+      valveIcon.appendChild(imgContainer);
+      valveIcon.appendChild(label);
+      valveIcon.appendChild(resizeHandle);
+      valveIcon.appendChild(valueDisplay);
+      
+      // Add to grid
+      const grid = document.getElementById('device-grid');
+      console.log(`Adding valve icon ${valveIcon.id} to grid:`, grid);
+      if (grid) {
+        grid.appendChild(valveIcon);
+        console.log(`Successfully added valve icon ${valveIcon.id}`);
+      } else {
+        console.error('device-grid not found!');
+      }
+      
+      // Make it draggable (simple drag without device-box features)
+      makeValveIconDraggable(valveIcon);
+      makeValveIconResizable(valveIcon, imgContainer);
+    });
+    
+    // Reload Spin to bind the new data-spin attributes
+    if (window.Spin && window.Spin.reload) {
+      window.Spin.reload();
+    }
+    
+    // Set up listeners for value updates to update images
+    setupValveImageListeners(device, domId);
+}
+
+function updateSwitchRotation(imgContainer, position) {
+  const img = imgContainer.querySelector('img');
+  if (img) {
+    const rotation = position * 90; // 0 or 90 degrees
+    img.style.transform = `rotate(${rotation}deg)`;
+  }
+}
+
+function updateValveImage(valveDomId, isOpen) {
+  const img = document.querySelector(`#valve-img-${valveDomId}`);
+  if (img) {
+    // Change to green when open, blue when closed
+    if (isOpen) {
+      // Green triangles for open valve
+      img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==';
+    } else {
+      // Blue triangles for closed valve
+      img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzAwN2JmZiIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMDA3YmZmIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==';
+    }
+  }
+}
+
+function setupValveImageListeners(device, domId) {
+  // Listen for updates and update image states
+  window.addEventListener('spinupdate', function(event) {
+    try {
+      const key = event.detail.key || '';
+      if (!key.startsWith(device)) return;
+      
+      const parts = key.split('.');
+      if (parts.length < 3) return;
+      
+      const paramName = parts[1]; // 'value' or 'target'
+      const fieldName = parts[2]; // e.g., 'V1_1', 'Switch1'
+      
+      const valveDomId = `${domId}_${fieldName}`;
+      const imgContainer = document.getElementById(`img-${valveDomId}`);
+      
+      if (!imgContainer) return;
+      
+      const value = event.detail.value;
+      const lowerField = fieldName.toLowerCase();
+      
+      if (lowerField.includes('switch')) {
+        // Update switch rotation
+        updateSwitchRotation(imgContainer, value);
+      } else {
+        // Update valve appearance
+        updateValveImage(valveDomId, value === 1 || value === true);
+      }
+    } catch (e) {
+      console.error('Image update error', e);
+    }
+  });
+}
+
+function makeValveIconDraggable(el) {
+  let isDragging = false;
+  let startX, startY, initialLeft, initialTop;
+
+  el.addEventListener('mousedown', (e) => {
+    // Only start drag if clicking on the element itself, not the image
+    if (e.target.tagName === 'IMG' || e.target.closest('img')) return;
+    
+    if (e.button !== 0) return;
+    
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    const style = window.getComputedStyle(el);
+    initialLeft = parseInt(style.left, 10) || el.offsetLeft;
+    initialTop = parseInt(style.top, 10) || el.offsetTop;
+    
+    el.style.zIndex = 1000;
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    el.style.left = `${initialLeft + dx}px`;
+    el.style.top = `${initialTop + dy}px`;
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      el.style.zIndex = '10';
+    }
+  });
+}
+
+function makeValveIconResizable(valveIcon, imgContainer) {
+  const resizeHandle = valveIcon.querySelector('div[title="Resize"]');
+  if (!resizeHandle) return;
+  
+  let isResizing = false;
+  let startX, startY, initialWidth, initialHeight;
+  
+  resizeHandle.addEventListener('mousedown', (e) => {
+    e.stopPropagation(); // Prevent dragging when resizing
+    isResizing = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    const style = window.getComputedStyle(imgContainer);
+    initialWidth = parseInt(style.width, 10);
+    initialHeight = parseInt(style.height, 10);
+    
+    e.preventDefault();
+  });
+  
+  window.addEventListener('mousemove', (e) => {
+    if (!isResizing) return;
+    e.preventDefault();
+    
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    
+    // Keep aspect ratio approximately square
+    const newSize = Math.max(40, initialWidth + dx);
+    imgContainer.style.width = `${newSize}px`;
+    imgContainer.style.height = `${newSize}px`;
+    valveIcon.style.width = `${newSize}px`;
+    valveIcon.style.height = `${newSize + 20}px`; // +20 for label
+  });
+  
+  window.addEventListener('mouseup', () => {
+    if (isResizing) {
+      isResizing = false;
+    }
+  });
+}
+
+function setValveField(device, fieldName, value) {
+  debug(`Setting ${device} ${fieldName} to ${value}`);
+  
+  if (window.Spin) {
+    // Get current struct from latestValues to merge
+    const data = latestValues[device];
+    let currentStruct = {};
+    
+    // Try to get from target first (writable), then value
+    if (data && data.target && data.target.value) {
+        currentStruct = {...data.target.value};
+    } else if (data && data.value && data.value.value) {
+        currentStruct = {...data.value.value};
+    }
+    
+    // Update the specific field
+    currentStruct[fieldName] = value;
+    
+    // Send to .target
+    Spin.send_request(`${device}.target`, "", "input", "", currentStruct);
+  } else {
+    // Fallback: send directly
+    fetch(`/api/${device}/target`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({[fieldName]: value})
+    }).catch(err => {
+      debug(`Error setting valve field: ${err}`);
+    });
+  }
 }
 
 function removeDevice(domId) {
@@ -1285,6 +1889,129 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+function makeDraggable(el) {
+  let isDragging = false;
+  let isResizing = false;
+  let startX, startY, initialLeft, initialTop, initialWidth, initialHeight;
+  
+  // Make the whole element draggable (except when resizing or interacting with form elements)
+  el.addEventListener('mousedown', (e) => {
+    // Don't drag if clicking on interactive elements
+    if (e.target.classList.contains('deco-remove')) return;
+    if (e.target.classList.contains('resize-handle')) return;
+    if (e.target.tagName === 'SELECT') return;
+    if (e.target.tagName === 'INPUT') return;
+    if (e.target.tagName === 'BUTTON') return;
+    if (e.target.tagName === 'TEXTAREA') return;
+    if (e.target.closest('.control-section')) return; // Don't drag when clicking in control area
+    
+    if (e.button !== 0) return; // Only left click
+    
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    const style = window.getComputedStyle(el);
+    initialLeft = parseInt(style.left, 10) || 0;
+    initialTop = parseInt(style.top, 10) || 0;
+    
+    el.style.zIndex = '1000';
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  
+  // Add resize handle if it doesn't exist
+  let resizeHandle = el.querySelector('.resize-handle');
+  if (!resizeHandle && el.dataset.type !== 'label') {
+    resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    el.appendChild(resizeHandle);
+    
+    resizeHandle.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      if (e.button !== 0) return;
+      
+      isResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      
+      const style = window.getComputedStyle(el);
+      initialWidth = parseInt(style.width, 10);
+      initialHeight = parseInt(style.height, 10);
+      
+      e.preventDefault();
+    });
+  }
+  
+  window.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+      e.preventDefault();
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      el.style.left = `${initialLeft + dx}px`;
+      el.style.top = `${initialTop + dy}px`;
+    } else if (isResizing) {
+      e.preventDefault();
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      el.style.width = `${Math.max(20, initialWidth + dx)}px`;
+      el.style.height = `${Math.max(20, initialHeight + dy)}px`;
+    }
+  });
+  
+  window.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      el.style.zIndex = '5';
+    }
+    if (isResizing) {
+      isResizing = false;
+    }
+  });
+}
+
+function makeResizable(el) {
+  const resizeHandle = el.querySelector('.resize-handle');
+  if (!resizeHandle) return;
+  
+  let isResizing = false;
+  let startX, startY, initialWidth, initialHeight;
+  
+  resizeHandle.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (e.button !== 0) return; // Only left click
+    
+    isResizing = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    const style = window.getComputedStyle(el);
+    initialWidth = parseInt(style.width, 10);
+    initialHeight = parseInt(style.height, 10);
+  });
+  
+  const onMouseMove = (e) => {
+    if (!isResizing) return;
+    e.preventDefault();
+    
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    
+    el.style.width = `${Math.max(150, initialWidth + dx)}px`;
+    el.style.height = `${Math.max(80, initialHeight + dy)}px`;
+  };
+  
+  const onMouseUp = () => {
+    if (isResizing) {
+      isResizing = false;
+    }
+  };
+  
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+}
 
 function createDecoration() {
   const select = document.getElementById('deco-select');
@@ -1344,86 +2071,37 @@ function createDecoration() {
   removeBtn.className = 'deco-remove';
   removeBtn.innerHTML = '&times;';
   removeBtn.onclick = function(e) {
-    e.stopPropagation(); 
-    if (selectedDeco === wrapper) selectDeco(null);
+    e.stopPropagation(); // Prevent bubbling
     wrapper.remove();
   };
+
   wrapper.appendChild(removeBtn);
-
-  // Drag handle (center dot)
-  const dragHandle = document.createElement('div');
-  dragHandle.className = 'deco-drag-handle';
-  dragHandle.title = 'Drag to move';
-  wrapper.appendChild(dragHandle);
-
-  // Resize handle
-  const resizeHandle = document.createElement('div');
-  resizeHandle.className = 'resize-handle';
-  wrapper.appendChild(resizeHandle);
-
-  document.getElementById('device-grid').appendChild(wrapper);
   
-  // Make draggable & resizable
-  makeDraggableDeco(wrapper, dragHandle);
-  makeResizable(wrapper);
+  // Position randomly or in a default location
+  wrapper.style.left = '100px';
+  wrapper.style.top = '100px';
   
-  // Auto-select
-  selectDeco(wrapper);
-}
-
-function makeDraggableDeco(el, handle) {
-  let isDragging = false;
-  let startX, startY, initialLeft, initialTop;
-
-  // Only allow dragging via the handle
-  handle.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
-    
-    // Ensure selection on drag start
-    selectDeco(el);
-
-    isDragging = true;
-    startX = e.clientX;
-    startY = e.clientY;
-    
-    const style = window.getComputedStyle(el);
-    initialLeft = parseInt(style.left, 10) || el.offsetLeft;
-    initialTop = parseInt(style.top, 10) || el.offsetTop;
-    
-    el.style.zIndex = 1000;
-    // handle.style.cursor = 'grabbing';
-    e.stopPropagation(); // Prevent bubbling
-  });
-
-  window.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    e.preventDefault();
-    // Adjust delta by scale
-    const dx = (e.clientX - startX) / scale;
-    const dy = (e.clientY - startY) / scale;
-    el.style.left = `${initialLeft + dx}px`;
-    el.style.top = `${initialTop + dy}px`;
-  });
-
-  window.addEventListener('mouseup', () => {
-    if (isDragging) {
-      isDragging = false;
-      // handle.style.cursor = 'move';
-      el.style.zIndex = '5';
-    }
-  });
-  
-  // Special handling for contentEditable labels
-  if (el.classList.contains('deco-label')) {
-      el.addEventListener('blur', () => { el.contentEditable = true; });
+  // Append to device-grid
+  const grid = document.getElementById('device-grid');
+  if (grid) {
+    grid.appendChild(wrapper);
+  } else {
+    console.error('device-grid element not found!');
+    return;
   }
+  
+  // Make it draggable
+  makeDraggable(wrapper);
 }
 
 function populateParamsForDevice(device, info, domId) {
     // 1. Populate Parameters
     const select = document.getElementById('param-select-' + domId);
+    
     if (select && info.params) {
+      // Clear existing (except first)
       while (select.options.length > 1) select.remove(1);
+      
       info.params.sort().forEach(param => {
         if (param === 'value') return;
         const option = document.createElement('option');
@@ -1497,14 +2175,9 @@ window.addEventListener('spinupdate', function(event) {
   }
 });
 
-// ===== Debug Logging =====
-let debugLines = [];
+// ===== Debug Logging (Removed) =====
 function debug(msg) {
-  debugLines.push('[' + new Date().toLocaleTimeString() + '] ' + msg);
-  if (debugLines.length > 30) debugLines.shift();
-  var el = document.getElementById('debug-output');
-  if (el) el.textContent = debugLines.join('\n');
-  console.log(msg);
+  // console.log(msg);
 }
 
 debug('✓ Page initialized');
@@ -1583,6 +2256,7 @@ document.addEventListener('contextmenu', (e) => {
     
     // Set current color in picker
     let currentColor = '#cccccc';
+    
     if (box.dataset.type === 'label') {
         // Try to get color from style
         if (box.style.color) currentColor = rgbToHex(box.style.color) || box.style.color;
@@ -1627,16 +2301,39 @@ function updateTransform() {
   // Disabled
 }
 
+var currentZoom = 1.0;
+
 function zoomCanvas(delta) {
-  // Disabled
+  if (typeof currentZoom !== 'number' || isNaN(currentZoom)) {
+    currentZoom = 1.0;
+  }
+  currentZoom = Math.max(0.3, Math.min(3.0, currentZoom + delta));
+  const grid = document.getElementById('device-grid');
+  if (grid) {
+    grid.style.transform = `scale(${currentZoom})`;
+    grid.style.transformOrigin = '0 0';
+    const baseWidth = 3000;
+    const baseHeight = 2000;
+    grid.style.width = `${baseWidth}px`;
+    grid.style.height = `${baseHeight}px`;
+  }
 }
 
 function toggleAnimation() {
-  // Disabled
+  // Animation feature removed
 }
 
 function resetView() {
-  // Disabled
+  currentZoom = 1.0;
+  const grid = document.getElementById('device-grid');
+  if (grid) {
+    grid.style.transform = 'scale(1)';
+  }
+  const viewport = document.getElementById('viewport');
+  if (viewport) {
+    viewport.scrollLeft = 0;
+    viewport.scrollTop = 0;
+  }
 }
 
 // Pan Event Listeners
@@ -1728,8 +2425,11 @@ function loadSelectedLayout() {
   
   const layouts = getStoredLayouts();
   if (layouts[name]) {
-    applyLayout(layouts[name]);
-    // alert('Layout "' + name + '" loaded.');
+    // Store the selected layout name in sessionStorage so the viewer page can load it
+    sessionStorage.setItem('selectedLayout', name);
+    
+    // Navigate to viewer page using the Spin page route
+    window.location.href = '/?page=viewer';
   } else {
     alert('Layout not found.');
   }
@@ -1738,10 +2438,11 @@ function loadSelectedLayout() {
 function getCurrentLayoutData() {
   const layout = {
     devices: [],
+    valveIcons: [],
     decorations: []
   };
   
-  // Save Devices
+  // Save Devices (regular device boxes)
   document.querySelectorAll('.device-box').forEach(box => {
     const title = box.querySelector('.device-title').textContent;
     layout.devices.push({
@@ -1752,6 +2453,24 @@ function getCurrentLayoutData() {
       width: box.style.width,
       height: box.style.height
     });
+  });
+  
+  // Save Valve Icons (individual valve/switch icons)
+  document.querySelectorAll('.valve-icon').forEach(icon => {
+    const label = icon.querySelector('div:nth-child(2)');
+    const fieldName = label ? label.textContent : '';
+    const deviceMatch = icon.id.match(/^icon-(.+?)_(.+)$/);
+    if (deviceMatch) {
+      layout.valveIcons.push({
+        id: icon.id,
+        device: deviceMatch[1], // e.g., "sim_gas_dosing_valve_controller"
+        field: deviceMatch[2],   // e.g., "V1_1"
+        left: icon.style.left,
+        top: icon.style.top,
+        width: icon.style.width,
+        height: icon.style.height
+      });
+    }
   });
   
   // Save Decorations
@@ -1881,101 +2600,4 @@ function applyLayout(layout) {
       });
   }
 }
-
-// ===== Draggable Logic =====
-
-function makeDraggable(el) {
-  const header = el.querySelector('.device-header');
-  if (!header) return;
-
-  header.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return; // Only left click
-    
-    e.preventDefault();
-    e.stopPropagation();
-
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startLeft = el.offsetLeft;
-    const startTop = el.offsetTop;
-    const currentScale = scale || 1;
-
-    el.style.zIndex = 1000;
-    header.style.cursor = 'grabbing';
-    document.body.style.cursor = 'grabbing';
-
-    function onMouseMove(e) {
-      e.preventDefault();
-      const dx = (e.clientX - startX) / currentScale;
-      const dy = (e.clientY - startY) / currentScale;
-      
-      el.style.left = `${startLeft + dx}px`;
-      el.style.top = `${startTop + dy}px`;
-    }
-
-    function onMouseUp() {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      
-      header.style.cursor = 'move';
-      document.body.style.cursor = '';
-      el.style.zIndex = '';
-    }
-
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  });
-}
-
-// ===== Resizable Logic =====
-
-function makeResizable(el) {
-  const handle = el.querySelector('.resize-handle');
-  if (!handle) return;
-
-  handle.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
-    e.stopPropagation();
-    e.preventDefault();
-
-    // Ensure selection if it's a decoration
-    if (el.classList.contains('deco-box')) selectDeco(el);
-
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startW = parseInt(el.style.width || window.getComputedStyle(el).width, 10);
-    const startH = parseInt(el.style.height || window.getComputedStyle(el).height, 10);
-    const currentScale = scale || 1;
-
-    function onMouseMove(e) {
-      e.preventDefault();
-      const dx = (e.clientX - startX) / currentScale;
-      const dy = (e.clientY - startY) / currentScale;
-      
-      el.style.width = `${Math.max(20, startW + dx)}px`;
-      el.style.height = `${Math.max(20, startH + dy)}px`;
-    }
-
-    function onMouseUp() {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-    }
-
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  });
-}
-
-// Initialize draggable on existing boxes (if any)
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.device-box').forEach(box => {
-      makeDraggable(box);
-      makeResizable(box);
-  });
-
-  // TEST: Auto-create MFC box for testing
-  setTimeout(() => {
-      createDeviceDisplay('massflow_contr1');
-  }, 500);
-});
 </script>
