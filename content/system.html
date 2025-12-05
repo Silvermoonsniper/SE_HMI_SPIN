@@ -1,4 +1,11 @@
+
+ 
 <style>
+/* Ensure control panel is below device-boxes inside it */
+.control-panel-box {
+  z-index: 2 !important;
+  position: relative !important;
+}
 /* Gas Dosing System Styles */
 
 /* X-ray beam animation keyframes */
@@ -669,6 +676,15 @@ input.control-input {
       </div>
     </div>
 
+    <!-- Layout Save/Load Dropdown -->
+    <div style="margin-bottom: 16px;">
+      <label for="layout-select" style="font-weight: bold; font-size: 12px;">Saved Layouts:</label>
+      <select id="layout-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; min-width: 150px; margin-right: 8px;">
+        <option value="">-- Select Layout --</option>
+      </select>
+      <button id="delete-layout-btn" style="padding: 4px 8px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:4px; margin-left:8px;" onclick="deleteSelectedLayout()">Delete</button>
+      </select>
+    </div>
     <!-- Action Buttons -->
     <div style="display: flex; gap: 10px;">
         <button class="conn-btn" style="background: #17a2b8; font-size: 14px; padding: 10px; flex: 1;" onclick="discoverNodes()">
@@ -684,7 +700,31 @@ input.control-input {
 <div id="main-panel">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
     <h3 style="margin:0;">Configure your system layout</h3>
-    <button onclick="disconnectNode()" style="padding:4px 8px; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer;">Back</button>
+    <div id="main-config-btns" style="display:flex; gap:8px; align-items:center;">
+      <button onclick="disconnectNode()" style="padding:4px 8px; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer;">Back</button>
+      <button id="toggle-gui-btn" onclick="toggleConfigView()" style="padding:4px 8px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">Show GUI</button>
+    </div>
+<script>
+function toggleConfigView() {
+  const btn = document.getElementById('toggle-gui-btn');
+  const configParts = [
+    document.getElementById('device-manager'),
+    document.getElementById('decoration-manager'),
+    // add other config sections here if needed
+  ];
+  const btnRow = document.getElementById('main-config-btns');
+  const isHidden = configParts[0].style.display === 'none';
+  if (isHidden) {
+    configParts.forEach(el => { if (el) el.style.display = ''; });
+    btn.textContent = 'Show GUI';
+    btnRow.style.display = 'flex';
+  } else {
+    configParts.forEach(el => { if (el) el.style.display = 'none'; });
+    btn.textContent = 'Configure GUI';
+    btnRow.style.display = 'flex';
+  }
+}
+</script>
   </div>
 
 <div id="device-manager" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; gap: 10px; align-items: center;">
@@ -696,24 +736,24 @@ input.control-input {
 </div>
 
 <div id="decoration-manager" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; gap: 10px; align-items: center;">
-  <label for="deco-select" style="font-weight: bold; font-size: 12px;">Add Decoration:</label>
+  <label for="deco-select" style="font-weight: bold; font-size: 12px;">Add customized display:</label>
   <select id="deco-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; min-width: 150px;">
     <option value="">-- Select Decoration --</option>
     <option value="gas-line">Gas Line (Horizontal)</option>
     <option value="gas-line-v">Gas Line (Vertical)</option>
     <option value="label">Text Label</option>
+    <option value="control-panel">Control Panel</option>
   </select>
   <input type="color" id="deco-color" value="#cccccc" style="width: 30px; height: 24px; padding: 0; border: none; cursor: pointer;" title="Choose Color">
-  <button onclick="createDecoration()" style="padding: 4px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Create Decoration</button>
-  
+  <button onclick="createDecoration()" style="padding: 4px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Create customized display</button>
   <div style="width:1px; height:20px; background:#ddd; margin:0 10px;"></div>
-  
-  <button onclick="zoomCanvas(0.1)" style="padding: 4px 8px; font-weight:bold;" title="Zoom In">+</button>
-  <button onclick="zoomCanvas(-0.1)" style="padding: 4px 8px; font-weight:bold;" title="Zoom Out">-</button>
-  <button onclick="resetView()" style="padding: 4px 8px; font-size:11px;">Reset View</button>
-  <button onclick="saveLayout()" style="margin-left:10px; padding: 4px 8px; font-size:11px;">Save File</button>
-  <button onclick="saveLayoutAsPreset()" style="padding: 4px 8px; font-size:11px;">Save Preset</button>
-  <button onclick="loadLayout()" style="padding: 4px 8px; font-size:11px;">Load File</button>
+  <div style="display: flex; gap: 8px; align-items: center;">
+    <button onclick="zoomCanvas(0.1)" style="padding: 4px 8px; font-weight:bold;" title="Zoom In">+</button>
+    <button onclick="zoomCanvas(-0.1)" style="padding: 4px 8px; font-weight:bold;" title="Zoom Out">-</button>
+    <button onclick="resetView()" style="padding: 4px 8px; font-size:11px;">Reset View</button>
+    <button onclick="saveLayoutToStorage()" style="padding: 4px 8px; font-size:11px;">Save File</button>
+    <button onclick="loadLayoutFromFile()" style="padding: 4px 8px; font-size:11px;">Load File</button>
+  </div>
 </div>
 
 <div class="viewport" id="viewport" style="overflow: auto; position: relative;">
@@ -801,6 +841,21 @@ input.control-input {
 </div>
 
 <script>
+function deleteSelectedLayout() {
+  const select = document.getElementById('layout-select');
+  const name = select.value;
+  if (!name) {
+    alert('Please select a layout to delete.');
+    return;
+  }
+  if (!confirm('Delete layout "' + name + '"? This cannot be undone.')) return;
+  const layouts = getStoredLayouts();
+  delete layouts[name];
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
+  updateLayoutList();
+  select.value = '';
+  alert('Layout deleted.');
+}
 /**
  * Gas Dosing System - JavaScript Logic
  * Handles device status updates, value sending, and extra parameters panel
@@ -875,6 +930,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Wait for Spin to initialize before fetching nodes
   waitForSpin(() => {
     loadNodesInfo();
+    // If a layout was previously selected, apply it
+    const selectedLayout = sessionStorage.getItem('selectedLayout');
+    if (selectedLayout) {
+      const layouts = getStoredLayouts();
+      if (layouts[selectedLayout]) {
+        applyLayout(layouts[selectedLayout]);
+        document.getElementById('layout-select').value = selectedLayout;
+      }
+    }
   });
 });
 
@@ -956,7 +1020,16 @@ function connectToGUI() {
     alert('Connection to server not ready. Please wait a moment and try again.');
     return;
   }
-  // Just switch to the main panel. The devices will be populated based on the connection.
+  // Load selected layout and switch to main panel
+  const select = document.getElementById('layout-select');
+  const name = select.value;
+  if (name) {
+    const layouts = getStoredLayouts();
+    if (layouts[name]) {
+      applyLayout(layouts[name]);
+      sessionStorage.setItem('selectedLayout', name);
+    }
+  }
   enterSystem();
 }
 
@@ -1431,6 +1504,7 @@ function createDeviceDisplay(deviceNameOverride) {
   newBox.style.top = (20 + count * 110) + 'px'; // Stack vertically
   newBox.style.left = '20px';
   
+  newBox.style.zIndex = '10';
   document.getElementById('device-grid').appendChild(newBox);
   
   // Custom display logic based on device type
@@ -1867,12 +1941,41 @@ function selectDeco(el) {
 
 // Initialize listeners for selection and color
 document.addEventListener('DOMContentLoaded', () => {
-    const grid = document.getElementById('device-grid');
-    if (grid) {
-        grid.addEventListener('mousedown', (e) => {
-            if (e.target === grid) selectDeco(null);
-        });
+  const grid = document.getElementById('device-grid');
+  if (grid) {
+    grid.addEventListener('mousedown', (e) => {
+      if (e.target === grid) selectDeco(null);
+    });
+    // Enable dropping device-boxes back onto the grid
+    grid.ondragover = (e) => { e.preventDefault(); };
+    grid.ondrop = (e) => {
+      const boxId = e.dataTransfer.getData('text/plain');
+      const box = document.getElementById(boxId);
+      if (box && box.classList.contains('device-box')) {
+        grid.appendChild(box);
+        // Position relative to grid
+        const rect = grid.getBoundingClientRect();
+        box.style.left = (e.clientX - rect.left - 20) + 'px';
+        box.style.top = (e.clientY - rect.top - 20) + 'px';
+        // Reset z-index and remove controlPanelPage assignment
+        box.style.zIndex = '10';
+        delete box.dataset.controlPanelPage;
+        // Ensure device box is visible and interactive
+        box.style.display = 'block';
+        box.style.pointerEvents = 'auto';
+      }
+    };
+    // --- Auto-load selected layout if present ---
+    const selectedLayoutName = sessionStorage.getItem('selectedLayout');
+    if (selectedLayoutName) {
+      const layouts = JSON.parse(localStorage.getItem('gas_system_layouts') || '{}');
+      if (layouts[selectedLayoutName]) {
+        applyLayout(layouts[selectedLayoutName]);
+        // Optionally clear selection after load
+        // sessionStorage.removeItem('selectedLayout');
+      }
     }
+  }
     
     const picker = document.getElementById('deco-color');
     if (picker) {
@@ -1905,17 +2008,22 @@ function makeDraggable(el) {
     if (e.target.tagName === 'BUTTON') return;
     if (e.target.tagName === 'TEXTAREA') return;
     if (e.target.closest('.control-section')) return; // Don't drag when clicking in control area
-    
     if (e.button !== 0) return; // Only left click
-    
+    // Enable HTML5 drag
+    el.setAttribute('draggable', 'true');
+    el.ondragstart = (ev) => {
+      ev.dataTransfer.setData('text/plain', el.id);
+      setTimeout(() => { el.style.display = 'none'; }, 0); // Hide while dragging
+    };
+    el.ondragend = (ev) => {
+      el.style.display = 'block';
+    };
     isDragging = true;
     startX = e.clientX;
     startY = e.clientY;
-    
     const style = window.getComputedStyle(el);
     initialLeft = parseInt(style.left, 10) || 0;
     initialTop = parseInt(style.top, 10) || 0;
-    
     el.style.zIndex = '1000';
     e.preventDefault();
     e.stopPropagation();
@@ -2040,30 +2148,92 @@ function createDecoration() {
     wrapper.classList.add('deco-type-line');
     wrapper.style.width = '100px';
     wrapper.style.height = '20px';
-    
     const visual = document.createElement('div');
     visual.className = 'deco-visual';
     visual.style.backgroundColor = color;
     visual.style.border = '1px solid #999';
     wrapper.appendChild(visual);
-    
   } else if (type === 'gas-line-v') {
     wrapper.classList.add('deco-type-line-v');
     wrapper.style.width = '20px';
     wrapper.style.height = '100px';
-    
     const visual = document.createElement('div');
     visual.className = 'deco-visual';
     visual.style.backgroundColor = color;
     visual.style.border = '1px solid #999';
     wrapper.appendChild(visual);
-    
   } else if (type === 'label') {
     wrapper.classList.add('deco-label');
     wrapper.contentEditable = true;
     wrapper.textContent = 'Label';
     wrapper.style.color = color;
     wrapper.style.resize = 'none'; 
+  } else if (type === 'control-panel') {
+  wrapper.classList.add('control-panel-box');
+  wrapper.style.width = '400px';
+  wrapper.style.height = '300px';
+  wrapper.style.background = '#f8f9fa';
+  wrapper.style.border = '2px solid #007bff';
+  wrapper.style.borderRadius = '18px';
+  wrapper.style.boxShadow = '0 4px 16px rgba(0,0,0,0.10)';
+  wrapper.style.overflow = 'visible';
+  wrapper.style.display = 'flex';
+  wrapper.style.flexDirection = 'column';
+  wrapper.style.zIndex = 5;
+  wrapper.style.position = 'absolute';
+    // Page bar
+    const pageBar = document.createElement('div');
+    pageBar.className = 'control-panel-pagebar';
+    pageBar.style.display = 'flex';
+    pageBar.style.alignItems = 'center';
+    pageBar.style.background = '#e3eafc';
+    pageBar.style.borderBottom = '1px solid #b6d4fe';
+    pageBar.style.borderRadius = '16px 16px 0 0';
+    pageBar.style.padding = '4px 8px';
+    pageBar.style.userSelect = 'none';
+    // Page list
+    const pageList = document.createElement('div');
+    pageList.className = 'control-panel-pages';
+    pageList.style.display = 'flex';
+    pageList.style.gap = '8px';
+    pageBar.appendChild(pageList);
+    // Add page button
+    const addBtn = document.createElement('button');
+    addBtn.textContent = '+';
+    addBtn.title = 'Add Page';
+    addBtn.style.marginLeft = '8px';
+    addBtn.style.border = 'none';
+    addBtn.style.background = '#b6d4fe';
+    addBtn.style.borderRadius = '8px';
+    addBtn.style.cursor = 'pointer';
+    addBtn.style.fontWeight = 'bold';
+    addBtn.onclick = (e) => {
+      e.stopPropagation();
+      addControlPanelPage(wrapper, pageList, wrapper._panelPagesContent);
+    };
+    pageBar.appendChild(addBtn);
+    wrapper.appendChild(pageBar);
+    // Panel pages content containers (store on wrapper for access everywhere)
+    wrapper._panelPagesContent = [];
+    wrapper._pageList = pageList;
+    wrapper._activePageIdx = 0;
+    // Add first page
+    addControlPanelPage(wrapper, pageList, wrapper._panelPagesContent);
+    wrapper.appendChild(wrapper._panelPagesContent[0]);
+    // Right-click for page management
+    pageBar.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showControlPanelContextMenu(e, wrapper);
+    });
+    // Drag/drop for device-boxes: always use the active page
+    wrapper.ondragover = (e) => {
+      const activeIdx = wrapper._activePageIdx;
+      if (wrapper._panelPagesContent[activeIdx]) wrapper._panelPagesContent[activeIdx].ondragover(e);
+    };
+    wrapper.ondrop = (e) => {
+      const activeIdx = wrapper._activePageIdx;
+      if (wrapper._panelPagesContent[activeIdx]) wrapper._panelPagesContent[activeIdx].ondrop(e);
+    };
   }
 
   // Remove button
@@ -2074,7 +2244,6 @@ function createDecoration() {
     e.stopPropagation(); // Prevent bubbling
     wrapper.remove();
   };
-
   wrapper.appendChild(removeBtn);
   
   // Position randomly or in a default location
@@ -2090,8 +2259,209 @@ function createDecoration() {
     return;
   }
   
-  // Make it draggable
+  // Make it draggable and resizable
   makeDraggable(wrapper);
+  makeResizable(wrapper);
+
+  // For control panel, allow device-box drag into panel
+  if (type === 'control-panel') {
+    wrapper.addEventListener('mousedown', (e) => {
+      if (e.target.classList.contains('control-panel-pagebar') || e.target.closest('.control-panel-pagebar')) {
+        // Don't drag panel when interacting with page bar
+        e.stopPropagation();
+      }
+    });
+  }
+// --- Control Panel Page Management ---
+function addControlPanelPage(panel, pageList, panelPagesContent) {
+  const pageName = prompt('Enter page name:', 'Page ' + (pageList.children.length + 1));
+  if (!pageName) return;
+  const pageBtn = document.createElement('button');
+  pageBtn.textContent = pageName;
+  pageBtn.className = 'control-panel-page-btn';
+  pageBtn.style.border = 'none';
+  pageBtn.style.background = '#fff';
+  pageBtn.style.borderRadius = '8px';
+  pageBtn.style.padding = '2px 8px';
+  pageBtn.style.marginRight = '4px';
+  pageBtn.style.cursor = 'pointer';
+  // Create a content container for this page
+  const pageContent = document.createElement('div');
+  pageContent.className = 'control-panel-content';
+  pageContent.style.flex = '1';
+  pageContent.style.position = 'relative';
+  pageContent.style.overflow = 'auto';
+  pageContent.style.padding = '12px';
+  pageContent.style.display = 'none';
+  // Drag/drop for device-boxes
+  pageContent.ondragover = (e) => {
+    e.preventDefault();
+    pageContent.style.boxShadow = '0 0 0 3px #007bff inset';
+  };
+  pageContent.ondragleave = (e) => {
+    pageContent.style.boxShadow = '';
+  };
+  pageContent.ondrop = (e) => {
+    const boxId = e.dataTransfer.getData('text/plain');
+    const box = document.getElementById(boxId);
+    if (box && box.classList.contains('device-box')) {
+      pageContent.appendChild(box);
+      // Position relative to panel
+      const rect = pageContent.getBoundingClientRect();
+      box.style.left = (e.clientX - rect.left - 20) + 'px';
+      box.style.top = (e.clientY - rect.top - 20) + 'px';
+      // Ensure box is above the panel
+      box.style.zIndex = '10';
+      // Track which page this box belongs to (find actual index)
+      const pageIdx = panelPagesContent.indexOf(pageContent);
+      if (pageIdx !== -1) {
+        box.dataset.controlPanelPage = pageIdx;
+        console.log(`[DROP] Assigned box ${box.id} to page ${pageIdx}`);
+      } else {
+        console.log(`[DROP] Could not assign box ${box.id} to a page (not found)`);
+      }
+      pageContent.style.boxShadow = '';
+      // Update visibility after drop
+      setActiveControlPanelPage(panel, pageList, pageBtn, panelPagesContent);
+    } else {
+      pageContent.style.boxShadow = '';
+      console.log('[DROP] Drop event fired but no valid device box found');
+    }
+  };
+  panelPagesContent.push(pageContent);
+  // Add page button and set active
+  pageBtn.onclick = (e) => {
+    e.stopPropagation();
+    setActiveControlPanelPage(panel, pageList, pageBtn, panelPagesContent);
+  };
+  pageList.appendChild(pageBtn);
+  setActiveControlPanelPage(panel, pageList, pageBtn, panelPagesContent);
+}
+
+function setActiveControlPanelPage(panel, pageList, pageBtn, panelPagesContent) {
+  
+  Array.from(pageList.children).forEach(btn => btn.style.background = '#fff');
+  pageBtn.style.background = '#b6d4fe';
+  // Hide all page contents, show only the selected one
+  panelPagesContent.forEach((content, idx) => {
+    content.style.display = (pageList.children[idx] === pageBtn) ? 'block' : 'none';
+  });
+  // Remove all page contents from panel, then append the active one
+  panelPagesContent.forEach(content => { if (content.parentNode === panel) panel.removeChild(content); });
+  const idx = Array.from(pageList.children).indexOf(pageBtn);
+  if (panelPagesContent[idx]) panel.appendChild(panelPagesContent[idx]);
+  // Track active page index on the panel
+  panel._activePageIdx = idx;
+  // Debug output for device box assignment and parent
+  console.log('--- Device Box State on Page Switch ---');
+  document.querySelectorAll('.device-box').forEach(box => {
+    const pageAssign = box.dataset.controlPanelPage;
+    const parentClass = box.parentNode && box.parentNode.className;
+    console.log(`Box id: ${box.id}, assigned page: ${pageAssign}, parent: ${parentClass}`);
+  });
+  // Move device-boxes to the correct page content and update visibility
+  document.querySelectorAll('.device-box').forEach(box => {
+    if (box.dataset.controlPanelPage !== undefined) {
+      const pageIdx = parseInt(box.dataset.controlPanelPage, 10);
+      if (!isNaN(pageIdx) && panelPagesContent[pageIdx]) {
+        // Always append to the correct page content if not already
+        if (box.parentNode !== panelPagesContent[pageIdx]) {
+          panelPagesContent[pageIdx].appendChild(box);
+        }
+        if (pageIdx === idx) {
+          box.style.display = 'block';
+          box.style.pointerEvents = 'auto';
+        } else {
+          box.style.display = 'none';
+          box.style.pointerEvents = 'none';
+        }
+      }
+    } else {
+      // Boxes not assigned to a control panel page are always visible
+      box.style.display = 'block';
+      box.style.pointerEvents = 'auto';
+    }
+  });
+}
+
+function showControlPanelContextMenu(e, panel) {
+  // Always get up-to-date references
+  const pageList = panel._pageList;
+  const panelPagesContent = panel._panelPagesContent;
+  // Simple context menu for page actions
+  let menu = document.getElementById('control-panel-context-menu');
+  if (!menu) {
+    menu = document.createElement('div');
+    menu.id = 'control-panel-context-menu';
+    menu.style.position = 'absolute';
+    menu.style.zIndex = 3000;
+    menu.style.background = '#fff';
+    menu.style.border = '1px solid #ccc';
+    menu.style.boxShadow = '2px 2px 8px rgba(0,0,0,0.15)';
+    menu.style.padding = '6px 0';
+    menu.style.borderRadius = '6px';
+    document.body.appendChild(menu);
+  }
+  menu.innerHTML = '';
+  // Rename page
+  const rename = document.createElement('div');
+  rename.textContent = 'Rename Page';
+  rename.style.padding = '4px 16px';
+  rename.style.cursor = 'pointer';
+  rename.onclick = () => {
+    const idx = Array.from(pageList.children).findIndex(btn => btn.style.background === 'rgb(182, 212, 254)' || btn.style.background === '#b6d4fe');
+    const active = pageList.children[idx] || pageList.lastChild;
+    if (active) {
+      const newName = prompt('New page name:', active.textContent);
+      if (newName) active.textContent = newName;
+    }
+    menu.style.display = 'none';
+  };
+  menu.appendChild(rename);
+  // Add page
+  const add = document.createElement('div');
+  add.textContent = 'Add Page';
+  add.style.padding = '4px 16px';
+  add.style.cursor = 'pointer';
+  add.onclick = () => {
+    addControlPanelPage(panel, pageList, panelPagesContent);
+    menu.style.display = 'none';
+  };
+  menu.appendChild(add);
+  // Delete page
+  const del = document.createElement('div');
+  del.textContent = 'Delete Page';
+  del.style.padding = '4px 16px';
+  del.style.cursor = 'pointer';
+  del.onclick = () => {
+    const idx = Array.from(pageList.children).findIndex(btn => btn.style.background === 'rgb(182, 212, 254)' || btn.style.background === '#b6d4fe');
+    const active = pageList.children[idx] || pageList.lastChild;
+    if (active && pageList.children.length > 1) {
+      // Remove content for this page
+      if (panelPagesContent[idx]) {
+        panelPagesContent[idx].remove();
+        panelPagesContent.splice(idx, 1);
+      }
+      active.remove();
+      setActiveControlPanelPage(panel, pageList, pageList.lastChild, panelPagesContent);
+    } else {
+      alert('At least one page required.');
+    }
+    menu.style.display = 'none';
+  };
+  menu.appendChild(del);
+  // Show menu
+  menu.style.left = e.pageX + 'px';
+  menu.style.top = e.pageY + 'px';
+  menu.style.display = 'block';
+  // Hide on click elsewhere
+  document.addEventListener('mousedown', function hideMenu(ev) {
+    if (!menu.contains(ev.target)) {
+      menu.style.display = 'none';
+      document.removeEventListener('mousedown', hideMenu);
+    }
+  });
+}
 }
 
 function populateParamsForDevice(device, info, domId) {
@@ -2387,7 +2757,7 @@ function getStoredLayouts() {
 }
 
 function updateLayoutList() {
-  const select = document.getElementById('conn-layout-select');
+  const select = document.getElementById('layout-select');
   if (!select) return;
   
   // Keep first option
@@ -2402,21 +2772,49 @@ function updateLayoutList() {
   });
 }
 
-function saveLayoutAsPreset() {
-  const name = prompt('Enter a name for this layout preset:');
+
+function saveLayoutToStorage() {
+  const name = prompt('Enter a name for this layout:');
   if (!name) return;
-  
   const layout = getCurrentLayoutData();
   const layouts = getStoredLayouts();
   layouts[name] = layout;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
-  
-  alert('Layout "' + name + '" saved!');
   updateLayoutList();
+  alert('Layout "' + name + '" saved!');
+}
+
+function loadLayoutFromFile() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = event => {
+      try {
+        const layout = JSON.parse(event.target.result);
+        // Prompt for a name to store in localStorage and dropdown
+        const name = prompt('Enter a name for this layout:', file.name.replace(/\.json$/i, ''));
+        if (!name) return;
+        const layouts = getStoredLayouts();
+        layouts[name] = layout;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
+        updateLayoutList();
+        alert('Layout "' + name + '" loaded and saved!');
+        applyLayout(layout);
+      } catch(err) {
+        alert('Error loading layout: ' + err);
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
 }
 
 function loadSelectedLayout() {
-  const select = document.getElementById('conn-layout-select');
+  const select = document.getElementById('layout-select');
   const name = select.value;
   if (!name) {
     alert('Please select a layout preset.');
@@ -2442,16 +2840,25 @@ function getCurrentLayoutData() {
     decorations: []
   };
   
-  // Save Devices (regular device boxes)
+  // Save Devices (regular device boxes) with full device info
   document.querySelectorAll('.device-box').forEach(box => {
     const title = box.querySelector('.device-title').textContent;
+    // Try to get logical device name from box id
+    const logicalName = box.id.replace(/^box-/, '');
+    // Get device info from WRITABLE_PARAMS if available
+    let deviceInfo = {};
+    if (window.WRITABLE_PARAMS && window.WRITABLE_PARAMS[logicalName]) {
+      deviceInfo = window.WRITABLE_PARAMS[logicalName];
+    }
     layout.devices.push({
       id: box.id,
       device: title,
+      logicalName: logicalName,
       left: box.style.left,
       top: box.style.top,
       width: box.style.width,
-      height: box.style.height
+      height: box.style.height,
+      info: deviceInfo
     });
   });
   
@@ -2508,62 +2915,43 @@ function getCurrentLayoutData() {
   return layout;
 }
 
-function saveLayout() {
-  const layout = getCurrentLayoutData();
-  const json = JSON.stringify(layout, null, 2);
-  const blob = new Blob([json], {type: 'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'layout.json';
-  a.click();
-}
-
-function loadLayout() {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.json';
-  input.onchange = e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = event => {
-      try {
-        const layout = JSON.parse(event.target.result);
-        applyLayout(layout);
-      } catch(err) {
-        alert('Error loading layout: ' + err);
-      }
-    };
-    reader.readAsText(file);
-  };
-  input.click();
-}
 
 function applyLayout(layout) {
   // Clear current
   document.getElementById('device-grid').innerHTML = '';
   
-  // Restore Devices
+  // Restore Devices with robust matching to current SEC node configuration
   if (layout.devices) {
-      layout.devices.forEach(d => {
-          // We need to recreate the device box. 
-          // Reuse createDeviceDisplay logic but with specific params
-          // For simplicity, we'll just set the select value and call create, then move it
-          const select = document.getElementById('device-select');
-          select.value = d.device;
-          createDeviceDisplay(); // This creates it at default pos
-          
-          // Find the newly created box (last one)
-          const boxes = document.querySelectorAll('.device-box');
-          const newBox = boxes[boxes.length - 1];
-          if (newBox) {
-              newBox.style.left = d.left;
-              newBox.style.top = d.top;
-              if(d.width) newBox.style.width = d.width;
-              if(d.height) newBox.style.height = d.height;
-          }
-      });
+    const select = document.getElementById('device-select');
+    const availableDevices = Array.from(select.options).map(opt => opt.value);
+    layout.devices.forEach(d => {
+      // Try to match by logicalName first
+      let match = availableDevices.find(dev => dev === d.logicalName);
+      // If not found, try by device title
+      if (!match) match = availableDevices.find(dev => dev === d.device);
+      // If still not found, try by original_name in WRITABLE_PARAMS
+      if (!match && window.WRITABLE_PARAMS) {
+        match = availableDevices.find(dev => {
+          const info = window.WRITABLE_PARAMS[dev];
+          return info && info.original_name === d.device;
+        });
+      }
+      if (match) {
+        select.value = match;
+        createDeviceDisplay(); // This creates it at default pos
+        // Find the newly created box (last one)
+        const boxes = document.querySelectorAll('.device-box');
+        const newBox = boxes[boxes.length - 1];
+        if (newBox) {
+          newBox.style.left = d.left;
+          newBox.style.top = d.top;
+          if(d.width) newBox.style.width = d.width;
+          if(d.height) newBox.style.height = d.height;
+        }
+      } else {
+        console.warn(`Device '${d.device}' from layout not found in current SEC node configuration. Skipping.`);
+      }
+    });
   }
   
   // Restore Decorations
