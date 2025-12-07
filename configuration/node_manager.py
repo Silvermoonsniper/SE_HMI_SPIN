@@ -4,6 +4,7 @@ import json
 import os
 import asyncio
 from frappy.client import SecopClient
+import time
 
 # Increase asyncio stream reader limit to handle large plotly parameters
 # Default is 64KB, we increase to 10MB
@@ -11,6 +12,13 @@ asyncio.streams._DEFAULT_LIMIT = 10 * 1024 * 1024
 
 NODES_FILE = os.path.join(os.path.dirname(__file__), 'nodes.json')
 DEVICE_PARAMS_FILE = os.path.join(os.path.dirname(__file__), 'device_params.json')
+LAYOUT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'layout'))
+
+def ensure_layout_dir():
+    try:
+        os.makedirs(LAYOUT_DIR, exist_ok=True)
+    except Exception as e:
+        print(f"Failed to create layout dir {LAYOUT_DIR}: {e}")
 
 def is_running_in_docker():
     """Check if the application is running inside a Docker container."""
@@ -308,6 +316,83 @@ class NodeManagerDevice(BaseDevice):
         elif cmd == 'get_device_params':
             self.update_device_params_param()
             return None
+
+        elif cmd == 'save_layout':
+            # Save layout JSON to project layout directory
+            try:
+                data = request.data
+                if isinstance(data, str):
+                    data = json.loads(data)
+                name = data.get('name')
+                layout = data.get('layout')
+                if not layout:
+                    return Reply(request.connection, request.key, request.transform, 'error', 'No layout provided')
+                ensure_layout_dir()
+                if not name:
+                    name = f"layout_{int(time.time())}"
+                # sanitize name
+                safe_name = ''.join(c for c in name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+                file_path = os.path.join(LAYOUT_DIR, safe_name + '.json')
+                # Log where we are writing the layout for easier debugging
+                try:
+                    self.log.info(f"Saving layout '{safe_name}' to {file_path}")
+                except Exception:
+                    print(f"Saving layout '{safe_name}' to {file_path}")
+                with open(file_path, 'w') as f:
+                    json.dump(layout, f, indent=2)
+                # Return the filesystem path so clients can see where it was written
+                return Reply(request.connection, request.key, request.transform, 'ack', {'status': 'ok', 'name': safe_name, 'path': file_path})
+            except Exception as e:
+                self.log.error(f"save_layout failed: {e}")
+                return Reply(request.connection, request.key, request.transform, 'error', str(e))
+
+        elif cmd == 'list_layouts':
+            try:
+                ensure_layout_dir()
+                files = []
+                for fname in os.listdir(LAYOUT_DIR):
+                    if fname.endswith('.json'):
+                        files.append(fname[:-5])
+                return Reply(request.connection, request.key, request.transform, 'ack', files)
+            except Exception as e:
+                self.log.error(f"list_layouts failed: {e}")
+                return Reply(request.connection, request.key, request.transform, 'error', str(e))
+
+        elif cmd == 'get_layout':
+            try:
+                data = request.data
+                if isinstance(data, str):
+                    data = json.loads(data)
+                name = data.get('name') if data else None
+                if not name:
+                    return Reply(request.connection, request.key, request.transform, 'error', 'No name provided')
+                file_path = os.path.join(LAYOUT_DIR, name + '.json')
+                if not os.path.exists(file_path):
+                    return Reply(request.connection, request.key, request.transform, 'error', 'Not found')
+                with open(file_path, 'r') as f:
+                    layout = json.load(f)
+                return Reply(request.connection, request.key, request.transform, 'ack', layout)
+            except Exception as e:
+                self.log.error(f"get_layout failed: {e}")
+                return Reply(request.connection, request.key, request.transform, 'error', str(e))
+
+        elif cmd == 'delete_layout':
+            try:
+                data = request.data
+                if isinstance(data, str):
+                    data = json.loads(data)
+                name = data.get('name') if data else None
+                if not name:
+                    return Reply(request.connection, request.key, request.transform, 'error', 'No name provided')
+                file_path = os.path.join(LAYOUT_DIR, name + '.json')
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    return Reply(request.connection, request.key, request.transform, 'ack', {'status': 'ok'})
+                else:
+                    return Reply(request.connection, request.key, request.transform, 'error', 'Not found')
+            except Exception as e:
+                self.log.error(f"delete_layout failed: {e}")
+                return Reply(request.connection, request.key, request.transform, 'error', str(e))
             
         return None
 
