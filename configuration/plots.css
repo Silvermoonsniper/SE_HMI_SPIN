@@ -1,0 +1,97 @@
+/* Plots page specific styles to avoid inheriting system.css layout */
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f6f8;
+  margin: 0;
+}
+
+
+.plots-container {
+  padding: 12px 12px 24px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* move box to the left */
+  gap: 12px;
+}
+
+.plots-top {
+  /* Single configuration box (green) for all plot settings - smaller and left-aligned */
+  width: 100%;
+  max-width: 380px;
+  background: #2ecc40; /* green */
+  color: #042d07;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(46,204,64,0.08);
+  padding: 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.control-row {
+  display:flex;
+  gap:6px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+
+.top-row .ctrl { min-width:120px }
+
+.ctrl { padding:4px 6px; border-radius:6px; border:1px solid #ddd; background:#fff }
+
+.ctrl-inline{ display:flex; align-items:center }
+.ctrl-inline .ctrl{ margin:0 }
+.ctrl input, .ctrl select{ padding:4px 6px; border-radius:4px; border:1px solid #ccc; min-width:0 }
+.ctrl select {
+  min-width: 120px;
+  max-width: 260px;
+  background: #f8f8ff;
+  font-size: 11px; /* as small as readable */
+}
+
+/* Ensure control elements don't force extra rows by allowing them to shrink */
+.ctrl { flex: 0 0 auto }
+.spacer{ flex:1; min-width:0 }
+
+.spacer{ flex:1 }
+
+.small-list{ min-width:180px; max-width:220px; max-height:40px; overflow:auto; padding:6px }
+
+.plots-main{ display:block; width:100%; max-width:1100px }
+
+#plot-area {
+  width: 100%;
+  min-height: 420px;
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+}
+
+.plot-panel {
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  margin-bottom: 20px;
+  position: relative;
+  min-height: 360px;
+  width: 100%;
+}
+
+/* Controls and dropdowns: make font small and buttons readable */
+.ctrl { font-size: 11px; color: #000 }
+.ctrl select, .ctrl input, .ctrl button { font-size: 11px; color: #000 }
+.ctrl button { background:#fff; border:1px solid #ccc; padding:6px 8px; border-radius:6px }
+.ctrl select { padding:4px 6px }
+
+.plot-header {
+  display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;
+}
+
+.curve-item button { margin-left:8px }

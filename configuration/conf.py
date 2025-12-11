@@ -3,6 +3,8 @@ import json
 import os
 import asyncio
 from frappy.client import SecopClient
+from configuration.extended_backend import ExtendedBackend
+import mlzlog
 
 # Increase asyncio stream reader limit to handle large plotly parameters
 # Default is 64KB, we increase to 10MB
@@ -62,6 +64,7 @@ def extract_modules_and_parameters(data, prefix=""):
         parameter_map[unique_name] = parameter_list
         device_data_map[unique_name] = {
             "params": writable_list,
+            "all_params": parameter_list,
             "commands": command_list,
             "original_name": module_name,
             "interface_classes": module_info.get("interface_classes", [])
@@ -127,8 +130,11 @@ for node in nodes:
     
     mod_list, para_map, dev_data = connect_node(host, port)
     
-    # Merge into global data
-    all_device_data.update(dev_data)
+    # Merge into global data, and add all_params for each device
+    for dev_name, dev_info in dev_data.items():
+        # Add all_params: all parameter names, including readonly
+        dev_info['all_params'] = para_map.get(dev_name, [])
+        all_device_data[dev_name] = dev_info
     
     # Configure Spin devices - use resolved host for the connection URL
     resolved_host = resolve_host(host)
@@ -138,13 +144,16 @@ for node in nodes:
         for para_name in para_map.get(unique_name, []):
             params.append(Param(para_name))
         
-        dev_config[unique_name] = Device(
+      
+        dev = Device(
             f"secop://{url}/{original_name}",
             pollinterval=1.0,
             params=params
         )
+        # Set all_params attribute for backend polling
+        dev.all_params = para_map.get(unique_name, [])
+        dev_config[unique_name] = dev
 
-# Add NodeManager device
 dev_config['nodemanager'] = Device('nodemanager://localhost', pollinterval=1.0)
 
 config = Config()
@@ -152,8 +161,10 @@ config.server = '0.0.0.0:8000'
 config.control_url = 'http://0.0.0.0:8000/'
 config.plugins = [os.path.abspath(os.path.join(os.path.dirname(__file__), 'node_manager.py'))]
 config.pages = {
+    # page for configuring and display of system layout
     'default': Page('../content/system.html', readonly=False),
-    'viewer': Page('../content/system_viewer.html', readonly=True),
+     # page for plots of GUI
+    'plots': Page('../content/plots.html', readonly=False),
 }
 
 config.devices = dev_config
@@ -166,4 +177,11 @@ try:
     print(f"Device data saved to {json_path}")
 except Exception as e:
     print(f"Error saving device data: {e}")
+
+loop = asyncio.get_event_loop()
+connections = []  # or your actual connections list
+log = mlzlog.getLogger("spin")
+
+backend = ExtendedBackend(loop, connections, log)
+backend.start(config, [])
 

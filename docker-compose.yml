@@ -6,10 +6,12 @@ services:
     container_name: se_hmi_spin
     ports:
       - "8080:8000"
+      - "8001:8001"
     volumes:
-      # Mount configuration files to persist data
-      - ./configuration/nodes.json:/app/configuration/nodes.json
-      - ./configuration/device_params.json:/app/configuration/device_params.json
+      # Mount the whole configuration directory so files created/edited on the host
+      # (e.g., configuration/plots.css, configuration/plots.js, layout/) are visible
+      # inside the container and served under /c/* by Spin.
+      - ./configuration:/app/configuration
       # Mount content directory for live updates during development
       - ./content:/app/content
     environment:

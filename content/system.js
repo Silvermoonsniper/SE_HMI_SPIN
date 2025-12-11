@@ -1,3 +1,31 @@
+// --- Connect to Node Modal Logic ---
+document.addEventListener('DOMContentLoaded', function() {
+  const connectBtn = document.getElementById('connect-node-btn');
+  const modal = document.getElementById('connect-node-modal');
+  const submitBtn = document.getElementById('conn-node-submit');
+  const cancelBtn = document.getElementById('conn-node-cancel');
+  if (connectBtn && modal && submitBtn && cancelBtn) {
+    connectBtn.onclick = () => {
+      modal.style.display = 'flex';
+      modal.style.alignItems = 'center';
+      modal.style.justifyContent = 'center';
+    };
+    cancelBtn.onclick = () => { modal.style.display = 'none'; };
+    submitBtn.onclick = () => {
+      const ip = document.getElementById('conn-ip').value.trim();
+      const port = document.getElementById('conn-port').value.trim();
+      if (!ip || !port) { alert('Please enter both IP and Port.'); return; }
+      if (window.Spin && typeof window.Spin.send_request === 'function') {
+        window.Spin.send_request('nodemanager.add_node', '', 'input', 'set', {host: ip, port: port});
+        modal.style.display = 'none';
+        document.getElementById('conn-ip').value = '';
+        document.getElementById('conn-port').value = '';
+      } else {
+        alert('Not connected to Spin server.');
+      }
+    };
+  }
+});
 
 function deleteSelectedLayout() {
   const select = document.getElementById('layout-select');
@@ -894,7 +922,7 @@ async function setupValveController(device, domId) {
         const img = document.createElement('img');
         img.id = `valve-img-${valveDomId}`;
         // Two triangles with points touching in the center: ◄ ►
-        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzAwN2JmZiIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMDA3YmZmIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==';
+        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzAwN2JmZiIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==';
         img.style.cssText = 'width: 100%; height: 100%; object-fit: contain;';
         img.onerror = () => console.error(`Failed to load valve image: ${img.src}`);
         img.onload = () => console.log(`Loaded valve image for ${fieldName}`);

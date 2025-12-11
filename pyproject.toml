@@ -16,6 +16,8 @@ dependencies = [
   "spin-hmi",
   "frappy-core==0.20.4",
   "ipykernel",
+  "flask",
+  "flask_cors",
 ]
 
 [project.optional-dependencies]

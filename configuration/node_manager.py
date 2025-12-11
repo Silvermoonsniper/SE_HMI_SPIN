@@ -1,3 +1,4 @@
+
 from spin.device import BaseDevice
 from spin.backend import Reply
 import json
@@ -90,10 +91,12 @@ def extract_modules_and_parameters(data, prefix=""):
         parameter_map[unique_name] = parameter_list
         device_data_map[unique_name] = {
             "params": writable_list,
+            "all_params": list(params.keys()),  # all accessible parameters, including readonly
             "commands": command_list,
             "original_name": module_name,
             "interface_classes": module_info.get("interface_classes", []),
-            "param_info": param_info_map
+            "param_info": param_info_map,
+            "accessibles": params  # include full accessibles dict for later use
         }
 
     return module_list, parameter_map, device_data_map
@@ -138,7 +141,7 @@ async def discover_secop_nodes(timeout=2.0):
                 # Avoid duplicates
                 if not any(n['host'] == node_info['host'] for n in self.responses):
                     self.responses.append(node_info)
-                    print(f"Discovered SECoP node: {equipment_id} at {addr[0]}")
+                    # ...removed debug print...
                     
             except Exception as e:
                 print(f"Error parsing discovery response: {e}")
@@ -171,7 +174,7 @@ def connect_and_fetch_params(host, port):
     # Resolve the host for Docker environment
     resolved_host = resolve_host(host)
     url = f"{resolved_host}:{port}"
-    print(f"Connecting to {url}...")
+    # ...removed debug print...
     
     try:
         # Create client and connect
@@ -196,6 +199,10 @@ def connect_and_fetch_params(host, port):
         return None, None, None
 
 class NodeManagerDevice(BaseDevice):
+    def read(self, param):
+        # Try to read from attributes, or return None if not found
+        # You can extend this logic to read from internal state, files, etc.
+        return getattr(self, param, None)
     def init(self):
         self.log.info("NodeManager initialized")
         self.update_nodes_param()
@@ -220,6 +227,31 @@ class NodeManagerDevice(BaseDevice):
                     data = json.load(f)
             except:
                 pass
+        # Ensure all_params is present and up to date for each device
+        changed = False
+        for dev, info in data.items():
+            # If accessibles exists, use its keys for all_params
+            if 'accessibles' in info and isinstance(info['accessibles'], dict):
+                all_params = sorted(list(info['accessibles'].keys()))
+            else:
+                # Fallback: union of params, commands, param_info keys
+                all_params = set()
+                if 'params' in info:
+                    all_params.update(info['params'])
+                if 'commands' in info:
+                    all_params.update(info['commands'])
+                if 'param_info' in info and isinstance(info['param_info'], dict):
+                    all_params.update(info['param_info'].keys())
+                all_params = sorted(list(all_params))
+            if info.get('all_params') != all_params:
+                info['all_params'] = all_params
+                changed = True
+        if changed:
+            try:
+                with open(DEVICE_PARAMS_FILE, 'w') as f:
+                    json.dump(data, f, indent=2)
+            except Exception as e:
+                print(f"Failed to update all_params in device_params.json: {e}")
         self.run_task(self.send_param('device_params', data, ''))
 
     async def _clear_status(self):
@@ -244,17 +276,20 @@ class NodeManagerDevice(BaseDevice):
         
         if cmd == 'add_node':
             try:
+                # ...removed debug print...
                 data = request.data
                 if isinstance(data, str):
                     data = json.loads(data)
-                
+                # ...removed debug print...
                 host = data.get('host')
                 port = data.get('port')
-                
+                # ...removed debug print...
                 # Verify connection first
                 mod_list, para_map, new_dev_data = connect_and_fetch_params(host, port)
+                # ...removed debug print...
                 if not new_dev_data:
                     msg = f"Failed to connect to node {host}:{port}"
+                    # ...removed debug print...
                     self.run_task(self.send_param('status', msg, ''))
                     self.run_task(self._clear_status())
                     return Reply(request.connection, request.key, request.transform, 'error', msg)
@@ -265,20 +300,25 @@ class NodeManagerDevice(BaseDevice):
                     with open(NODES_FILE, 'r') as f:
                         try:
                             nodes = json.load(f)
-                        except:
-                            pass
-                
+                        except Exception as e:
+                            print(f"[add_node] Failed to load nodes.json: {e}")
                 exists = False
                 for n in nodes:
                     if n.get('host') == host and str(n.get('port')) == str(port):
                         exists = True
                         break
-                
                 if not exists:
+                    
                     nodes.append({"host": host, "port": int(port)})
-                    with open(NODES_FILE, 'w') as f:
-                        json.dump(nodes, f, indent=2)
-                
+                    try:
+                        with open(NODES_FILE, 'w') as f:
+                            json.dump(nodes, f, indent=2)
+                        # ...removed debug print...
+                    except Exception as e:
+                        print(f"[add_node] Failed to write nodes.json: {e}")
+                else:
+                    print(f"[add_node] Node already exists in nodes.json: {host}:{port}")
+
                 # Update device_params.json with fetched data
                 if new_dev_data:
                     all_data = {}
@@ -286,25 +326,52 @@ class NodeManagerDevice(BaseDevice):
                         try:
                             with open(DEVICE_PARAMS_FILE, 'r') as f:
                                 all_data = json.load(f)
-                        except:
+                        except Exception as e:
+                            print(f"[add_node] Failed to load device_params.json: {e}")
+                    # Ensure param_info and all_params are always present for each device
+                    for dev, info in new_dev_data.items():
+                        # Ensure param_info exists
+                        if 'param_info' not in info:
+                            info['param_info'] = {}
+                        # Ensure accessibles is present for all_params logic
+                        if 'accessibles' not in info and dev in para_map:
+                            # Try to get accessibles from para_map (from extract_modules_and_parameters)
+                            # But para_map only has parameter names, not full dict, so fallback to client.descriptive_data
+                            # Instead, fetch from mod_list if possible
+                            # For robust solution, require extract_modules_and_parameters to add accessibles to info
                             pass
-                    
-                    all_data.update(new_dev_data)
-                    
-                    with open(DEVICE_PARAMS_FILE, 'w') as f:
-                        json.dump(all_data, f)
+                        # Use all keys from accessibles for all_params
+                        accessibles = info.get('accessibles')
                         
+                        if isinstance(accessibles, dict):
+                            info['all_params'] = sorted(list(accessibles.keys()))
+                        else:
+                            # Fallback: union of params, commands, param_info keys
+                            all_params = set()
+                            if 'params' in info:
+                                all_params.update(info['params'])
+                            if 'commands' in info:
+                                all_params.update(info['commands'])
+                            if 'param_info' in info and isinstance(info['param_info'], dict):
+                                all_params.update(info['param_info'].keys())
+                            info['all_params'] = sorted(list(all_params))
+                    all_data.update(new_dev_data)
+                    try:
+                        with open(DEVICE_PARAMS_FILE, 'w') as f:
+                            json.dump(all_data, f, indent=2)
+                        # ...removed debug print...
+                    except Exception as e:
+                        print(f"[add_node] Failed to write device_params.json: {e}")
                     self.update_device_params_param()
 
                 self.update_nodes_param()
-                
                 msg = "Node added successfully. Please restart server to use new devices."
+                # ...removed debug print...
                 self.run_task(self.send_param('status', msg, ''))
                 self.run_task(self._clear_status())
-                
-                return Reply(request.connection, request.key, request.transform, 'ack', 
-                             {"status": "ok", "message": msg})
+                return Reply(request.connection, request.key, request.transform, 'ack', {"status": "ok", "message": msg})
             except Exception as e:
+                # ...removed debug print...
                 self.run_task(self.send_param('status', f"Error: {str(e)}", ''))
                 self.run_task(self._clear_status())
                 return Reply(request.connection, request.key, request.transform, 'error', str(e))
@@ -402,4 +469,11 @@ def init_plugin(conf, loop):
             'nodemanager': NodeManagerDevice
         }
     }
+
+
+# Generic Device base class for all  devices
+class Device(BaseDevice):
+    def read(self, param):
+        # Try to read from attributes, or return None if not found
+        return getattr(self, param, None)
 

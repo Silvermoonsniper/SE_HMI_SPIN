@@ -28,6 +28,7 @@ RUN mkdir -p /app/configuration && \
 
 # Expose the port that spin server runs on (configured in conf.py as 8000)
 EXPOSE 8000
+EXPOSE 8001
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1

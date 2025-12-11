@@ -50,13 +50,34 @@
   <div class="conn-box">
     <h1 style="margin-top:0; margin-bottom:20px; color:#333; font-size:28px;">GSE-UI</h1>
     
-    <!-- Framework Description -->
+    <!-- Connect to Node Button -->
+    <div style="margin-bottom: 16px;">
+      <button id="connect-node-btn" class="conn-btn" style="background: #007bff; font-size: 14px; padding: 10px; width: 100%; margin-bottom: 8px;">Connect to Node</button>
+    </div>
+    <!-- Connect Node Modal -->
+    <div id="connect-node-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); z-index:2000; align-items:center; justify-content:center;">
+      <div style="background:#fff; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.18); padding:24px 32px; min-width:320px; max-width:90vw; margin:auto;">
+        <h3 style="margin-top:0;">Connect to Node</h3>
+        <div style="margin-bottom:12px;">
+          <label for="conn-ip" style="font-size:13px;">IP Address:</label>
+          <input id="conn-ip" type="text" style="margin-left:8px; padding:4px 8px; border-radius:4px; border:1px solid #ccc; width:140px;">
+        </div>
+        <div style="margin-bottom:16px;">
+          <label for="conn-port" style="font-size:13px;">Port:</label>
+          <input id="conn-port" type="text" style="margin-left:8px; padding:4px 8px; border-radius:4px; border:1px solid #ccc; width:90px;">
+        </div>
+        <div style="display:flex; gap:12px;">
+          <button id="conn-node-submit" style="background:#28a745; color:white; border:none; border-radius:4px; padding:6px 18px; font-size:14px;">Connect</button>
+          <button id="conn-node-cancel" style="background:#dc3545; color:white; border:none; border-radius:4px; padding:6px 18px; font-size:14px;">Cancel</button>
+        </div>
+      </div>
+    </div>
     <div style="background: #e8f4f8; border-left: 4px solid #17a2b8; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
       <div style="font-size: 13px; color: #0c5460; line-height: 1.6;">
         <strong>General Sample Environment User Interface Framework with SECoP (GSE-UI)</strong><br>
         This interface provides user the ability to design specific system layout for different 
         experiment control system using SECoP devices, and also connect to existing 
-        GUI after their design. It is created on the basis of spin-hmi framework devloped originally from FRM II, TU Munich.
+        GUI after their design. 
       </div>
     </div>
     

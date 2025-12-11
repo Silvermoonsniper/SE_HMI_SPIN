@@ -1,1 +1,602 @@
-{"sim_gas_dosing_massflow_contr1": {"params": ["target", "pollinterval", "ramp", "_inverse_calibration_coefficients", "_forward_calibration_coefficients", "_tolerance", "_P_value", "_I_value", "_D_value", "_gastype_select", "_valveposition", "_control_mode"], "commands": ["stop", "_factory_reset", "_test_cmd"], "original_name": "massflow_contr1", "interface_classes": ["Drivable"]}, "sim_gas_dosing_massflow_contr2": {"params": ["target", "pollinterval", "ramp", "_inverse_calibration_coefficients", "_forward_calibration_coefficients", "_tolerance", "_P_value", "_I_value", "_D_value", "_gastype_select", "_valveposition", "_control_mode"], "commands": ["stop", "_factory_reset", "_test_cmd"], "original_name": "massflow_contr2", "interface_classes": ["Drivable"]}, "sim_gas_dosing_massflow_contr3": {"params": ["target", "pollinterval", "ramp", "_inverse_calibration_coefficients", "_forward_calibration_coefficients", "_tolerance", "_P_value", "_I_value", "_D_value", "_gastype_select", "_valveposition", "_control_mode"], "commands": ["stop", "_factory_reset", "_test_cmd"], "original_name": "massflow_contr3", "interface_classes": ["Drivable"]}, "sim_gas_dosing_massflow_contr4": {"params": ["target", "pollinterval", "ramp", "_inverse_calibration_coefficients", "_forward_calibration_coefficients", "_tolerance", "_P_value", "_I_value", "_D_value", "_gastype_select", "_valveposition", "_control_mode"], "commands": ["stop", "_factory_reset", "_test_cmd"], "original_name": "massflow_contr4", "interface_classes": ["Drivable"]}, "sim_gas_dosing_massflow_contr5": {"params": ["target", "pollinterval", "ramp", "_inverse_calibration_coefficients", "_forward_calibration_coefficients", "_tolerance", "_P_value", "_I_value", "_D_value", "_gastype_select", "_valveposition", "_control_mode"], "commands": ["stop", "_factory_reset", "_test_cmd"], "original_name": "massflow_contr5", "interface_classes": ["Drivable"]}, "sim_gas_dosing_massflow_contr6": {"params": ["target", "pollinterval", "ramp", "_inverse_calibration_coefficients", "_forward_calibration_coefficients", "_tolerance", "_P_value", "_I_value", "_D_value", "_gastype_select", "_valveposition", "_control_mode"], "commands": ["stop", "_factory_reset", "_test_cmd"], "original_name": "massflow_contr6", "interface_classes": ["Drivable"]}, "sim_gas_dosing_massflow_contr7": {"params": ["target", "pollinterval", "ramp", "_inverse_calibration_coefficients", "_forward_calibration_coefficients", "_tolerance", "_P_value", "_I_value", "_D_value", "_gastype_select", "_valveposition", "_control_mode"], "commands": ["stop", "_factory_reset", "_test_cmd"], "original_name": "massflow_contr7", "interface_classes": ["Drivable"]}, "sim_gas_dosing_massflow_contr8": {"params": ["target", "pollinterval", "ramp", "_inverse_calibration_coefficients", "_forward_calibration_coefficients", "_tolerance", "_P_value", "_I_value", "_D_value", "_gastype_select", "_valveposition", "_control_mode"], "commands": ["stop", "_factory_reset", "_test_cmd"], "original_name": "massflow_contr8", "interface_classes": ["Drivable"]}, "sim_gas_dosing_massflow_contr9": {"params": ["target", "pollinterval", "ramp", "_inverse_calibration_coefficients", "_forward_calibration_coefficients", "_tolerance", "_P_value", "_I_value", "_D_value", "_gastype_select", "_valveposition", "_control_mode"], "commands": ["stop", "_factory_reset", "_test_cmd"], "original_name": "massflow_contr9", "interface_classes": ["Drivable"]}, "sim_gas_dosing_massflow_contr10": {"params": ["target", "pollinterval", "ramp", "_inverse_calibration_coefficients", "_forward_calibration_coefficients", "_tolerance", "_P_value", "_I_value", "_D_value", "_gastype_select", "_valveposition", "_control_mode"], "commands": ["stop", "_factory_reset", "_test_cmd"], "original_name": "massflow_contr10", "interface_classes": ["Drivable"]}, "sim_gas_dosing_backpress_contr1": {"params": ["target", "pollinterval", "ramp", "_inverse_calibration_coefficients", "_forward_calibration_coefficients", "_tolerance", "_P_value", "_I_value", "_D_value", "_looptime"], "commands": ["stop", "_factory_reset"], "original_name": "backpress_contr1", "interface_classes": ["Drivable"]}, "sim_gas_dosing_backpress_contr2": {"params": ["target", "pollinterval", "ramp", "_inverse_calibration_coefficients", "_forward_calibration_coefficients", "_tolerance", "_P_value", "_I_value", "_D_value", "_looptime"], "commands": ["stop", "_factory_reset"], "original_name": "backpress_contr2", "interface_classes": ["Drivable"]}, "sim_gas_dosing_valve_controller": {"params": ["target", "pollinterval"], "commands": ["stop"], "original_name": "valve_controller", "interface_classes": ["Drivable"]}, "sim_gas_dosing_gasflow_calibrator": {"params": ["_No_average"], "commands": ["reset", "go"], "original_name": "gasflow_calibrator", "interface_classes": ["Triggerable"]}, "sim_reactor_cell_temperature_reg": {"params": ["target", "ramp", "_inverse_calibration_coefficients", "_forward_calibration_coefficients", "_tolerance", "_P_value", "_I_value", "_D_value"], "commands": ["stop", "_factory_reset"], "original_name": "temperature_reg", "interface_classes": ["Drivable"]}, "sim_reactor_cell_temperature_sam": {"params": ["pollinterval", "_heat_flux"], "commands": [], "original_name": "temperature_sam", "interface_classes": ["Readable"]}, "sim_reactor_cell_pressure_inlet": {"params": ["pollinterval", "_pre_flux"], "commands": [], "original_name": "pressure_inlet", "interface_classes": ["Readable"]}, "sim_reactor_cell_pressure_outlet": {"params": ["pollinterval", "_pre_flux"], "commands": [], "original_name": "pressure_outlet", "interface_classes": ["Readable"]}}
+{
+  "sim_gas_dosing_massflow_contr1": {
+    "params": [
+      "target",
+      "pollinterval",
+      "ramp",
+      "_inverse_calibration_coefficients",
+      "_forward_calibration_coefficients",
+      "_tolerance",
+      "_P_value",
+      "_I_value",
+      "_D_value",
+      "_gastype_select",
+      "_valveposition",
+      "_control_mode"
+    ],
+    "all_params": [
+      "_D_value",
+      "_I_value",
+      "_P_value",
+      "_control_mode",
+      "_factory_reset",
+      "_forward_calibration_coefficients",
+      "_gastype_select",
+      "_inverse_calibration_coefficients",
+      "_test_cmd",
+      "_tolerance",
+      "_valveposition",
+      "pollinterval",
+      "ramp",
+      "stop",
+      "target"
+    ],
+    "commands": [
+      "stop",
+      "_factory_reset",
+      "_test_cmd"
+    ],
+    "original_name": "massflow_contr1",
+    "interface_classes": [
+      "Drivable"
+    ]
+  },
+  "sim_gas_dosing_massflow_contr2": {
+    "params": [
+      "target",
+      "pollinterval",
+      "ramp",
+      "_inverse_calibration_coefficients",
+      "_forward_calibration_coefficients",
+      "_tolerance",
+      "_P_value",
+      "_I_value",
+      "_D_value",
+      "_gastype_select",
+      "_valveposition",
+      "_control_mode"
+    ],
+    "all_params": [
+      "_D_value",
+      "_I_value",
+      "_P_value",
+      "_control_mode",
+      "_factory_reset",
+      "_forward_calibration_coefficients",
+      "_gastype_select",
+      "_inverse_calibration_coefficients",
+      "_test_cmd",
+      "_tolerance",
+      "_valveposition",
+      "pollinterval",
+      "ramp",
+      "stop",
+      "target"
+    ],
+    "commands": [
+      "stop",
+      "_factory_reset",
+      "_test_cmd"
+    ],
+    "original_name": "massflow_contr2",
+    "interface_classes": [
+      "Drivable"
+    ]
+  },
+  "sim_gas_dosing_massflow_contr3": {
+    "params": [
+      "target",
+      "pollinterval",
+      "ramp",
+      "_inverse_calibration_coefficients",
+      "_forward_calibration_coefficients",
+      "_tolerance",
+      "_P_value",
+      "_I_value",
+      "_D_value",
+      "_gastype_select",
+      "_valveposition",
+      "_control_mode"
+    ],
+    "all_params": [
+      "_D_value",
+      "_I_value",
+      "_P_value",
+      "_control_mode",
+      "_factory_reset",
+      "_forward_calibration_coefficients",
+      "_gastype_select",
+      "_inverse_calibration_coefficients",
+      "_test_cmd",
+      "_tolerance",
+      "_valveposition",
+      "pollinterval",
+      "ramp",
+      "stop",
+      "target"
+    ],
+    "commands": [
+      "stop",
+      "_factory_reset",
+      "_test_cmd"
+    ],
+    "original_name": "massflow_contr3",
+    "interface_classes": [
+      "Drivable"
+    ]
+  },
+  "sim_gas_dosing_massflow_contr4": {
+    "params": [
+      "target",
+      "pollinterval",
+      "ramp",
+      "_inverse_calibration_coefficients",
+      "_forward_calibration_coefficients",
+      "_tolerance",
+      "_P_value",
+      "_I_value",
+      "_D_value",
+      "_gastype_select",
+      "_valveposition",
+      "_control_mode"
+    ],
+    "all_params": [
+      "_D_value",
+      "_I_value",
+      "_P_value",
+      "_control_mode",
+      "_factory_reset",
+      "_forward_calibration_coefficients",
+      "_gastype_select",
+      "_inverse_calibration_coefficients",
+      "_test_cmd",
+      "_tolerance",
+      "_valveposition",
+      "pollinterval",
+      "ramp",
+      "stop",
+      "target"
+    ],
+    "commands": [
+      "stop",
+      "_factory_reset",
+      "_test_cmd"
+    ],
+    "original_name": "massflow_contr4",
+    "interface_classes": [
+      "Drivable"
+    ]
+  },
+  "sim_gas_dosing_massflow_contr5": {
+    "params": [
+      "target",
+      "pollinterval",
+      "ramp",
+      "_inverse_calibration_coefficients",
+      "_forward_calibration_coefficients",
+      "_tolerance",
+      "_P_value",
+      "_I_value",
+      "_D_value",
+      "_gastype_select",
+      "_valveposition",
+      "_control_mode"
+    ],
+    "all_params": [
+      "_D_value",
+      "_I_value",
+      "_P_value",
+      "_control_mode",
+      "_factory_reset",
+      "_forward_calibration_coefficients",
+      "_gastype_select",
+      "_inverse_calibration_coefficients",
+      "_test_cmd",
+      "_tolerance",
+      "_valveposition",
+      "pollinterval",
+      "ramp",
+      "stop",
+      "target"
+    ],
+    "commands": [
+      "stop",
+      "_factory_reset",
+      "_test_cmd"
+    ],
+    "original_name": "massflow_contr5",
+    "interface_classes": [
+      "Drivable"
+    ]
+  },
+  "sim_gas_dosing_massflow_contr6": {
+    "params": [
+      "target",
+      "pollinterval",
+      "ramp",
+      "_inverse_calibration_coefficients",
+      "_forward_calibration_coefficients",
+      "_tolerance",
+      "_P_value",
+      "_I_value",
+      "_D_value",
+      "_gastype_select",
+      "_valveposition",
+      "_control_mode"
+    ],
+    "all_params": [
+      "_D_value",
+      "_I_value",
+      "_P_value",
+      "_control_mode",
+      "_factory_reset",
+      "_forward_calibration_coefficients",
+      "_gastype_select",
+      "_inverse_calibration_coefficients",
+      "_test_cmd",
+      "_tolerance",
+      "_valveposition",
+      "pollinterval",
+      "ramp",
+      "stop",
+      "target"
+    ],
+    "commands": [
+      "stop",
+      "_factory_reset",
+      "_test_cmd"
+    ],
+    "original_name": "massflow_contr6",
+    "interface_classes": [
+      "Drivable"
+    ]
+  },
+  "sim_gas_dosing_massflow_contr7": {
+    "params": [
+      "target",
+      "pollinterval",
+      "ramp",
+      "_inverse_calibration_coefficients",
+      "_forward_calibration_coefficients",
+      "_tolerance",
+      "_P_value",
+      "_I_value",
+      "_D_value",
+      "_gastype_select",
+      "_valveposition",
+      "_control_mode"
+    ],
+    "all_params": [
+      "_D_value",
+      "_I_value",
+      "_P_value",
+      "_control_mode",
+      "_factory_reset",
+      "_forward_calibration_coefficients",
+      "_gastype_select",
+      "_inverse_calibration_coefficients",
+      "_test_cmd",
+      "_tolerance",
+      "_valveposition",
+      "pollinterval",
+      "ramp",
+      "stop",
+      "target"
+    ],
+    "commands": [
+      "stop",
+      "_factory_reset",
+      "_test_cmd"
+    ],
+    "original_name": "massflow_contr7",
+    "interface_classes": [
+      "Drivable"
+    ]
+  },
+  "sim_gas_dosing_massflow_contr8": {
+    "params": [
+      "target",
+      "pollinterval",
+      "ramp",
+      "_inverse_calibration_coefficients",
+      "_forward_calibration_coefficients",
+      "_tolerance",
+      "_P_value",
+      "_I_value",
+      "_D_value",
+      "_gastype_select",
+      "_valveposition",
+      "_control_mode"
+    ],
+    "all_params": [
+      "_D_value",
+      "_I_value",
+      "_P_value",
+      "_control_mode",
+      "_factory_reset",
+      "_forward_calibration_coefficients",
+      "_gastype_select",
+      "_inverse_calibration_coefficients",
+      "_test_cmd",
+      "_tolerance",
+      "_valveposition",
+      "pollinterval",
+      "ramp",
+      "stop",
+      "target"
+    ],
+    "commands": [
+      "stop",
+      "_factory_reset",
+      "_test_cmd"
+    ],
+    "original_name": "massflow_contr8",
+    "interface_classes": [
+      "Drivable"
+    ]
+  },
+  "sim_gas_dosing_massflow_contr9": {
+    "params": [
+      "target",
+      "pollinterval",
+      "ramp",
+      "_inverse_calibration_coefficients",
+      "_forward_calibration_coefficients",
+      "_tolerance",
+      "_P_value",
+      "_I_value",
+      "_D_value",
+      "_gastype_select",
+      "_valveposition",
+      "_control_mode"
+    ],
+    "all_params": [
+      "_D_value",
+      "_I_value",
+      "_P_value",
+      "_control_mode",
+      "_factory_reset",
+      "_forward_calibration_coefficients",
+      "_gastype_select",
+      "_inverse_calibration_coefficients",
+      "_test_cmd",
+      "_tolerance",
+      "_valveposition",
+      "pollinterval",
+      "ramp",
+      "stop",
+      "target"
+    ],
+    "commands": [
+      "stop",
+      "_factory_reset",
+      "_test_cmd"
+    ],
+    "original_name": "massflow_contr9",
+    "interface_classes": [
+      "Drivable"
+    ]
+  },
+  "sim_gas_dosing_massflow_contr10": {
+    "params": [
+      "target",
+      "pollinterval",
+      "ramp",
+      "_inverse_calibration_coefficients",
+      "_forward_calibration_coefficients",
+      "_tolerance",
+      "_P_value",
+      "_I_value",
+      "_D_value",
+      "_gastype_select",
+      "_valveposition",
+      "_control_mode"
+    ],
+    "all_params": [
+      "_D_value",
+      "_I_value",
+      "_P_value",
+      "_control_mode",
+      "_factory_reset",
+      "_forward_calibration_coefficients",
+      "_gastype_select",
+      "_inverse_calibration_coefficients",
+      "_test_cmd",
+      "_tolerance",
+      "_valveposition",
+      "pollinterval",
+      "ramp",
+      "stop",
+      "target"
+    ],
+    "commands": [
+      "stop",
+      "_factory_reset",
+      "_test_cmd"
+    ],
+    "original_name": "massflow_contr10",
+    "interface_classes": [
+      "Drivable"
+    ]
+  },
+  "sim_gas_dosing_backpress_contr1": {
+    "params": [
+      "target",
+      "pollinterval",
+      "ramp",
+      "_inverse_calibration_coefficients",
+      "_forward_calibration_coefficients",
+      "_tolerance",
+      "_P_value",
+      "_I_value",
+      "_D_value",
+      "_looptime"
+    ],
+    "all_params": [
+      "_D_value",
+      "_I_value",
+      "_P_value",
+      "_factory_reset",
+      "_forward_calibration_coefficients",
+      "_inverse_calibration_coefficients",
+      "_looptime",
+      "_tolerance",
+      "pollinterval",
+      "ramp",
+      "stop",
+      "target"
+    ],
+    "commands": [
+      "stop",
+      "_factory_reset"
+    ],
+    "original_name": "backpress_contr1",
+    "interface_classes": [
+      "Drivable"
+    ]
+  },
+  "sim_gas_dosing_backpress_contr2": {
+    "params": [
+      "target",
+      "pollinterval",
+      "ramp",
+      "_inverse_calibration_coefficients",
+      "_forward_calibration_coefficients",
+      "_tolerance",
+      "_P_value",
+      "_I_value",
+      "_D_value",
+      "_looptime"
+    ],
+    "all_params": [
+      "_D_value",
+      "_I_value",
+      "_P_value",
+      "_factory_reset",
+      "_forward_calibration_coefficients",
+      "_inverse_calibration_coefficients",
+      "_looptime",
+      "_tolerance",
+      "pollinterval",
+      "ramp",
+      "stop",
+      "target"
+    ],
+    "commands": [
+      "stop",
+      "_factory_reset"
+    ],
+    "original_name": "backpress_contr2",
+    "interface_classes": [
+      "Drivable"
+    ]
+  },
+  "sim_gas_dosing_valve_controller": {
+    "params": [
+      "target",
+      "pollinterval"
+    ],
+    "all_params": [
+      "pollinterval",
+      "stop",
+      "target"
+    ],
+    "commands": [
+      "stop"
+    ],
+    "original_name": "valve_controller",
+    "interface_classes": [
+      "Drivable"
+    ]
+  },
+  "sim_gas_dosing_Gas_flow_calibrator": {
+    "params": [
+      "_avg_window"
+    ],
+    "all_params": [
+      "_avg_window"
+    ],
+    "commands": [],
+    "original_name": "Gas_flow_calibrator",
+    "interface_classes": [
+      "Readable"
+    ]
+  },
+  "sim_reactor_cell_temperature_reg": {
+    "params": [
+      "target",
+      "ramp",
+      "_inverse_calibration_coefficients",
+      "_forward_calibration_coefficients",
+      "_tolerance",
+      "_P_value",
+      "_I_value",
+      "_D_value"
+    ],
+    "all_params": [
+      "_D_value",
+      "_I_value",
+      "_P_value",
+      "_factory_reset",
+      "_forward_calibration_coefficients",
+      "_inverse_calibration_coefficients",
+      "_tolerance",
+      "ramp",
+      "stop",
+      "target"
+    ],
+    "commands": [
+      "stop",
+      "_factory_reset"
+    ],
+    "original_name": "temperature_reg",
+    "interface_classes": [
+      "Drivable"
+    ]
+  },
+  "sim_reactor_cell_temperature_sam": {
+    "params": [
+      "pollinterval",
+      "_heat_flux"
+    ],
+    "all_params": [
+      "_heat_flux",
+      "pollinterval"
+    ],
+    "commands": [],
+    "original_name": "temperature_sam",
+    "interface_classes": [
+      "Readable"
+    ]
+  },
+  "sim_reactor_cell_pressure_inlet": {
+    "params": [
+      "pollinterval",
+      "_pre_flux"
+    ],
+    "all_params": [
+      "_pre_flux",
+      "pollinterval"
+    ],
+    "commands": [],
+    "original_name": "pressure_inlet",
+    "interface_classes": [
+      "Readable"
+    ]
+  },
+  "sim_reactor_cell_pressure_outlet": {
+    "params": [
+      "pollinterval",
+      "_pre_flux"
+    ],
+    "all_params": [
+      "_pre_flux",
+      "pollinterval"
+    ],
+    "commands": [],
+    "original_name": "pressure_outlet",
+    "interface_classes": [
+      "Readable"
+    ]
+  }
+}

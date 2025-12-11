@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>System Plots</title>
+  <link rel="stylesheet" href="/c/plots.css">
+  <!-- Plotly from CDN -->
+  <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+</head>
+<body>
+  <div class="plots-container">
+    <div class="plots-top">
+      <div class="control-row">
+        <button id="create-plot" class="ctrl">Create Plot</button>
+        <select id="plot-type" class="ctrl">
+          <option value="line">Time series</option>
+          <option value="xy">XY scatter</option>
+          <option value="array">Array</option>
+        </select>
+
+        <select id="curve-key" class="ctrl">
+          <option value="">-- select device.param --</option>
+        </select>
+
+        <button id="add-curve" class="ctrl">Add Line</button>
+
+        <select id="added-lines" class="ctrl">
+          <option value="">-- added lines --</option>
+        </select>
+
+  <button id="delete-line" class="ctrl">Delete Line</button>
+
+      </div>
+    </div>
+
+    <div class="plots-main">
+      <div id="plot-area">
+        <button id="save-layout" class="ctrl">Save Layout</button>
+        <select id="plot-layout-dropdown" class="ctrl">
+          <option value="">-- Select Layout --</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <script src="/c/plots.js"></script>
+</body>
+</html>
