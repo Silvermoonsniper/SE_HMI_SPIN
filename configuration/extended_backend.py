@@ -8,7 +8,7 @@ from flask_cors import CORS
 class ExtendedBackend(Backend):
     # Store latest values for API
     latest_values = {}
-
+    
     async def poll_all_parameters(self, poll_interval=2):
         
         while True:
@@ -79,7 +79,7 @@ class ExtendedBackend(Backend):
                 all_params = device_data.get(devname, {}).get('all_params', None)
                 if all_params:
                     dev.all_params = all_params
-                    print(f"[ExtendedBackend] Set all_params for {devname}: {all_params}")
+                   
         except Exception as e:
             print(f"[ExtendedBackend] Could not set all_params from device_params.json: {e}")
 

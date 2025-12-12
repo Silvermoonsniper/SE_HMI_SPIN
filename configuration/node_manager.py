@@ -101,74 +101,6 @@ def extract_modules_and_parameters(data, prefix=""):
 
     return module_list, parameter_map, device_data_map
 
-async def discover_secop_nodes(timeout=2.0):
-    """
-    Discover SECoP nodes on the network using UDP broadcast.
-    SECoP nodes listen on UDP port 10767 for discovery requests.
-    
-    Returns:
-        list: List of discovered nodes with format [{'host': str, 'port': int, 'equipment_id': str}, ...]
-    """
-    discovered_nodes = []
-    DISCOVERY_PORT = 10767
-    
-    loop = asyncio.get_event_loop()
-    
-    # Use asyncio UDP transport for proper async/await support
-    class DiscoveryProtocol:
-        def __init__(self):
-            self.transport = None
-            self.responses = []
-            
-        def connection_made(self, transport):
-            self.transport = transport
-            
-        def datagram_received(self, data, addr):
-            try:
-                response = data.decode('utf-8').strip()
-                # Parse response - typical format: "ISSE,<equipment_id>,<version>,<description>"
-                # or just equipment_id
-                parts = response.split(',')
-                equipment_id = parts[1] if len(parts) > 1 else response
-                
-                # Default SECoP port is 10767
-                node_info = {
-                    'host': addr[0],
-                    'port': 10767,  # Standard SECoP port
-                    'equipment_id': equipment_id.strip()
-                }
-                
-                # Avoid duplicates
-                if not any(n['host'] == node_info['host'] for n in self.responses):
-                    self.responses.append(node_info)
-                    # ...removed debug print...
-                    
-            except Exception as e:
-                print(f"Error parsing discovery response: {e}")
-    
-    try:
-        # Create UDP endpoint
-        transport, protocol = await loop.create_datagram_endpoint(
-            DiscoveryProtocol,
-            allow_broadcast=True
-        )
-        
-        # SECoP discovery message format: "*IDN?\n"
-        discovery_msg = b"*IDN?\n"
-        
-        # Broadcast to all interfaces
-        transport.sendto(discovery_msg, ('255.255.255.255', DISCOVERY_PORT))
-        
-        # Wait for responses
-        await asyncio.sleep(timeout)
-        
-        discovered_nodes = protocol.responses
-        transport.close()
-        
-    except Exception as e:
-        print(f"Discovery error: {e}")
-    
-    return discovered_nodes
 
 def connect_and_fetch_params(host, port):
     # Resolve the host for Docker environment
@@ -262,34 +194,23 @@ class NodeManagerDevice(BaseDevice):
         # request.key is 'nodemanager.something'
         cmd = request.key.split('.')[-1]
 
-        if cmd == 'discover_nodes':
-            try:
-                self.log.info("Starting SECoP node discovery via UDP...")
-                discovered = await discover_secop_nodes(timeout=2.0)
-                self.log.info(f"Discovered {len(discovered)} nodes.")
-                # Send the list of discovered nodes to the frontend
-                self.run_task(self.send_param('discovered_nodes', discovered, ''))
-                return Reply(request.connection, request.key, request.transform, 'ack', discovered)
-            except Exception as e:
-                self.log.error(f"Discovery failed: {e}")
-                return Reply(request.connection, request.key, request.transform, 'error', str(e))
-        
+       
         if cmd == 'add_node':
             try:
-                # ...removed debug print...
+               
                 data = request.data
                 if isinstance(data, str):
                     data = json.loads(data)
-                # ...removed debug print...
+                
                 host = data.get('host')
                 port = data.get('port')
-                # ...removed debug print...
+               
                 # Verify connection first
                 mod_list, para_map, new_dev_data = connect_and_fetch_params(host, port)
-                # ...removed debug print...
+                
                 if not new_dev_data:
                     msg = f"Failed to connect to node {host}:{port}"
-                    # ...removed debug print...
+                   
                     self.run_task(self.send_param('status', msg, ''))
                     self.run_task(self._clear_status())
                     return Reply(request.connection, request.key, request.transform, 'error', msg)
@@ -359,19 +280,20 @@ class NodeManagerDevice(BaseDevice):
                     try:
                         with open(DEVICE_PARAMS_FILE, 'w') as f:
                             json.dump(all_data, f, indent=2)
-                        # ...removed debug print...
+                        
                     except Exception as e:
                         print(f"[add_node] Failed to write device_params.json: {e}")
-                    self.update_device_params_param()
-
-                self.update_nodes_param()
-                msg = "Node added successfully. Please restart server to use new devices."
-                # ...removed debug print...
+                # update device para json file        
+               #     self.update_device_params_param()
+                # update node,json file
+              #  self.update_nodes_param()
+                msg = "Node added successfully"
+                
                 self.run_task(self.send_param('status', msg, ''))
                 self.run_task(self._clear_status())
                 return Reply(request.connection, request.key, request.transform, 'ack', {"status": "ok", "message": msg})
             except Exception as e:
-                # ...removed debug print...
+               
                 self.run_task(self.send_param('status', f"Error: {str(e)}", ''))
                 self.run_task(self._clear_status())
                 return Reply(request.connection, request.key, request.transform, 'error', str(e))

@@ -1,3 +1,20 @@
+/* Ensure connect node modal is always visible and centered */
+#connect-node-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.25);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+}
+
+#connect-node-modal[style*="display: flex"] {
+  display: flex !important;
+}
 
 /* Ensure control panel is below device-boxes inside it */
 .control-panel-box {
@@ -122,11 +139,12 @@ body {
   padding: 30px;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  width: 300px;
+  width: 520px; /* much wider */
   text-align: center;
   position: relative;
   z-index: 10;
   border: 1px solid rgba(255,255,255,0.5);
+  font-size: 11px; /* decrease font size */
 }
 
 .conn-field {

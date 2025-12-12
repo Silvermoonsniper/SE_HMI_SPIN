@@ -1,59 +1,90 @@
 // --- Connect to Node Modal Logic ---
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() 
+
+{
+ 
   const connectBtn = document.getElementById('connect-node-btn');
   const modal = document.getElementById('connect-node-modal');
   const submitBtn = document.getElementById('conn-node-submit');
   const cancelBtn = document.getElementById('conn-node-cancel');
+
+
   if (connectBtn && modal && submitBtn && cancelBtn) {
     connectBtn.onclick = () => {
       modal.style.display = 'flex';
       modal.style.alignItems = 'center';
       modal.style.justifyContent = 'center';
+      // Clear manual fields
+      document.getElementById('conn-ip').value = '';
+      document.getElementById('conn-port').value = '';
     };
     cancelBtn.onclick = () => { modal.style.display = 'none'; };
     submitBtn.onclick = () => {
       const ip = document.getElementById('conn-ip').value.trim();
       const port = document.getElementById('conn-port').value.trim();
-      if (!ip || !port) { alert('Please enter both IP and Port.'); return; }
+      if (!ip || !port) { alert('Please enter IP and Port.'); return; }
       if (window.Spin && typeof window.Spin.send_request === 'function') {
         window.Spin.send_request('nodemanager.add_node', '', 'input', 'set', {host: ip, port: port});
         modal.style.display = 'none';
-        document.getElementById('conn-ip').value = '';
-        document.getElementById('conn-port').value = '';
       } else {
         alert('Not connected to Spin server.');
       }
     };
+  } else {
+    // Show a visible error if modal logic cannot attach
+    const err = document.createElement('div');
+    err.textContent = 'ERROR: Connect Node modal logic failed to attach. Check console for details.';
+    err.style.background = '#dc3545';
+    err.style.color = 'white';
+    err.style.padding = '12px';
+    err.style.fontWeight = 'bold';
+    err.style.textAlign = 'center';
+    err.style.margin = '12px';
+    err.style.zIndex = 99999;
+    document.body.prepend(err);
   }
 });
+// function to delete selected layout
 
 function deleteSelectedLayout() {
+ 
   const select = document.getElementById('layout-select');
+ 
   const name = select.value;
-  if (!name) {
+ 
+  if (!name) 
+  
+  {
+ 
     alert('Please select a layout to delete.');
+ 
     return;
   }
+ 
   if (!confirm('Delete layout "' + name + '"? This cannot be undone.')) return;
+ 
   const layouts = getStoredLayouts();
+ 
   delete layouts[name];
+ 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
+ 
   updateLayoutList();
+ 
   select.value = '';
+ 
   alert('Layout deleted.');
 }
-// (toggleConfigView restored inline in system.html)
-/**
- * Gas Dosing System - JavaScript Logic
- * Handles device status updates, value sending, and extra parameters panel
- */
+
 
 // ===== Connection Panel Logic =====
+// global variablex declaration for pan and scale
 let scale = 1;
 let panX = 0;
 let panY = 0;
 const STORAGE_KEY = 'gas_system_layouts';
 
+// function to set background image(s)
 function setBackgroundImage() {
   const input = document.getElementById('conn-bg-url');
   const raw = input.value.trim();
@@ -74,22 +105,38 @@ function setBackgroundImage() {
   }
 }
 
+
+// function to load saved background image
 function loadSavedBackground() {
+
   const raw = localStorage.getItem('system_bg');
+
   if (raw) {
+
     const urls = raw.split(',').map(u => u.trim()).filter(u => u);
+
     const imgs = document.querySelectorAll('.bg-img');
+
     imgs.forEach((img, i) => {
+
       let url = urls[i % urls.length];
+
       img.style.backgroundImage = `url('${url}')`;
+
     });
+
     const input = document.getElementById('conn-bg-url');
+
     if (input) input.value = raw;
+
   }
 }
 
+//function to add node connection
 function addNodeConnection() {
+  
   const ip = document.getElementById('conn-ip').value;
+  
   const port = document.getElementById('conn-port').value;
   
   if (!ip || !port) {
@@ -101,12 +148,16 @@ function addNodeConnection() {
       Spin.send_request('nodemanager.add_node', "", "input", "set", {host: ip, port: port});
       // Alert will be handled by nodemanager.status update
       document.getElementById('conn-ip').value = '';
-  } else {
+  } 
+  else 
+  {
       alert('Not connected to Spin server.');
   }
 }
 
-function fetchNodesList() {
+function fetchNodesList() 
+
+{
     if (window.Spin) {
         Spin.send_request('nodemanager.list_nodes', "", "read", "read", null);
     }
@@ -121,11 +172,17 @@ document.addEventListener('DOMContentLoaded', () => {
     try { updateLayoutList(); } catch (e) { console.error('updateLayoutList error', e); }
     // If a layout was previously selected, apply it
     const selectedLayout = sessionStorage.getItem('selectedLayout');
+  
     if (selectedLayout) {
+  
       const layouts = getStoredLayouts();
+  
       if (layouts[selectedLayout]) {
+  
         applyLayout(layouts[selectedLayout]);
+  
         document.getElementById('layout-select').value = selectedLayout;
+  
       }
     }
   });
@@ -143,55 +200,38 @@ function waitForSpin(callback) {
   checkSpin();
 }
 
-function discoverNodes() {
-    if (window.Spin && window.Spin.send_request) {
-        const contentDiv = document.getElementById('discovered-nodes-content');
-        contentDiv.textContent = 'Discovering SECoP nodes via UDP broadcast...';
-        document.getElementById('discovered-nodes-box').style.display = 'block';
-        Spin.send_request('nodemanager.discover_nodes', '', 'read', 'read', null);
-    } else {
-        alert('Connection to server not ready.');
-    }
-}
 
-function displayDiscoveredNodes(nodes) {
-    const contentDiv = document.getElementById('discovered-nodes-content');
-    if (!nodes || nodes.length === 0) {
-        contentDiv.textContent = 'No new nodes found on the network.';
-        return;
-    }
 
-    let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
-    nodes.forEach(node => {
-        const nodeName = `${node.host}:${node.port}`;
-        html += `<li style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #e9ecef;">
-            <span>${node.equipment_id || 'Unknown Device'} (${nodeName})</span>
-            <button onclick="addNodeConnectionAuto('${node.host}', ${node.port})" style="font-size:10px; padding: 2px 6px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;">Add</button>
-        </li>`;
-    });
-    html += '</ul>';
-    contentDiv.innerHTML = html;
-}
 
 function loadNodesInfo() {
-  // Use Spin API to get the list of nodes
+  // Use Spin API to get the list of nodes and populate dropdown
+  const dropdown = document.getElementById('nodes-info-dropdown');
+  if (!dropdown) return;
+  dropdown.innerHTML = '<option value="">Loading...</option>';
   if (window.Spin && window.Spin.send_request) {
-    document.getElementById('nodes-info-content').textContent = 'Loading...';
-    window.Spin.send_request('nodemanager.list_nodes', '', 'read', 'read', null);
+    window.Spin.send_request('nodemanager.list_nodes', '', 'read', 'read', null, function(nodesList) {
+      dropdown.innerHTML = '';
+      if (Array.isArray(nodesList) && nodesList.length > 0) {
+        nodesList.forEach(node => {
+          const label = node.equipment_id ? `${node.host}:${node.port} (${node.equipment_id})` : `${node.host}:${node.port}`;
+          dropdown.innerHTML += `<option value="${node.host}:${node.port}">${label}</option>`;
+        });
+      } else {
+        dropdown.innerHTML = '<option value="">No nodes available</option>';
+      }
+    });
   } else {
-    // Spin not ready yet, show placeholder
-    document.getElementById('nodes-info-content').textContent = 'Connecting to server...';
+    dropdown.innerHTML = '<option value="">Connecting to server...</option>';
   }
 }
 
 function displayNodesInfo(nodesList) {
   const infoContent = document.getElementById('nodes-info-content');
-  
+  if (!infoContent) return;
   if (!nodesList || nodesList.length === 0) {
     infoContent.textContent = 'No nodes configured';
     return;
   }
-  
   let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
   nodesList.forEach((node, index) => {
     const nodeName = `${node.host}:${node.port}`;
@@ -255,8 +295,7 @@ function connectToNode() {
 function disconnectNode() {
   document.getElementById('main-panel').style.display = 'none';
   document.getElementById('connection-panel').style.display = 'flex';
-  // Clear nodes? Or keep them? User probably wants to keep them or reset.
-  // For now, let's keep them so they can add more or re-enter.
+ 
 }
 
 // ===== Status Badge Updates =====
@@ -264,10 +303,7 @@ window.addEventListener('spinupdate', function(event) {
   try {
     var key = event.detail.key || '';
     
-    if (key === 'nodemanager.discovered_nodes') {
-        displayDiscoveredNodes(event.detail.value);
-        return;
-    }
+    
 
     if (key === 'nodemanager.nodes') {
         var nodes = event.detail.value;
@@ -357,8 +393,7 @@ window.addEventListener('spinupdate', function(event) {
       statusEl.textContent = state_str || state || 'unknown';
       statusEl.className = 'status-badge ' + (state ? ('state-' + state) : 'state-warn');
     } else {
-       // Debug if element missing
-       // debug('Missing status el for ' + domId);
+    
     }
 
     // 2. Update Value/Target Fields (Manual update for dynamic elements)
@@ -394,7 +429,7 @@ function sendValue(key, inputElementId) {
     if (!value) return;
     let finalValue = isNaN(value) ? value : parseFloat(value);
     Spin.send_request(key, "", "input", "", finalValue);
-    console.log('Sent', key, '=', finalValue);
+  
     inputEl.value = '';
   } catch(e) { 
     console.error('sendValue failed', e); 
@@ -416,7 +451,7 @@ function sendSelectedParam(device, domId) {
     let finalValue = isNaN(value) ? value : parseFloat(value);
     const key = device + '.' + param;
     Spin.send_request(key, "", "input", "", finalValue);
-    console.log('Set parameter:', key, '=', finalValue);
+   
     valueInput.value = '';
   } catch(e) {
     console.error('sendSelectedParam failed', e);
@@ -474,18 +509,14 @@ function updateParamDisplay(device, domId, param) {
   // Check if parameter has enum values in WRITABLE_PARAMS
   const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
   
-  console.log('updateParamDisplay:', device, param);
-  console.log('Full deviceInfo for', device, ':', JSON.stringify(deviceInfo, null, 2));
-  
+   
   const paramInfo = deviceInfo && deviceInfo.param_info && deviceInfo.param_info[param] ? deviceInfo.param_info[param] : null;
-  
-  console.log('paramInfo:', paramInfo);
   
   // If parameter has enum members, show dropdown instead of text input
   if (paramInfo && paramInfo.type === 'enum' && paramInfo.members) {
     // members is an object with enum_name: value pairs
     const enumNames = Object.keys(paramInfo.members);
-    console.log('Creating enum dropdown with members:', enumNames);
+   
     let selectHtml = '<select id="param-value-' + domId + '" class="control-input" style="flex: 1;">';
     selectHtml += '<option value="">-- Select --</option>';
     enumNames.forEach(enumName => {

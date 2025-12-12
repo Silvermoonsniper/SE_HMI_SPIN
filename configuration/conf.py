@@ -4,8 +4,8 @@ import os
 import asyncio
 from frappy.client import SecopClient
 from configuration.extended_backend import ExtendedBackend
-import mlzlog
-
+import mlzlog,time
+import socket
 # Increase asyncio stream reader limit to handle large plotly parameters
 # Default is 64KB, we increase to 10MB
 asyncio.streams._DEFAULT_LIMIT = 10 * 1024 * 1024
@@ -74,114 +74,195 @@ def extract_modules_and_parameters(data, prefix=""):
 
 def connect_node(host, port):
     # Resolve the host for Docker environment
-    resolved_host = resolve_host(host)
-    url = f"{resolved_host}:{port}"
-    print(f"Connecting to {url}...")
-    
-    try:
-        # Create client and connect
-        client = SecopClient(url)
-        client.connect()
-        
-        # Extract the equipment_id (SEC node name) to use as prefix
-        equipment_id = client.descriptive_data.get("equipment_id", "")
-        # Use equipment_id as prefix to create unique device names
-        prefix = equipment_id if equipment_id else ""
-        
-        mod_list, para_map, dev_data = extract_modules_and_parameters(client.descriptive_data, prefix)
-        
-        # Print the ready message with the node name
-        if equipment_id:
-            print(f"{equipment_id} ready")
-        
-        return mod_list, para_map, dev_data
+      resolved_host = resolve_host(host)
+
+
+
+# Top-level SpinConfigManager class for use by spin and as script
+class SpinConfigManager:
+    def __init__(self, nodes_file=None):
+        self.base_dir = os.path.dirname(__file__)
+        self.NODES_FILE = nodes_file or os.path.join(self.base_dir, 'nodes.json')
+        self.DEVICE_PARAMS_FILE = os.path.join(self.base_dir, 'device_params.json')
+        self.config = None
+        self.nodes = []
+
+    def is_running_in_docker(self):
+        return os.path.exists('/.dockerenv') or os.path.exists('/run/.containerenv')
+
+    def resolve_host(self, host):
+            if not self.is_running_in_docker():
+                return host
+            if host not in ('localhost', '127.0.0.1'):
+                return host
+            return 'host.docker.internal'
+
+    def extract_modules_and_parameters(self, data, prefix=""):
+            modules = data.get("modules", {})
+            parameter_map = {}
+            device_data_map = {}
+            module_list = []
+            for module_name, module_info in modules.items():
+                unique_name = f"{prefix}_{module_name}" if prefix else module_name
+                module_list.append((module_name, unique_name))
+                params = module_info.get("accessibles", {})
+                parameter_list = []
+                writable_list = []
+                command_list = []
+                for param_name, param_info in params.items():
+                    datainfo = param_info.get("datainfo", {})
+                    dtype = datainfo.get("type")
+                    parameter_list.append(param_name)
+                    if dtype == 'command':
+                        command_list.append(param_name)
+                    elif not param_info.get("readonly", False):
+                        writable_list.append(param_name)
+                parameter_map[unique_name] = parameter_list
+                device_data_map[unique_name] = {
+                    "params": writable_list,
+                    "all_params": parameter_list,
+                    "commands": command_list,
+                    "original_name": module_name,
+                    "interface_classes": module_info.get("interface_classes", [])
+                }
+            return module_list, parameter_map, device_data_map
+
+    def connect_node(self, host, port):
+         resolved_host = self.resolve_host(host)
+         url = f"{resolved_host}:{port}"
+         print(f"Connecting to {url}...")
+         try:
+                client = SecopClient(url)
+                client.connect()
+                equipment_id = client.descriptive_data.get("equipment_id", "")
+                prefix = equipment_id if equipment_id else ""
+                mod_list, para_map, dev_data = self.extract_modules_and_parameters(client.descriptive_data, prefix)
+                if equipment_id:
+                    print(f"{equipment_id} ready")
+                return mod_list, para_map, dev_data
+         except Exception as e:
+                print(f"Failed to connect to {url}: {e}")
+                return [], {}, {}
+
+    async def discover_and_save_nodes(self, timeout=2.0):
             
-    except Exception as e:
-        print(f"Failed to connect to {url}: {e}")
-        return [], {}, {}
+            class FrappyDiscoveryProtocol(asyncio.DatagramProtocol):
+                def __init__(self):
+                    self.transport = None
+                    self.responses = []
+                def connection_made(self, transport):
+                    self.transport = transport
+                def datagram_received(self, data, addr):
+                    try:
+                        response = data.decode('utf-8').strip()
+                        desc = json.loads(response)
+                        if desc.get('SECoP') == 'node':
+                            node_info = {
+                                'host': addr[0],
+                                'port': desc.get('port', addr[1]),
+                                'equipment_id': desc.get('equipment_id', ''),
+                                'firmware': desc.get('firmware', ''),
+                                'description': desc.get('description', ''),
+                            }
+                            if not any(n['host'] == node_info['host'] and n['port'] == node_info['port'] for n in self.responses):
+                                self.responses.append(node_info)
+                    except Exception as e:
+                        print(f"Error parsing discovery response: {e}")
+            DISCOVERY_PORT = 10767
+            loop = asyncio.get_event_loop()
+            protocol = FrappyDiscoveryProtocol()
+            try:
+                transport, _ = await loop.create_datagram_endpoint(
+                    lambda: protocol,
+                    local_addr=('0.0.0.0', 0),
+                    family=socket.AF_INET,
+                    allow_broadcast=True
+                )
+                discovery_msg = json.dumps({'SECoP': 'discover'}).encode('utf-8')
+                transport.sendto(discovery_msg, ('255.255.255.255', DISCOVERY_PORT))
+                await asyncio.sleep(timeout)
+                discovered_nodes = protocol.responses
+                transport.close()
+            except Exception as e:
+                print(f"Discovery error: {e}")
+                discovered_nodes = []
+            # Write discovered nodes to nodes.json
+            with open(self.NODES_FILE, 'w') as f:
+                json.dump([{'host': n['host'], 'port': n['port']} for n in discovered_nodes], f, indent=2)
+            self.nodes = [{'host': n['host'], 'port': n['port']} for n in discovered_nodes]
+            return self.nodes
 
-# Load nodes configuration
-nodes_file = NODES_FILE
-if not os.path.exists(nodes_file):
-    # Create an empty nodes.json if it doesn't exist
-    with open(nodes_file, 'w') as f:
-        json.dump([], f)
-    nodes = []
-else:
-    try:
-        with open(nodes_file, 'r') as f:
-            nodes = json.load(f)
-    except (json.JSONDecodeError, FileNotFoundError):
-        print(f"Warning: Could not decode {nodes_file}. Starting with no nodes.")
-        nodes = []
+    def spin_server_start(self, nodes):
+            all_device_data = {}
+            dev_config = {}
+            for node in nodes:
+                host = node.get("host", "localhost")
+                port = node.get("port", 10801)
+                mod_list, para_map, dev_data = self.connect_node(host, port)
+                for dev_name, dev_info in dev_data.items():
+                    dev_info['all_params'] = para_map.get(dev_name, [])
+                    all_device_data[dev_name] = dev_info
+                resolved_host = self.resolve_host(host)
+                url = f"{resolved_host}:{port}"
+                for original_name, unique_name in mod_list:
+                    params = [Param(para_name) for para_name in para_map.get(unique_name, [])]
+                    dev = Device(
+                        f"secop://{url}/{original_name}",
+                        pollinterval=1.0,
+                        params=params
+                    )
+                    dev.all_params = para_map.get(unique_name, [])
+                    dev_config[unique_name] = dev
+            dev_config['nodemanager'] = Device('nodemanager://localhost', pollinterval=1.0)
+            config = Config()
+            config.server = '0.0.0.0:8000'
+            config.control_url = 'http://0.0.0.0:8000/'
+            config.plugins = [os.path.abspath(os.path.join(self.base_dir, 'node_manager.py'))]
+            config.pages = {
+                'default': Page('../content/system.html', readonly=False),
+                'plots': Page('../content/plots.html', readonly=False),
+            }
+            config.devices = dev_config
+            # Write device data (params + commands) to JSON file for frontend
+            try:
+                with open(self.DEVICE_PARAMS_FILE, 'w') as f:
+                    json.dump(all_device_data, f)
+                print(f"Device data saved to {self.DEVICE_PARAMS_FILE}")
+            except Exception as e:
+                print(f"Error saving device data: {e}")
+            self.config = config
+            return config
 
-# If nodes.json is empty, you might want to add a default node.
-# For now, we'll just proceed.
+    def start_extended_backend(self, config):
+            loop = asyncio.get_event_loop()
+            connections = []
+            log = mlzlog.getLogger("spin")
+            backend = ExtendedBackend(loop, connections, log)
+            backend.start(config, [])
+
+    def run(self):
+            loop = asyncio.get_event_loop()
+            nodes = loop.run_until_complete(self.discover_and_save_nodes(timeout=2.0))
+            if not nodes:
+                print("No SECoP nodes discovered on the network.")
+            config = self.spin_server_start(nodes)
+            self.start_extended_backend(config)
+
+
+
+  
+
+
+# For compatibility with spin: expose 'config' as a global variable
+manager = SpinConfigManager()
+nodes = asyncio.get_event_loop().run_until_complete(manager.discover_and_save_nodes(timeout=2.0))
 if not nodes:
-    print("No nodes configured in nodes.json.")
+    print("No SECoP nodes discovered on the network.")
+config = manager.spin_server_start(nodes)
 
-all_device_data = {}
-dev_config = {}
+# If run as a script, also start the backend
+if __name__ == "__main__":
+    manager.start_extended_backend(config)
 
-# Connect to each node and configure devices
-for node in nodes:
-    host = node.get("host", "localhost")
-    port = node.get("port", 10801)
-    
-    mod_list, para_map, dev_data = connect_node(host, port)
-    
-    # Merge into global data, and add all_params for each device
-    for dev_name, dev_info in dev_data.items():
-        # Add all_params: all parameter names, including readonly
-        dev_info['all_params'] = para_map.get(dev_name, [])
-        all_device_data[dev_name] = dev_info
-    
-    # Configure Spin devices - use resolved host for the connection URL
-    resolved_host = resolve_host(host)
-    url = f"{resolved_host}:{port}"
-    for original_name, unique_name in mod_list:
-        params = []
-        for para_name in para_map.get(unique_name, []):
-            params.append(Param(para_name))
-        
-      
-        dev = Device(
-            f"secop://{url}/{original_name}",
-            pollinterval=1.0,
-            params=params
-        )
-        # Set all_params attribute for backend polling
-        dev.all_params = para_map.get(unique_name, [])
-        dev_config[unique_name] = dev
 
-dev_config['nodemanager'] = Device('nodemanager://localhost', pollinterval=1.0)
-
-config = Config()
-config.server = '0.0.0.0:8000'
-config.control_url = 'http://0.0.0.0:8000/'
-config.plugins = [os.path.abspath(os.path.join(os.path.dirname(__file__), 'node_manager.py'))]
-config.pages = {
-    # page for configuring and display of system layout
-    'default': Page('../content/system.html', readonly=False),
-     # page for plots of GUI
-    'plots': Page('../content/plots.html', readonly=False),
-}
-
-config.devices = dev_config
-
-# Write device data (params + commands) to JSON file for frontend
-json_path = os.path.join(os.path.dirname(__file__), 'device_params.json')
-try:
-    with open(json_path, 'w') as f:
-        json.dump(all_device_data, f)
-    print(f"Device data saved to {json_path}")
-except Exception as e:
-    print(f"Error saving device data: {e}")
-
-loop = asyncio.get_event_loop()
-connections = []  # or your actual connections list
-log = mlzlog.getLogger("spin")
-
-backend = ExtendedBackend(loop, connections, log)
-backend.start(config, [])
 

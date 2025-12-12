@@ -1,0 +1,102 @@
+{
+  "devices": [
+    {
+      "id": "box-sim_gas_dosing_backpress_contr1",
+      "device": "backpress_contr1",
+      "logicalName": "sim_gas_dosing_backpress_contr1",
+      "left": "20px",
+      "top": "20px",
+      "width": "",
+      "height": "",
+      "info": {
+        "params": [
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_forward_calibration_coefficients",
+          "_inverse_calibration_coefficients",
+          "_looptime",
+          "_tolerance",
+          "pollinterval",
+          "ramp",
+          "target"
+        ],
+        "all_params": [
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_factory_reset",
+          "_forward_calibration_coefficients",
+          "_inverse_calibration_coefficients",
+          "_looptime",
+          "_tolerance",
+          "pollinterval",
+          "ramp",
+          "stop",
+          "target"
+        ],
+        "commands": [
+          "_factory_reset",
+          "stop"
+        ],
+        "original_name": "backpress_contr1",
+        "interface_classes": [
+          "Drivable"
+        ]
+      }
+    },
+    {
+      "id": "box-sim_gas_dosing_massflow_contr1",
+      "device": "massflow_contr1",
+      "logicalName": "sim_gas_dosing_massflow_contr1",
+      "left": "376px",
+      "top": "136px",
+      "width": "",
+      "height": "",
+      "info": {
+        "params": [
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_control_mode",
+          "_forward_calibration_coefficients",
+          "_gastype_select",
+          "_inverse_calibration_coefficients",
+          "_tolerance",
+          "_valveposition",
+          "pollinterval",
+          "ramp",
+          "target"
+        ],
+        "all_params": [
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_control_mode",
+          "_factory_reset",
+          "_forward_calibration_coefficients",
+          "_gastype_select",
+          "_inverse_calibration_coefficients",
+          "_test_cmd",
+          "_tolerance",
+          "_valveposition",
+          "pollinterval",
+          "ramp",
+          "stop",
+          "target"
+        ],
+        "commands": [
+          "_factory_reset",
+          "_test_cmd",
+          "stop"
+        ],
+        "original_name": "massflow_contr1",
+        "interface_classes": [
+          "Drivable"
+        ]
+      }
+    }
+  ],
+  "valveIcons": [],
+  "decorations": []
+}
