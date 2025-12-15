@@ -167,9 +167,20 @@ function fetchNodesList()
 document.addEventListener('DOMContentLoaded', () => {
   // Wait for Spin to initialize before fetching nodes
   waitForSpin(() => {
+    
     loadNodesInfo();
     // Populate dropdown from localStorage immediately and request server list
-    try { updateLayoutList(); } catch (e) { console.error('updateLayoutList error', e); }
+    try 
+    
+    { 
+      updateLayoutList(); 
+    } 
+
+    catch (e) 
+    
+    { 
+      console.error('updateLayoutList error', e); 
+    }
     // If a layout was previously selected, apply it
     const selectedLayout = sessionStorage.getItem('selectedLayout');
   
@@ -827,14 +838,14 @@ function createDeviceDisplay(deviceNameOverride) {
   // Trigger Spin to bind new data-spin elements if possible
   if (window.Spin) {
       if (window.Spin.reload) {
-          debug('Calling Spin.reload()');
+         
           window.Spin.reload();
       } else {
-          debug('Warn: Spin.reload not found');
+         
           // Fallback: Try to manually trigger a scan if we can guess the method
           // or maybe we need to re-init?
           if (window.Spin.init) {
-             debug('Calling Spin.init()');
+            
              window.Spin.init();
           }
       }
@@ -880,15 +891,12 @@ async function setupValveController(device, domId) {
   }
   
   const valueData = valueEntry.value;
-  
-  debug(`Value data type: ${typeof valueData}, value: ${JSON.stringify(valueData)}`);
-  
+   
   if (!valueData || typeof valueData !== 'object') {
-    debug(`Valve controller ${device} value is not a struct, got: ${typeof valueData}`);
+   
     return;
-  }
   
-  debug(`Found valve fields: ${Object.keys(valueData).join(', ')}`);
+  }
   
   // Remove the valve controller box itself since we'll create individual valves
   const controllerBox = document.getElementById(`box-${domId}`);
@@ -2140,7 +2148,7 @@ function loadSelectedLayout() {
       try {
         window.Spin.send_request('nodemanager.get_layout', '', 'read', 'read', {name: name});
       } catch (e) {
-        console.error('get_layout request failed', e);
+       
         alert('Failed to request layout from server.');
       }
     } else {
@@ -2265,8 +2273,7 @@ function applyLayout(layout) {
           if(d.height) newBox.style.height = d.height;
         }
       } else {
-        console.warn(`Device '${d.device}' from layout not found in current SEC node configuration. Skipping.`);
-      }
+            }
     });
   }
   

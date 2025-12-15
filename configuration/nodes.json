@@ -1,14 +1,10 @@
 [
   {
-    "host": "134.30.59.80",
-    "port": 10802
-  },
-  {
-    "host": "134.30.59.80",
+    "host": "host.docker.internal",
     "port": 10801
   },
   {
-    "host": "134.30.59.80",
-    "port": 10814
+    "host": "host.docker.internal",
+    "port": 10802
   }
 ]

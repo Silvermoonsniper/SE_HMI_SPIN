@@ -2,3 +2,4 @@
 spin_gui_SE.egg-info
 inspect_secop.py
 test.ipynb
+configuration/__pycache__/

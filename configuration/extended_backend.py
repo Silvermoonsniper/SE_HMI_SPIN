@@ -4,17 +4,20 @@ import os, json
 import threading
 from flask import Flask, jsonify
 from flask_cors import CORS
-
+"""
+an extended backend to poll all device parameters to port 8001 every poll_interval
+for frontend spin updates
+"""
 class ExtendedBackend(Backend):
     # Store latest values for API
     latest_values = {}
     
     async def poll_all_parameters(self, poll_interval=2):
-        
+       
         while True:
-            
             for devname, dev in self._devices.items():
-                
+               
+
                 all_params = getattr(dev, 'all_params', None)
                 
                 if all_params is None and hasattr(dev, 'params'):
@@ -40,8 +43,15 @@ class ExtendedBackend(Backend):
                         val = getattr(value, 'value', value)
                         
                         key = f"{devname}.{param}"
-                        
+
                         update = Update(key, unit, state, state_str, val)
+                        try:
+                            short = repr(val)
+                            if len(short) > 160:
+                                short = short[:160] + '...'
+                            print(f"[ExtendedBackend] update prepared: {key} = {short}")
+                        except Exception:
+                            pass
                         
                         # Store for API
                         try:
@@ -54,7 +64,7 @@ class ExtendedBackend(Backend):
                                 }
                         except Exception:
                             pass
-                        
+                        print(update)
                         await self.send_update(update)
                        
                     except Exception as e:
@@ -69,18 +79,27 @@ class ExtendedBackend(Backend):
             self.protos['nodemanager'] = 'configuration.node_manager'
         super().start(conf, asset_list)
 
-        # Set all_params for each device from device_params.json
+    # Set all_params for each device from device_params.json
        
         json_path = os.path.join(os.path.dirname(__file__), 'device_params.json')
+       
         try:
+            print("[ExtendedBackend] starting, loading device_params.json and launching poller + API thread")
+   
             with open(json_path, 'r') as f:
+   
                 device_data = json.load(f)
+   
             for devname, dev in self._devices.items():
+   
                 all_params = device_data.get(devname, {}).get('all_params', None)
+   
                 if all_params:
+   
                     dev.all_params = all_params
                    
         except Exception as e:
+   
             print(f"[ExtendedBackend] Could not set all_params from device_params.json: {e}")
 
         self.run_task(self.poll_all_parameters())
@@ -89,9 +108,15 @@ class ExtendedBackend(Backend):
 
 
 def start_api_server():
+   
     app = Flask(__name__)
+   
     CORS(app)
+   
     @app.route('/api/latest_values')
+   
     def get_latest_values():
+   
         return jsonify(ExtendedBackend.latest_values)
+   
     threading.Thread(target=lambda: app.run(host='0.0.0.0', port=8001, debug=False), daemon=True).start()

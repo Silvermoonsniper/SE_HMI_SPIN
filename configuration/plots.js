@@ -2,15 +2,28 @@
 //Polls /api/latest_values every 2s and dispatches spinupdate events for each key/value
 function startPollingLatestValues() {
   setInterval(() => {
-    fetch('http://localhost:8001/api/latest_values')
+    // Use the current page host so requests work when UI is served from a different host
+    // (e.g. container/host mappings). Port 8001 is where the backend Flask API serves latest values.
+    const host = window.location.hostname || 'localhost';
+    const url = `${window.location.protocol}//${host}:8001/api/latest_values`;
+
+    fetch(url)
       .then(r => r.json())
       .then(data => {
-        Object.entries(data).forEach(([key, value]) => {
-          const ev = new CustomEvent('spinupdate', { detail: { key, value } });
+        Object.entries(data).forEach(([key, meta]) => {
+          // `meta` is expected to be an object like { value, unit, state, state_str }
+          const evDetail = {
+            key: key,
+            value: meta && (meta.value !== undefined ? meta.value : meta),
+            unit: meta && meta.unit,
+            state: meta && meta.state,
+            state_str: meta && meta.state_str
+          };
+          const ev = new CustomEvent('spinupdate', { detail: evDetail });
           window.dispatchEvent(ev);
         });
       })
-      .catch(e => console.warn('[Polling] Failed to fetch latest values', e));
+      .catch(e => console.warn('[Polling] Failed to fetch latest values from', url, e));
   }, 2000);
 }
 

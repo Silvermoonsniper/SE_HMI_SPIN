@@ -1,81 +1,4 @@
 {
-  "sim_reactor_cell_temperature_reg": {
-    "params": [
-      "target",
-      "ramp",
-      "_inverse_calibration_coefficients",
-      "_forward_calibration_coefficients",
-      "_tolerance",
-      "_P_value",
-      "_I_value",
-      "_D_value"
-    ],
-    "all_params": [
-      "_D_value",
-      "_I_value",
-      "_P_value",
-      "_factory_reset",
-      "_forward_calibration_coefficients",
-      "_inverse_calibration_coefficients",
-      "_tolerance",
-      "ramp",
-      "stop",
-      "target"
-    ],
-    "commands": [
-      "stop",
-      "_factory_reset"
-    ],
-    "original_name": "temperature_reg",
-    "interface_classes": [
-      "Drivable"
-    ]
-  },
-  "sim_reactor_cell_temperature_sam": {
-    "params": [
-      "pollinterval",
-      "_heat_flux"
-    ],
-    "all_params": [
-      "_heat_flux",
-      "pollinterval"
-    ],
-    "commands": [],
-    "original_name": "temperature_sam",
-    "interface_classes": [
-      "Readable"
-    ]
-  },
-  "sim_reactor_cell_pressure_inlet": {
-    "params": [
-      "pollinterval",
-      "_pre_flux"
-    ],
-    "all_params": [
-      "_pre_flux",
-      "pollinterval"
-    ],
-    "commands": [],
-    "original_name": "pressure_inlet",
-    "interface_classes": [
-      "Readable"
-    ]
-  },
-  "sim_reactor_cell_pressure_outlet": {
-    "params": [
-      "pollinterval",
-      "_pre_flux"
-    ],
-    "all_params": [
-      "_pre_flux",
-      "pollinterval"
-    ],
-    "commands": [],
-    "original_name": "pressure_outlet",
-    "interface_classes": [
-      "Readable"
-    ]
-  },
   "sim_gas_dosing_massflow_contr1": {
     "params": [
       "target",
@@ -599,34 +522,81 @@
       "Readable"
     ]
   },
-  "sim_Hiden_MS_mass_spec": {
+  "sim_reactor_cell_temperature_reg": {
     "params": [
-      "mode",
-      "_aquire_time",
-      "_mid_descriptor",
-      "_signal_measurement_device",
-      "_start_mass",
-      "_end_mass",
-      "_mass_increment",
-      "_scan_cycle"
+      "target",
+      "ramp",
+      "_inverse_calibration_coefficients",
+      "_forward_calibration_coefficients",
+      "_tolerance",
+      "_P_value",
+      "_I_value",
+      "_D_value"
     ],
     "all_params": [
-      "_aquire_time",
-      "_end_mass",
-      "_mass_increment",
-      "_mid_descriptor",
-      "_scan_cycle",
-      "_signal_measurement_device",
-      "_start_mass",
-      "go",
-      "mode"
+      "_D_value",
+      "_I_value",
+      "_P_value",
+      "_factory_reset",
+      "_forward_calibration_coefficients",
+      "_inverse_calibration_coefficients",
+      "_tolerance",
+      "ramp",
+      "stop",
+      "target"
     ],
     "commands": [
-      "go"
+      "stop",
+      "_factory_reset"
     ],
-    "original_name": "mass_spec",
+    "original_name": "temperature_reg",
     "interface_classes": [
-      "Triggerable"
+      "Drivable"
+    ]
+  },
+  "sim_reactor_cell_temperature_sam": {
+    "params": [
+      "pollinterval",
+      "_heat_flux"
+    ],
+    "all_params": [
+      "_heat_flux",
+      "pollinterval"
+    ],
+    "commands": [],
+    "original_name": "temperature_sam",
+    "interface_classes": [
+      "Readable"
+    ]
+  },
+  "sim_reactor_cell_pressure_inlet": {
+    "params": [
+      "pollinterval",
+      "_pre_flux"
+    ],
+    "all_params": [
+      "_pre_flux",
+      "pollinterval"
+    ],
+    "commands": [],
+    "original_name": "pressure_inlet",
+    "interface_classes": [
+      "Readable"
+    ]
+  },
+  "sim_reactor_cell_pressure_outlet": {
+    "params": [
+      "pollinterval",
+      "_pre_flux"
+    ],
+    "all_params": [
+      "_pre_flux",
+      "pollinterval"
+    ],
+    "commands": [],
+    "original_name": "pressure_outlet",
+    "interface_classes": [
+      "Readable"
     ]
   }
 }
