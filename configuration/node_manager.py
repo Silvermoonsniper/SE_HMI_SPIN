@@ -188,8 +188,6 @@ class NodeManagerDevice(BaseDevice):
         self.log.info("NodeManager initialized")
     
         self.update_nodes_param()
-    
-        self.update_device_params_param()
 
     def update_nodes_param(self):
     
@@ -218,46 +216,36 @@ class NodeManagerDevice(BaseDevice):
                 pass
         # Ensure all_params is present and up to date for each device
         changed = False
-      
         for dev, info in data.items():
-            # If accessibles exists, use its keys for all_params
+            # Compute a robust all_params as the union of all known sources:
+            # - keys of 'accessibles' (if present),
+            # - 'params' (writable parameters),
+            # - 'commands',
+            # - keys from 'param_info' (metadata for params)
+            ap_set = set()
+
             if 'accessibles' in info and isinstance(info['accessibles'], dict):
-                all_params = sorted(list(info['accessibles'].keys()))
-            else:
-                # Fallback: union of params, commands, param_info keys
-                all_params = set()
-      
-                if 'params' in info:
-      
-                    all_params.update(info['params'])
-      
-                if 'commands' in info:
-      
-                    all_params.update(info['commands'])
-      
-                if 'param_info' in info and isinstance(info['param_info'], dict):
-      
-                    all_params.update(info['param_info'].keys())
-      
-                all_params = sorted(list(all_params))
-      
+                try:
+                    ap_set.update(info['accessibles'].keys())
+                except Exception:
+                    pass
+
+            if 'params' in info and isinstance(info['params'], (list, tuple)):
+                ap_set.update(info['params'])
+
+            if 'commands' in info and isinstance(info['commands'], (list, tuple)):
+                ap_set.update(info['commands'])
+
+            if 'param_info' in info and isinstance(info['param_info'], dict):
+                ap_set.update(info['param_info'].keys())
+
+            all_params = sorted([p for p in ap_set if p is not None])
+
             if info.get('all_params') != all_params:
-      
                 info['all_params'] = all_params
+         
       
-                changed = True
       
-        if changed:
-      
-            try:
-      
-                with open(DEVICE_PARAMS_FILE, 'w') as f:
-      
-                    json.dump(data, f, indent=2)
-      
-            except Exception as e:
-      
-                print(f"Failed to update all_params in device_params.json: {e}")
       
         self.run_task(self.send_param('device_params', data, ''))
 
@@ -299,7 +287,7 @@ class NodeManagerDevice(BaseDevice):
                
                 # Verify connection first
                 mod_list, para_map, new_dev_data = connect_and_fetch_params(host, port)
-                
+          
                 if not new_dev_data:
                     msg = f"Failed to connect to node {host}:{port}"
                    
@@ -341,47 +329,76 @@ class NodeManagerDevice(BaseDevice):
                                 all_data = json.load(f)
                         except Exception as e:
                             print(f"[add_node] Failed to load device_params.json: {e}")
-                    # Ensure param_info and all_params are always present for each device
+
+                    # Merge new_dev_data into all_data to avoid losing fields
                     for dev, info in new_dev_data.items():
-                        # Ensure param_info exists
-                        if 'param_info' not in info:
-                            info['param_info'] = {}
-                        # Ensure accessibles is present for all_params logic
-                        if 'accessibles' not in info and dev in para_map:
-                            # Try to get accessibles from para_map (from extract_modules_and_parameters)
-                            # But para_map only has parameter names, not full dict, so fallback to client.descriptive_data
-                            # Instead, fetch from mod_list if possible
-                            # For robust solution, require extract_modules_and_parameters to add accessibles to info
-                            pass
-                        # Use all keys from accessibles for all_params
-                        accessibles = info.get('accessibles')
-                        
+                        # Ensure shapes
+                        if 'param_info' not in info or not isinstance(info.get('param_info'), dict):
+                            info['param_info'] = info.get('param_info', {}) or {}
+
+                        existing = all_data.get(dev, {}) or {}
+
+                        # Merge accessibles: prefer the new one if present, otherwise keep existing
+                        accessibles = info.get('accessibles') if isinstance(info.get('accessibles'), dict) else existing.get('accessibles')
+
+                        # Merge params (writable) and commands as union of lists
+                        existing_params = existing.get('params') or []
+                        new_params = info.get('params') or []
+                        merged_params = sorted(list({*existing_params, *new_params}))
+
+                        existing_cmds = existing.get('commands') or []
+                        new_cmds = info.get('commands') or []
+                        merged_cmds = sorted(list({*existing_cmds, *new_cmds}))
+
+                        # Merge param_info dictionaries
+                        merged_param_info = {}
+                        merged_param_info.update(existing.get('param_info') or {})
+                        merged_param_info.update(info.get('param_info') or {})
+
+                        # Interface classes, original_name
+                        interface_classes = existing.get('interface_classes') or []
+                        for c in info.get('interface_classes') or []:
+                            if c not in interface_classes:
+                                interface_classes.append(c)
+
+                        original_name = info.get('original_name') or existing.get('original_name')
+
+                        # Compute all_params from accessibles if available, otherwise union
                         if isinstance(accessibles, dict):
-                            info['all_params'] = sorted(list(accessibles.keys()))
+                            all_params = sorted(list(accessibles.keys()))
                         else:
-                            # Fallback: union of params, commands, param_info keys
-                            all_params = set()
-                            if 'params' in info:
-                                all_params.update(info['params'])
-                            if 'commands' in info:
-                                all_params.update(info['commands'])
-                            if 'param_info' in info and isinstance(info['param_info'], dict):
-                                all_params.update(info['param_info'].keys())
-                            info['all_params'] = sorted(list(all_params))
-                    
-                    
-                    all_data.update(new_dev_data)
-                
+                            ap_set = set()
+                            ap_set.update(merged_params)
+                            ap_set.update(merged_cmds)
+                            ap_set.update(merged_param_info.keys())
+                            all_params = sorted(list(ap_set))
+
+                        # Build merged info
+                        merged_info = {
+                            'params': merged_params,
+                            'all_params': all_params,
+                            'commands': merged_cmds,
+                            'original_name': original_name,
+                            'interface_classes': interface_classes,
+                            'param_info': merged_param_info,
+                        }
+                        if isinstance(accessibles, dict):
+                            merged_info['accessibles'] = accessibles
+
+                        # Preserve any other existing keys not handled explicitly
+                        for k, v in existing.items():
+                            if k not in merged_info:
+                                merged_info[k] = v
+
+                        all_data[dev] = merged_info
+
                     try:
                         with open(DEVICE_PARAMS_FILE, 'w') as f:
-                
                             json.dump(all_data, f, indent=2)
-                        
                     except Exception as e:
-                
                         print(f"[add_node] Failed to write device_params.json: {e}")
-                
-                    self.update_device_params_param()
+
+                    # self.update_device_params_param()
                 
                 self.update_nodes_param()
                    
@@ -393,12 +410,12 @@ class NodeManagerDevice(BaseDevice):
                 # Schedule a short delayed restart so the Spin process reloads devices
                 # from the updated nodes/device_params files. This allows the running
                 # container to recreate Device objects and the poller to start.
-                try:
-                    self.run_task(self._delayed_restart())
-                except Exception:
-                    pass
+                # try:
+                #     self.run_task(self._delayed_restart())
+                # except Exception:
+                #     pass
               
-                return Reply(request.connection, request.key, request.transform, 'ack', {"status": "ok", "message": msg})
+                # return Reply(request.connection, request.key, request.transform, 'ack', {"status": "ok", "message": msg})
             
             except Exception as e:
                

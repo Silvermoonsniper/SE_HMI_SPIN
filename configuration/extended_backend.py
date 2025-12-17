@@ -49,7 +49,7 @@ class ExtendedBackend(Backend):
                             short = repr(val)
                             if len(short) > 160:
                                 short = short[:160] + '...'
-                            print(f"[ExtendedBackend] update prepared: {key} = {short}")
+                           
                         except Exception:
                             pass
                         
@@ -84,8 +84,7 @@ class ExtendedBackend(Backend):
         json_path = os.path.join(os.path.dirname(__file__), 'device_params.json')
        
         try:
-            print("[ExtendedBackend] starting, loading device_params.json and launching poller + API thread")
-   
+            
             with open(json_path, 'r') as f:
    
                 device_data = json.load(f)

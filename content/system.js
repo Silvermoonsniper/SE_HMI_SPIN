@@ -217,23 +217,41 @@ function waitForSpin(callback) {
 function loadNodesInfo() {
   // Use Spin API to get the list of nodes and populate dropdown
   const dropdown = document.getElementById('nodes-info-dropdown');
+ 
   if (!dropdown) return;
+ 
   dropdown.innerHTML = '<option value="">Loading...</option>';
+ 
   if (window.Spin && window.Spin.send_request) {
+ 
     window.Spin.send_request('nodemanager.list_nodes', '', 'read', 'read', null, function(nodesList) {
+ 
       dropdown.innerHTML = '';
+ 
       if (Array.isArray(nodesList) && nodesList.length > 0) {
+ 
         nodesList.forEach(node => {
+ 
           const label = node.equipment_id ? `${node.host}:${node.port} (${node.equipment_id})` : `${node.host}:${node.port}`;
+ 
           dropdown.innerHTML += `<option value="${node.host}:${node.port}">${label}</option>`;
+ 
         });
+ 
       } else {
+ 
         dropdown.innerHTML = '<option value="">No nodes available</option>';
+ 
       }
+ 
     });
+ 
   } else {
+ 
     dropdown.innerHTML = '<option value="">Connecting to server...</option>';
+ 
   }
+
 }
 
 function displayNodesInfo(nodesList) {
@@ -379,7 +397,7 @@ window.addEventListener('spinupdate', function(event) {
     try {
       const resp = event.detail.value;
       if (resp && resp.name) {
-        console.log('Layout saved on server as', resp.name, resp.path ? ('at ' + resp.path) : '');
+   
         // Refresh server list so dropdown shows the new file
         if (window.Spin && window.Spin.send_request) {
           try { window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null); } catch (e) { console.error('list_layouts request failed', e); }

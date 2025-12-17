@@ -170,8 +170,9 @@ class SpinConfigManager:
    
          resolved_host = self.resolve_host(host)
    
-         url = f"{resolved_host}:{port}"
-   
+         url = f"localhost:{port}"
+         
+        
          print(f"Connecting to {url}...")
    
          try:
@@ -295,16 +296,14 @@ class SpinConfigManager:
                 port = node.get("port", 10801)
    
                 mod_list, para_map, dev_data = self.connect_node(host, port)
-   
+              
                 for dev_name, dev_info in dev_data.items():
-   
-                    dev_info['all_params'] = para_map.get(dev_name, [])
-   
+                    
                     all_device_data[dev_name] = dev_info
-   
+               
                 resolved_host = self.resolve_host(host)
    
-                url = f"{resolved_host}:{port}"
+                url = f"localhost:{port}"
    
                 for original_name, unique_name in mod_list:
    
@@ -320,8 +319,7 @@ class SpinConfigManager:
    
                     dev_config[unique_name] = dev
    
-            dev_config['nodemanager'] = Device('nodemanager://localhost', pollinterval=1.0)
-   
+         
             config = Config()
    
             config.server = '0.0.0.0:8000'
@@ -334,13 +332,15 @@ class SpinConfigManager:
                 'default': Page('../content/system.html', readonly=False),
                 'plots': Page('../content/plots.html', readonly=False),
             }
+            dev_config['nodemanager'] = Device('nodemanager://localhost', pollinterval=1.0)
    
             config.devices = dev_config
+           
             # Write device data (params + commands) to JSON file for frontend
             try:
    
                 with open(self.DEVICE_PARAMS_FILE, 'w') as f:
-   
+                    
                     json.dump(all_device_data, f)
    
                 print(f"Device data saved to {self.DEVICE_PARAMS_FILE}")
@@ -350,6 +350,8 @@ class SpinConfigManager:
                 print(f"Error saving device data: {e}")
    
             self.config = config
+            
+          
    
             return config
 
@@ -365,19 +367,7 @@ class SpinConfigManager:
    
             backend.start(config, [])
 
-    def run(self):
-   
-            loop = asyncio.get_event_loop()
-   
-            nodes = loop.run_until_complete(self.discover_and_save_nodes(timeout=2.0))
-   
-            if not nodes:
-   
-                print("No SECoP nodes discovered on the network.")
-   
-            config = self.spin_server_start(nodes)
-   
-            self.start_extended_backend(config)
+
 
 
 
