@@ -563,6 +563,7 @@ function updateParamDisplay(device, domId, param) {
 // ===== Extra Parameters Panel =====
 const latestValues = {};
 
+// device name to sanitized DOM ID
 function deviceDomId(device) {
   // Use the full device name, just sanitized for DOM ID safety
   // This ensures consistency regardless of the naming convention
@@ -878,18 +879,16 @@ function createDeviceDisplay(deviceNameOverride) {
 }
 
 async function setupValveController(device, domId) {
-  console.log(`Setting up valve controller: ${device}, domId: ${domId}`);
-  debug(`Setting up valve controller: ${device}, domId: ${domId}`);
-  
+   
   // Get the value parameter from latestValues (populated by Spin updates)
   // Wait a bit for Spin to populate the data
   await new Promise(resolve => setTimeout(resolve, 2000));
   
   const data = latestValues[device];
-  debug(`Latest values for ${device}: ${JSON.stringify(data)}`);
+ 
   
   if (!data) {
-    debug(`Valve controller ${device} has no data yet`);
+   
     return;
   }
   
@@ -898,13 +897,13 @@ async function setupValveController(device, domId) {
   let valueEntry = data.value;
   let paramName = 'value';
   if ((!valueEntry || !valueEntry.value) && data.target) {
-      debug('Value parameter missing or empty, using target parameter instead');
+    
       valueEntry = data.target;
       paramName = 'target';
   }
   
   if (!valueEntry || !valueEntry.value) {
-    debug(`Valve controller ${device} has no value/target data`);
+   
     return;
   }
   
@@ -919,18 +918,17 @@ async function setupValveController(device, domId) {
   // Remove the valve controller box itself since we'll create individual valves
   const controllerBox = document.getElementById(`box-${domId}`);
   if (controllerBox) {
-    debug(`Removing controller box: box-${domId}`);
+  
     controllerBox.remove();
   }
   
   // Create a separate draggable SVG icon for each valve (no box)
   Object.keys(valueData).forEach((fieldName, index) => {
-      console.log(`Creating valve icon for field: ${fieldName}, index: ${index}`);
+       
       const lowerField = fieldName.toLowerCase();
       const isSwitch = lowerField.includes('switch');
       const isValve = lowerField.includes('valve') || fieldName.startsWith('V');
       
-      console.log(`Field ${fieldName}: isSwitch=${isSwitch}, isValve=${isValve}`);
       
       if (!isSwitch && !isValve) return; // Skip non-valve fields
       
@@ -938,6 +936,7 @@ async function setupValveController(device, domId) {
       
       // Create a simple draggable SVG container (no device box)
       const valveIcon = document.createElement('div');
+      // valve style
       valveIcon.className = 'valve-icon';
       valveIcon.id = `icon-${valveDomId}`;
       valveIcon.style.position = 'absolute';
@@ -957,10 +956,9 @@ async function setupValveController(device, domId) {
         // Switch image - rotates based on position (circle with two separate arcs)
         const img = document.createElement('img');
         // Circle with two separate arcs touching the circle edge
-        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2MiwgNTMpIj48Y2lyY2xlIGN4PSIwIiBjeT0iMCIgcj0iNDUiIGZpbGw9IiNmZmRkMDAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PCEtLSBBcmMgdG91Y2hpbmcgbGVmdC1ib3R0b20gcGFydCBvZiBjaXJjbGUgLS0+PHBhdGggZD0iTSAtMzEuOCAyMi41IFEgLTE1IDE1IDAgMCBRIC0xNSAtMTUgLTIyLjUgLTMxLjgiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48IS0tIEFyYyB0b3VjaGluZyByaWdodC11cHBlciBwYXJ0IG9mIGNpcmNsZSAtLT48cGF0aCBkPSJNIDIyLjUgMzEuOCBRIDE1IDE1IDAgMCBRIDE1IC0xNSAzMS44IC0yMi41IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMyIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9nPjwvc3ZnPg==';
+        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=';
+
         img.style.cssText = 'width: 100%; height: 100%; object-fit: contain; transform: rotate(0deg); transition: transform 0.3s ease;';
-        img.onerror = () => console.error(`Failed to load switch image: ${img.src}`);
-        img.onload = () => console.log(`Loaded switch image for ${fieldName}`);
         imgContainer.appendChild(img);
         
         // Click to toggle between position 0 and 1
@@ -979,10 +977,9 @@ async function setupValveController(device, domId) {
         const img = document.createElement('img');
         img.id = `valve-img-${valveDomId}`;
         // Two triangles with points touching in the center: ◄ ►
-        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzAwN2JmZiIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==';
+        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=';
+
         img.style.cssText = 'width: 100%; height: 100%; object-fit: contain;';
-        img.onerror = () => console.error(`Failed to load valve image: ${img.src}`);
-        img.onload = () => console.log(`Loaded valve image for ${fieldName}`);
         imgContainer.appendChild(img);
         
         // Click to toggle valve ON/OFF
@@ -1022,10 +1019,10 @@ async function setupValveController(device, domId) {
       
       // Add to grid
       const grid = document.getElementById('device-grid');
-      console.log(`Adding valve icon ${valveIcon.id} to grid:`, grid);
+     
       if (grid) {
         grid.appendChild(valveIcon);
-        console.log(`Successfully added valve icon ${valveIcon.id}`);
+       
       } else {
         console.error('device-grid not found!');
       }
@@ -1033,6 +1030,18 @@ async function setupValveController(device, domId) {
       // Make it draggable (simple drag without device-box features)
       makeValveIconDraggable(valveIcon);
       makeValveIconResizable(valveIcon, imgContainer);
+
+      // double-click to remove valve icon
+      valveIcon.addEventListener('dblclick', (e) => {
+        
+        e.stopPropagation();
+        
+        if (confirm('Are you sure to remove this valve?')) {
+        
+          valveIcon.remove();
+       
+        }
+      });
     });
     
     // Reload Spin to bind the new data-spin attributes
@@ -1043,7 +1052,7 @@ async function setupValveController(device, domId) {
     // Set up listeners for value updates to update images
     setupValveImageListeners(device, domId);
 }
-
+// update image after switch rotation
 function updateSwitchRotation(imgContainer, position) {
   const img = imgContainer.querySelector('img');
   if (img) {
@@ -1055,13 +1064,14 @@ function updateSwitchRotation(imgContainer, position) {
 function updateValveImage(valveDomId, isOpen) {
   const img = document.querySelector(`#valve-img-${valveDomId}`);
   if (img) {
-    // Change to green when open, blue when closed
+    // Change to green when open, black when closed
     if (isOpen) {
       // Green triangles for open valve
       img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==';
     } else {
-      // Blue triangles for closed valve
-      img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzAwN2JmZiIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMDA3YmZmIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==';
+      //  triangles for closed valve
+      img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=';
+
     }
   }
 }
