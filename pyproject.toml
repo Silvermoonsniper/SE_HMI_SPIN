@@ -18,6 +18,7 @@ dependencies = [
   "ipykernel",
   "flask",
   "flask_cors",
+  "waitress",
 ]
 
 [project.optional-dependencies]

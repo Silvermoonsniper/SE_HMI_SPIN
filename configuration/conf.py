@@ -359,17 +359,19 @@ class SpinConfigManager:
    
        
             
-            
+    # start extended backend with poller and Flask API to poll all parameters    
+    
     def start_extended_backend(self, config):
-   
+            
+            #  initialie event loop
             loop = asyncio.get_event_loop()
    
             connections = []
-   
+            #  get logger 
             log = mlzlog.getLogger("spin")
    
             backend = ExtendedBackend(loop, connections, log)
-   
+            #  start extended backend 
             backend.start(config, [])
 
 
