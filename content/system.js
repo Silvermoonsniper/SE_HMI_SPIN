@@ -62,7 +62,8 @@ function deleteSelectedLayout() {
   }
  
   if (!confirm('Delete layout "' + name + '"? This cannot be undone.')) return;
- 
+
+  // Remove from localStorage (client-side copy)
   const layouts = getStoredLayouts();
  
   delete layouts[name];
@@ -72,9 +73,46 @@ function deleteSelectedLayout() {
   updateLayoutList();
  
   select.value = '';
- 
-  alert('Layout deleted.');
+
+  // If Spin is connected, request server to delete the saved layout file as well.
+  if (window.Spin && typeof window.Spin.send_request === 'function') 
+    {
+    try 
+    {
+      window.Spin.send_request('nodemanager.delete_layout', '', 'input', 'set', { name: name });
+      
+      // Refresh server-side list so dropdown reflects the deletion
+
+      try 
+      { 
+        window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null); } catch (e) { /* ignore */ 
+
+      }
+      alert('Layout deleted (locally and server request sent).');
+    } 
+    catch (e) 
+    {
+      try 
+      
+      { 
+        
+        alert('Layout deleted locally, but could not contact server to remove file.'); 
+      } 
+      catch (e2) 
+      {}
+    }
+  } 
+  else 
+  {
+    try 
+    { 
+      alert('Layout deleted locally. Not connected to server, so server file (if any) was not removed.'); 
+    } 
+    catch (e) 
+    {}
+  }
 }
+
 
 
 // ===== Connection Panel Logic =====
@@ -83,6 +121,15 @@ let scale = 1;
 let panX = 0;
 let panY = 0;
 const STORAGE_KEY = 'gas_system_layouts';
+
+// Helper to coerce different incoming shapes into numeric 0/1
+function toNumeric(v) {
+  if (v && typeof v.value !== 'undefined') v = v.value;
+  if (v === true) return 1;
+  if (v === false) return 0;
+  const n = Number(v);
+  return Number.isNaN(n) ? 0 : n;
+}
 
 // function to set background image(s)
 function setBackgroundImage() {
@@ -278,7 +325,9 @@ function connectToGUI() {
     alert('Connection to server not ready. Please wait a moment and try again.');
     return;
   }
-  // Load selected layout and switch to main panel
+  // Switch to main panel first
+  enterSystem();
+  // Then load selected layout
   const select = document.getElementById('layout-select');
   const name = select.value;
   if (name) {
@@ -287,8 +336,23 @@ function connectToGUI() {
       applyLayout(layouts[name]);
       sessionStorage.setItem('selectedLayout', name);
     }
+    // If this decoration is editable text, focus it so the user can start typing
+    try {
+      if (el.contentEditable === 'true' || el.isContentEditable) {
+        setTimeout(() => {
+          try {
+            el.focus();
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            range.collapse(false);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+          } catch (e) { /* ignore focus errors */ }
+        }, 0);
+      }
+    } catch (e) { /* ignore */ }
   }
-  enterSystem();
 }
 
 function addNodeConnectionAuto(host, port) {
@@ -400,11 +464,39 @@ window.addEventListener('spinupdate', function(event) {
    
         // Refresh server list so dropdown shows the new file
         if (window.Spin && window.Spin.send_request) {
-          try { window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null); } catch (e) { console.error('list_layouts request failed', e); }
+          
+          try 
+          
+          { 
+            
+            window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null); 
+          
+          } 
+          
+          catch 
+          (
+            e
+          ) 
+          { 
+            console.error('list_layouts request failed', e); 
+          }
         }
-        try { alert('Layout saved on server as "' + resp.name + '"' + (resp.path ? (' at ' + resp.path) : '')); } catch (e) { console.log('alert suppressed', e); }
+          try { alert('Layout saved on server as "' + resp.name + '"' + (resp.path ? (' at ' + resp.path) : '')); }
+        catch (e) { /* alert suppressed */ }
       }
-    } catch (e) { console.error('save_layout spinupdate error', e); }
+    } 
+    catch 
+    
+    (
+      e
+    
+    ) 
+    
+    { 
+      
+      console.error('save_layout spinupdate error', e); 
+    
+    }
     return;
   }
 
@@ -590,6 +682,7 @@ function renderExtra(device) {
   const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
   
   let html = '';
+  
   for (let k of filteredKeys) {
     const entry = data[k];
     let v = entry && entry.value !== undefined ? entry.value : '—';
@@ -597,11 +690,18 @@ function renderExtra(device) {
     
     // Format value based on type
     let displayValue;
-    if (Array.isArray(v)) {
+    if (Array.isArray(v)) 
+    
+    {
       displayValue = '[' + v.join(', ') + ']';
-    } else if (typeof v === 'object' && v !== null) {
+    } 
+    else if (typeof v === 'object' && v !== null) 
+      
+    {
       displayValue = JSON.stringify(v);
-    } else {
+    } else 
+      
+    {
       displayValue = String(v);
     }
     
@@ -624,8 +724,9 @@ function handleExpansion(box, originalHeight) {
 
                 const otherRect = otherEl.getBoundingClientRect();
 
-                // Check if otherEl is below the expanding box and horizontally overlapping
+                // Check if other display is below the expanding box and horizontally overlapping
                 const isBelow = otherRect.top > boxRect.top;
+                
                 const isHorizontallyOverlapping = (boxRect.left < otherRect.right && boxRect.right > otherRect.left);
 
                 if (isBelow && isHorizontallyOverlapping) {
@@ -762,16 +863,22 @@ function populateDeviceList(data) {
   });
 }
 
-function createDeviceDisplay(deviceNameOverride) {
+function createDeviceDisplay(deviceNameOverride) 
+
+{
   const select = document.getElementById('device-select');
   const device = deviceNameOverride || select.value;
-  if (!device) {
+  
+  if (!device) 
+  
+    {
     alert('Please select a device first.');
     return;
   }
   
   const domId = deviceDomId(device);
-  if (document.getElementById('box-' + domId)) {
+  if (document.getElementById('box-' + domId)) 
+  {
     // alert('Display for ' + device + ' already exists.');
     return;
   }
@@ -809,7 +916,10 @@ function createDeviceDisplay(deviceNameOverride) {
   document.getElementById('device-grid').appendChild(newBox);
   // Ensure the title element reflects the canonical display name (protect against stale template or saved layout values)
   const titleEl = newBox.querySelector('.device-title');
-  if (titleEl) titleEl.textContent = displayName;
+  if (titleEl) 
+  
+    titleEl.textContent = displayName;
+  
   // Collapse device body by default so loaded layouts don't open every box
   const bodyEl = newBox.querySelector('#body-' + domId);
   const expandBtn = newBox.querySelector('#expand-btn-' + domId);
@@ -831,14 +941,17 @@ function createDeviceDisplay(deviceNameOverride) {
       }
   }
 
-  if (isReadable) {
+  if (isReadable) 
+  {
       // Show only Value
       if (labelDiv) labelDiv.textContent = 'Val';
       if (targetSpan) targetSpan.style.display = 'none';
       if (gasSpan) gasSpan.style.display = 'none';
       if (sep1) sep1.style.display = 'none';
       if (sep2) sep2.style.display = 'none';
-  } else if (lowerDev.includes('backpress') || lowerDev.includes('temp')) {
+  }
+  else if (lowerDev.includes('backpress') || lowerDev.includes('temp')) 
+  {
       // Show only Value and Target
       if (labelDiv) labelDiv.textContent = 'Val / Target';
       if (gasSpan) gasSpan.style.display = 'none';
@@ -882,20 +995,22 @@ async function setupValveController(device, domId) {
    
   // Get the value parameter from latestValues (populated by Spin updates)
   // Wait a bit for Spin to populate the data
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  await new Promise(resolve => setTimeout(resolve, 5000));
   
   const data = latestValues[device];
  
   
   if (!data) {
-   
+    // No data available for device in latestValues
     return;
   }
   
   // Try to find the struct in 'value' or 'target'
   // Prefer 'target' if 'value' is missing or empty, as logs showed target has the data
   let valueEntry = data.value;
+ 
   let paramName = 'value';
+ 
   if ((!valueEntry || !valueEntry.value) && data.target) {
     
       valueEntry = data.target;
@@ -908,6 +1023,8 @@ async function setupValveController(device, domId) {
   }
   
   const valueData = valueEntry.value;
+
+  
    
   if (!valueData || typeof valueData !== 'object') {
    
@@ -918,7 +1035,7 @@ async function setupValveController(device, domId) {
   // Remove the valve controller box itself since we'll create individual valves
   const controllerBox = document.getElementById(`box-${domId}`);
   if (controllerBox) {
-  
+    // Remove the controller box when creating individual valve icons
     controllerBox.remove();
   }
   
@@ -939,7 +1056,8 @@ async function setupValveController(device, domId) {
       // valve style
       valveIcon.className = 'valve-icon';
       valveIcon.id = `icon-${valveDomId}`;
-      valveIcon.style.position = 'absolute';
+      valveIcon.dataset.device = device; // Store device name
+      valveIcon.dataset.field = fieldName; // Store field name
       valveIcon.style.width = '80px';
       valveIcon.style.height = '100px';
       valveIcon.style.top = (20 + index * 120) + 'px';
@@ -968,6 +1086,7 @@ async function setupValveController(device, domId) {
           if (data && data[paramName] && data[paramName].value && data[paramName].value[fieldName] !== undefined) {
             currentValue = data[paramName].value[fieldName];
           }
+          currentValue = toNumeric(currentValue);
           const newValue = currentValue === 0 ? 1 : 0;
           setValveField(device, fieldName, newValue);
           updateSwitchRotation(imgContainer, newValue);
@@ -989,12 +1108,27 @@ async function setupValveController(device, domId) {
           if (data && data[paramName] && data[paramName].value && data[paramName].value[fieldName] !== undefined) {
             currentValue = data[paramName].value[fieldName];
           }
-          const newValue = currentValue ? 0 : 1;
+          currentValue = toNumeric(currentValue);
+          const newValue = currentValue === 1 ? 0 : 1;
           setValveField(device, fieldName, newValue);
           // Immediately update the visual
-          updateValveImage(valveDomId, newValue === 1);
+          updateValveImage(valveDomId, newValue);
         };
       }
+      // Set initial visual state from the live value if available
+      try {
+        const liveRaw = (valueData && typeof valueData[fieldName] !== 'undefined') ? valueData[fieldName] : undefined;
+        if (typeof liveRaw !== 'undefined') {
+          const lv = toNumeric(liveRaw);
+          if (!isSwitch) {
+            updateValveImage(valveDomId, lv);
+          } else {
+            updateSwitchRotation(imgContainer, lv);
+            const valveEl = imgContainer.closest('.valve-icon');
+            if (valveEl) valveEl.dataset.open = lv === 1 ? '1' : '0';
+          }
+        }
+      } catch (e) { /* ignore init errors */ }
       
       // Label below the icon
       const label = document.createElement('div');
@@ -1010,7 +1144,10 @@ async function setupValveController(device, domId) {
       const valueDisplay = document.createElement('div');
       valueDisplay.id = `valve-${valveDomId}`;
       valueDisplay.style.display = 'none';
-      valueDisplay.setAttribute('data-spin', `@${device}.${paramName}.${fieldName}`);
+  // Prefer binding to live value so the icon shows real state immediately.
+  // For runtime-created icons we already use paramName, but for restored icons
+  // we want `value` explicitly to reflect actual valve states.
+      valueDisplay.setAttribute('data-spin', `@${device}.value.${fieldName}`);
       
       valveIcon.appendChild(imgContainer);
       valveIcon.appendChild(label);
@@ -1020,9 +1157,9 @@ async function setupValveController(device, domId) {
       // Add to grid
       const grid = document.getElementById('device-grid');
      
-      if (grid) {
+      if (grid) 
+      {
         grid.appendChild(valveIcon);
-       
       } else {
         console.error('device-grid not found!');
       }
@@ -1033,13 +1170,28 @@ async function setupValveController(device, domId) {
 
       // double-click to remove valve icon
       valveIcon.addEventListener('dblclick', (e) => {
-        
         e.stopPropagation();
-        
-        if (confirm('Are you sure to remove this valve?')) {
-        
-          valveIcon.remove();
-       
+
+        if (!confirm('Are you sure you want to remove this valve icon?')) return;
+
+        // Remove from DOM
+        valveIcon.remove();
+
+        // If a layout is currently selected (we are editing a preset), remove this
+        // icon from the stored layout so subsequent saves or reloads reflect the change.
+        try {
+          const selected = sessionStorage.getItem('selectedLayout');
+          if (selected) {
+            const layouts = getStoredLayouts();
+            if (layouts && layouts[selected] && Array.isArray(layouts[selected].valveIcons)) {
+              layouts[selected].valveIcons = layouts[selected].valveIcons.filter(v => v.id !== valveIcon.id);
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
+              // Refresh dropdown in case UI needs update
+              updateLayoutList();
+            }
+          }
+        } catch (err) {
+          console.error('Error updating stored layout after removing valve icon', err);
         }
       });
     });
@@ -1072,8 +1224,26 @@ function updateValveImage(valveDomId, isOpen) {
       //  triangles for closed valve
       img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=';
 
+    // reflect optimistic/UI state on the parent valve element so clicks can read it
+    try {
+      const valveEl = img.closest('.valve-icon');
+      if (valveEl) valveEl.dataset.open = isOpen ? '1' : '0';
+    } catch (e) { /* ignore */ }
     }
   }
+
+function getValveIconState(valveIcon, device, fieldName) {
+  // Prefer DOM dataset state if present (optimistic), otherwise read latestValues
+  if (valveIcon && valveIcon.dataset && valveIcon.dataset.open !== undefined) {
+    return parseInt(valveIcon.dataset.open, 10) || 0;
+  }
+  const data = latestValues[device];
+  if (!data) return 0;
+  // Prefer the live `value` struct (actual states) over `target` when available
+  if (data.value && data.value.value && data.value.value[fieldName] !== undefined) return toNumeric(data.value.value[fieldName]);
+  if (data.target && data.target.value && data.target.value[fieldName] !== undefined) return toNumeric(data.target.value[fieldName]);
+  return 0;
+}
 }
 
 function setupValveImageListeners(device, domId) {
@@ -1094,15 +1264,16 @@ function setupValveImageListeners(device, domId) {
       
       if (!imgContainer) return;
       
-      const value = event.detail.value;
+      const raw = event.detail.value;
+      const valNum = toNumeric(raw);
       const lowerField = fieldName.toLowerCase();
-      
+
       if (lowerField.includes('switch')) {
         // Update switch rotation
-        updateSwitchRotation(imgContainer, value);
+        updateSwitchRotation(imgContainer, valNum);
       } else {
         // Update valve appearance
-        updateValveImage(valveDomId, value === 1 || value === true);
+        updateValveImage(valveDomId, valNum === 1);
       }
     } catch (e) {
       console.error('Image update error', e);
@@ -1192,31 +1363,34 @@ function makeValveIconResizable(valveIcon, imgContainer) {
 }
 
 function setValveField(device, fieldName, value) {
-  debug(`Setting ${device} ${fieldName} to ${value}`);
-  
-  if (window.Spin) {
-    // Get current struct from latestValues to merge
-    const data = latestValues[device];
-    let currentStruct = {};
-    
-    // Try to get from target first (writable), then value
-    if (data && data.target && data.target.value) {
-        currentStruct = {...data.target.value};
-    } else if (data && data.value && data.value.value) {
-        currentStruct = {...data.value.value};
-    }
-    
-    // Update the specific field
-    currentStruct[fieldName] = value;
-    
-    // Send to .target
+
+  // show small on-screen toast to help debug whether UI sent the command
+  try { showActionToast(`Cmd: ${device}.${fieldName} = ${value}`, (window.Spin && window.Spin.current_socket && window.Spin.current_socket.readyState === WebSocket.OPEN) ? 'ok' : 'warn'); } catch (e) {}
+  window.lastValveCommand = { device, fieldName, value, ts: Date.now() };
+
+  // Build the merged target struct from latestValues (so we always send the full target object)
+  const data = latestValues[device];
+  let currentStruct = {};
+  // Prefer the live `value` struct (actual valve states) as the baseline so
+  // we merge the UI change into the controller's current state. Fallback to
+  // `target` if no live `value` is available.
+  if (data && data.value && data.value.value) {
+    currentStruct = {...data.value.value};
+  } else if (data && data.target && data.target.value) {
+    currentStruct = {...data.target.value};
+  }
+  currentStruct[fieldName] = value;
+
+  // Prefer using Spin if the socket is connected; otherwise fall back to HTTP PUT
+  const spinSocketOpen = window.Spin && window.Spin.current_socket && window.Spin.current_socket.readyState === WebSocket.OPEN;
+  if (spinSocketOpen) {
     Spin.send_request(`${device}.target`, "", "input", "", currentStruct);
   } else {
-    // Fallback: send directly
+    // Fallback: send the full struct so the backend receives the complete target object
     fetch(`/api/${device}/target`, {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({[fieldName]: value})
+      body: JSON.stringify(currentStruct)
     }).catch(err => {
       debug(`Error setting valve field: ${err}`);
     });
@@ -1235,21 +1409,46 @@ function selectDeco(el) {
   if (selectedDeco) selectedDeco.classList.remove('selected');
   selectedDeco = el;
   if (el) {
-      const list = (event.detail.value || []).slice().sort();
+    // mark selected visually
+    el.classList.add('selected');
     // Sync color picker
     const picker = document.getElementById('deco-color');
     if (picker) {
-        let color;
-        if (el.dataset.type === 'label') {
-            color = el.style.color;
+      let color;
+      if (el.dataset.type === 'label') {
+        color = el.style.color;
+      } else {
+        const visual = el.querySelector('.deco-visual');
+        if (visual) color = visual.style.backgroundColor;
+      }
+      if (color) {
+        if (color.startsWith('#')) {
+          picker.value = color;
         } else {
-            const visual = el.querySelector('.deco-visual');
-            if (visual) color = visual.style.backgroundColor;
+          // try to convert rgb(...) to hex
+          const m = color.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+          if (m) {
+            const hex = '#' + [1,2,3].map(i => ('0' + parseInt(m[i],10).toString(16)).slice(-2)).join('');
+            picker.value = hex;
+          }
         }
-        // Convert rgb to hex if needed, but simple assignment might work if it's hex
-        // For now, we assume the user sets it via picker so it's hex, or we don't sync back perfectly
-        // if it's rgb. But let's try.
-        if (color && color.startsWith('#')) picker.value = color;
+      }
+    // If this decoration is editable text, focus it so the user can start typing
+    try {
+      if (el.contentEditable === 'true' || el.isContentEditable) {
+        setTimeout(() => {
+          try {
+            el.focus();
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            range.collapse(false);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+          } catch (e) { /* ignore focus errors */ }
+        }, 0);
+      }
+    } catch (e) { /* ignore */ }
     }
   }
 }
@@ -1308,65 +1507,82 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function makeDraggable(el) {
+function makeDraggable(el) 
+{
+
   let isDragging = false;
   let isResizing = false;
   let startX, startY, initialLeft, initialTop, initialWidth, initialHeight;
-  
-  // Make the whole element draggable (except when resizing or interacting with form elements)
+
+  // Make the whole element draggable on mousedown (simple, immediate behavior)
   el.addEventListener('mousedown', (e) => {
-    // Don't drag if clicking on interactive elements
-    if (e.target.classList.contains('deco-remove')) return;
-    if (e.target.classList.contains('resize-handle')) return;
+    // Debug: log the click target for diagnosing drag-blocks
+    try { console.debug('makeDraggable mousedown', { tag: e.target.tagName, cls: e.target.className, isContentEditable: !!e.target.isContentEditable }); } catch (err) {}
+
+    // Ignore non-left clicks
+    if (e.button !== 0) return;
+
+    // Don't start dragging when interacting with form controls or control sections
+    if (e.target.classList && e.target.classList.contains('deco-remove')) return;
     if (e.target.tagName === 'SELECT') return;
     if (e.target.tagName === 'INPUT') return;
     if (e.target.tagName === 'BUTTON') return;
     if (e.target.tagName === 'TEXTAREA') return;
-    if (e.target.closest('.control-section')) return; // Don't drag when clicking in control area
-    if (e.button !== 0) return; // Only left click
-    // Enable HTML5 drag
-    el.setAttribute('draggable', 'true');
-    el.ondragstart = (ev) => {
-      ev.dataTransfer.setData('text/plain', el.id);
-      setTimeout(() => { el.style.display = 'none'; }, 0); // Hide while dragging
-    };
-    el.ondragend = (ev) => {
-      el.style.display = 'block';
-    };
-    isDragging = true;
-    startX = e.clientX;
-    startY = e.clientY;
+    if (e.target.closest && e.target.closest('.control-section')) return;
+
+    // If user clicked inside editable text, do not start dragging — allow editing
+    try {
+      if (e.target.isContentEditable) return;
+    } catch (err) { /* ignore */ }
+
     const style = window.getComputedStyle(el);
     initialLeft = parseInt(style.left, 10) || 0;
     initialTop = parseInt(style.top, 10) || 0;
+    startX = e.clientX;
+    startY = e.clientY;
+
+    isDragging = true;
     el.style.zIndex = '1000';
     e.preventDefault();
-    e.stopPropagation();
+
+    // Prepare HTML5 drag handlers for non-editable elements only
+    try {
+      if (!el.isContentEditable && el.dataset.type !== 'label') {
+        el.setAttribute('draggable', 'true');
+        el.ondragstart = (ev) => {
+          ev.dataTransfer.setData('text/plain', el.id);
+          setTimeout(() => { el.style.display = 'none'; }, 0);
+        };
+        el.ondragend = (ev) => { el.style.display = 'block'; };
+      } else {
+        try { el.removeAttribute('draggable'); } catch (e) {}
+      }
+    } catch (err) { /* ignore */ }
   });
-  
-  // Add resize handle if it doesn't exist
+
+  // Add resize handle if it doesn't exist (keep previous behavior)
   let resizeHandle = el.querySelector('.resize-handle');
   if (!resizeHandle && el.dataset.type !== 'label') {
     resizeHandle = document.createElement('div');
     resizeHandle.className = 'resize-handle';
     el.appendChild(resizeHandle);
-    
+
     resizeHandle.addEventListener('mousedown', (e) => {
       e.stopPropagation();
       if (e.button !== 0) return;
-      
+
       isResizing = true;
       startX = e.clientX;
       startY = e.clientY;
-      
+
       const style = window.getComputedStyle(el);
       initialWidth = parseInt(style.width, 10);
       initialHeight = parseInt(style.height, 10);
-      
+
       e.preventDefault();
     });
   }
-  
+
   window.addEventListener('mousemove', (e) => {
     if (isDragging) {
       e.preventDefault();
@@ -1382,7 +1598,7 @@ function makeDraggable(el) {
       el.style.height = `${Math.max(20, initialHeight + dy)}px`;
     }
   });
-  
+
   window.addEventListener('mouseup', () => {
     if (isDragging) {
       isDragging = false;
@@ -1459,7 +1675,9 @@ function createDecoration() {
       selectDeco(wrapper);
   });
   
-  if (type === 'gas-line') {
+  if (type === 'gas-line') 
+  
+  {
     wrapper.classList.add('deco-type-line');
     wrapper.style.width = '100px';
     wrapper.style.height = '20px';
@@ -1468,7 +1686,10 @@ function createDecoration() {
     visual.style.backgroundColor = color;
     visual.style.border = '1px solid #999';
     wrapper.appendChild(visual);
-  } else if (type === 'gas-line-v') {
+  }
+   else if (type === 'gas-line-v') 
+    
+  {
     wrapper.classList.add('deco-type-line-v');
     wrapper.style.width = '20px';
     wrapper.style.height = '100px';
@@ -1477,13 +1698,33 @@ function createDecoration() {
     visual.style.backgroundColor = color;
     visual.style.border = '1px solid #999';
     wrapper.appendChild(visual);
-  } else if (type === 'label') {
+  } else if (type === 'label') 
+    
+  {
+    
     wrapper.classList.add('deco-label');
     wrapper.contentEditable = true;
+  // Ensure the label can receive keyboard focus
+    wrapper.setAttribute('tabindex', '0');
+  // Allow text selection inside the label
+    wrapper.style.userSelect = 'text';
     wrapper.textContent = 'Label';
     wrapper.style.color = color;
     wrapper.style.resize = 'none'; 
-  } else if (type === 'control-panel') {
+  // Add a small drag handle (tiny dot) so labels can be moved without interfering with editing
+    const dragHandle = document.createElement('div');
+    dragHandle.className = 'deco-drag-handle';
+    dragHandle.title = 'Drag to move';
+  // Position the handle at the top-left outside the label so it doesn't block text clicks
+    dragHandle.style.cssText = 'position:absolute; top:-6px; left:-6px; width:12px; height:12px; background:rgba(0,0,0,0.22); border-radius:50%; cursor:move;';
+  // allow events to bubble so makeDraggable can handle mousedown on the handle
+    dragHandle.style.pointerEvents = 'auto';
+    wrapper.appendChild(dragHandle);
+  } 
+  
+  else if (type === 'control-panel') 
+    
+  {
   wrapper.classList.add('control-panel-box');
   wrapper.style.width = '400px';
   wrapper.style.height = '300px';
@@ -1631,16 +1872,16 @@ function addControlPanelPage(panel, pageList, panelPagesContent) {
       const pageIdx = panelPagesContent.indexOf(pageContent);
       if (pageIdx !== -1) {
         box.dataset.controlPanelPage = pageIdx;
-        console.log(`[DROP] Assigned box ${box.id} to page ${pageIdx}`);
+  // [DROP] Assigned box to page
       } else {
-        console.log(`[DROP] Could not assign box ${box.id} to a page (not found)`);
+  // [DROP] Could not assign box to a page (not found)
       }
       pageContent.style.boxShadow = '';
       // Update visibility after drop
       setActiveControlPanelPage(panel, pageList, pageBtn, panelPagesContent);
     } else {
       pageContent.style.boxShadow = '';
-      console.log('[DROP] Drop event fired but no valid device box found');
+  // [DROP] Drop event fired but no valid device box found
     }
   };
   panelPagesContent.push(pageContent);
@@ -1668,11 +1909,11 @@ function setActiveControlPanelPage(panel, pageList, pageBtn, panelPagesContent) 
   // Track active page index on the panel
   panel._activePageIdx = idx;
   // Debug output for device box assignment and parent
-  console.log('--- Device Box State on Page Switch ---');
+  // --- Device Box State on Page Switch ---
   document.querySelectorAll('.device-box').forEach(box => {
     const pageAssign = box.dataset.controlPanelPage;
     const parentClass = box.parentNode && box.parentNode.className;
-    console.log(`Box id: ${box.id}, assigned page: ${pageAssign}, parent: ${parentClass}`);
+  // Box debug: id, assigned page, parent
   });
   // Move device-boxes to the correct page content and update visibility
   document.querySelectorAll('.device-box').forEach(box => {
@@ -1820,7 +2061,7 @@ function sendCommand(device, cmd) {
   if (confirm(`Execute command '${cmd}' on ${device}?`)) {
       const key = device + '.' + cmd;
       Spin.send_request(key, "", "input", "", null);
-      console.log('Sent command:', key);
+  // Sent command logged
   }
 }
 
@@ -1865,7 +2106,34 @@ function debug(msg) {
   // console.log(msg);
 }
 
-debug('✓ Page initialized');
+// Small on-page toast to show last valve action (non-console) for debugging
+function showActionToast(msg, type) {
+  try {
+    let el = document.getElementById('action-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'action-toast';
+      el.style.position = 'fixed';
+      el.style.right = '12px';
+      el.style.top = '12px';
+      el.style.zIndex = 99999;
+      el.style.padding = '8px 12px';
+      el.style.borderRadius = '6px';
+      el.style.fontFamily = 'Arial, sans-serif';
+      el.style.fontSize = '12px';
+      el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.style.background = type === 'error' ? 'rgba(220,53,69,0.95)' : (type === 'ok' ? 'rgba(40,167,69,0.95)' : 'rgba(0,123,255,0.9)');
+    el.style.color = 'white';
+    el.style.opacity = '1';
+    clearTimeout(el._timeout);
+    el._timeout = setTimeout(() => { el.style.opacity = '0'; }, 1400);
+  } catch (e) { /* ignore */ }
+}
+
+
 updateLayoutList();
 loadSavedBackground();
 fetchNodesList();
@@ -1874,7 +2142,7 @@ fetchDeviceParams();
 // Listen for Spin lifecycle events
 window.addEventListener('spinstartup', function() { debug('✓ Spin startup event fired'); });
 window.addEventListener('spinconnect', function() { 
-    debug('✓ WebSocket connected to Spin backend');
+   
     fetchNodesList();
     // Also request server-side saved layouts when connection opens
     if (window.Spin && window.Spin.send_request) {
@@ -1890,7 +2158,7 @@ window.addEventListener('spinconnect', function() {
 window.addEventListener('spindisconnect', function() { debug('⚠ WebSocket disconnected from backend'); });
 window.addEventListener('spinupdate', function(event) {
   var val = event.detail.value;
-  debug('✓ Data update: ' + event.detail.key + ' = ' + JSON.stringify(val));
+ 
 });
 
 // ===== Context Menu Logic =====
@@ -2039,14 +2307,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // No pan/zoom listeners
 });
 
-// window.addEventListener('mousemove', (e) => {
-//   if (isPanning) {
-//     e.preventDefault();
-//     panX = e.clientX - startPanX;
-//     panY = e.clientY - startPanY;
-//     updateTransform();
-//   }
-// });
+
 
 window.addEventListener('mouseup', () => {
   if (isPanning) {
@@ -2056,16 +2317,6 @@ window.addEventListener('mouseup', () => {
   }
 });
 
-// Wheel Zoom - DISABLED (zoom/pan features removed)
-// const viewport = document.getElementById('viewport');
-// if (viewport) {
-//   viewport.addEventListener('wheel', (e) => {
-//     if (e.ctrlKey || e.metaKey) {
-//       e.preventDefault();
-//       // Zoom logic disabled
-//     }
-//   });
-// }
 
 // ===== Save/Load Layout =====
 // STORAGE_KEY is declared at top of script
@@ -2216,14 +2467,13 @@ function getCurrentLayoutData() {
   
   // Save Valve Icons (individual valve/switch icons)
   document.querySelectorAll('.valve-icon').forEach(icon => {
-    const label = icon.querySelector('div:nth-child(2)');
-    const fieldName = label ? label.textContent : '';
-    const deviceMatch = icon.id.match(/^icon-(.+?)_(.+)$/);
-    if (deviceMatch) {
+    const device = icon.dataset.device;
+    const field = icon.dataset.field;
+    if (device && field) {
       layout.valveIcons.push({
         id: icon.id,
-        device: deviceMatch[1], // e.g., "sim_gas_dosing_valve_controller"
-        field: deviceMatch[2],   // e.g., "V1_1"
+        device: device, // e.g., "sim_gas_dosing_valve_controller"
+        field: field,   // e.g., "V1_1"
         left: icon.style.left,
         top: icon.style.top,
         width: icon.style.width,
@@ -2231,6 +2481,7 @@ function getCurrentLayoutData() {
       });
     }
   });
+  // Saved valveIcons information
   
   // Save Decorations
   document.querySelectorAll('.deco-box').forEach(box => {
@@ -2337,6 +2588,168 @@ function applyLayout(layout) {
               }
           }
       });
+  }
+  
+  // Restore Valve Icons (individual valve/switch icons) if present in layout
+  if (layout.valveIcons && Array.isArray(layout.valveIcons)) {
+    const select = document.getElementById('device-select');
+    const availableDevices = select ? Array.from(select.options).map(opt => opt.value) : [];
+
+    layout.valveIcons.forEach(iconDef => {
+      try {
+        // Saved values may use older/short device names or long field names.
+        let realDevice = iconDef.device;
+        let fieldName = iconDef.field;
+
+        // If the saved field contains the device prefix (long form), try to extract a short field like V1_1 or Switch1
+        if (fieldName && !/^(V|v|Switch|switch)/.test(fieldName)) {
+          const m = fieldName.match(/(V\d+(?:_\d+)?|Switch\d+)/i);
+          if (m) fieldName = m[1];
+        }
+
+        // If the device in layout doesn't match available devices, try heuristics to find the correct device
+        if (availableDevices.length && !availableDevices.includes(realDevice)) {
+          // 1) find device that contains the saved device string
+          let found = availableDevices.find(d => d.includes(realDevice) || realDevice.includes(d));
+          // 2) try matching by original_name in WRITABLE_PARAMS
+          if (!found && window.WRITABLE_PARAMS) {
+            found = availableDevices.find(dev => {
+              const info = window.WRITABLE_PARAMS[dev];
+              return info && (info.original_name === iconDef.device || (info.original_name && iconDef.device && iconDef.device.includes(info.original_name)));
+            });
+          }
+          // 3) if still not found and iconDef.device is short like 'sim', try any device containing 'sim'
+          if (!found && iconDef.device) {
+            found = availableDevices.find(d => d.toLowerCase().includes(iconDef.device.toLowerCase()));
+          }
+          if (found) realDevice = found;
+        }
+
+        const valveDomId = `${deviceDomId(realDevice)}_${fieldName}`;
+
+        // If an element with same id already exists, skip
+        if (document.getElementById(`icon-${valveDomId}`)) return;
+
+        const valveIcon = document.createElement('div');
+        valveIcon.className = 'valve-icon';
+        valveIcon.id = `icon-${valveDomId}`;
+        valveIcon.dataset.device = realDevice; // Store device name
+        valveIcon.dataset.field = fieldName; // Store field name
+        valveIcon.style.position = 'absolute';
+        if (iconDef.left) valveIcon.style.left = iconDef.left;
+        if (iconDef.top) valveIcon.style.top = iconDef.top;
+        if (iconDef.width) valveIcon.style.width = iconDef.width;
+        if (iconDef.height) valveIcon.style.height = iconDef.height;
+        valveIcon.style.cursor = 'pointer';
+        valveIcon.style.userSelect = 'none';
+
+        // Image container
+        const imgContainer = document.createElement('div');
+        imgContainer.id = `img-${valveDomId}`;
+        imgContainer.style.cssText = 'width: 80px; height: 80px; position: relative;';
+
+        const lowerField = (fieldName || '').toLowerCase();
+        const isSwitch = lowerField.includes('switch');
+        const isValve = lowerField.includes('valve') || (fieldName && fieldName.startsWith('V'));
+
+        // Create img element similar to setupValveController
+        const img = document.createElement('img');
+        img.style.cssText = 'width: 100%; height: 100%; object-fit: contain;';
+        if (isSwitch) img.style.transform = 'rotate(0deg)';
+        // Default to closed appearance
+        img.src = isValve ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=' : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=';
+        // ensure valve image id matches expected lookup used by updateValveImage
+        if (isValve) img.id = `valve-img-${valveDomId}`;
+        imgContainer.appendChild(img);
+
+        // Click handler toggles by reading latestValues and sending setValveField
+        imgContainer.onclick = () => {
+        
+          // If Spin is not connected, do not attempt to send (no persistent red border)
+          if (!window.Spin || !window.Spin.current_socket || window.Spin.current_socket.readyState !== WebSocket.OPEN) {
+            return;
+          }
+
+          const data = latestValues[realDevice];
+          let currentValue = 0;
+          if (data && data.target && data.target.value && data.target.value[fieldName] !== undefined) {
+            currentValue = data.target.value[fieldName];
+          } else if (data && data.value && data.value.value && data.value.value[fieldName] !== undefined) {
+            currentValue = data.value.value[fieldName];
+          }
+          // Normalize different shapes ('0'/'1', booleans, {value:'0'}) to numeric
+          currentValue = toNumeric(currentValue);
+          const newValue = isSwitch ? (currentValue === 0 ? 1 : 0) : (currentValue === 1 ? 0 : 1);
+          setValveField(realDevice, fieldName, newValue);
+          // optimistic UI update: rotate switches, update valve visuals
+          if (isSwitch) {
+            try { updateSwitchRotation(imgContainer, newValue); } catch (e) { /* ignore */ }
+          } else {
+            try { updateValveImage(valveDomId, newValue); } catch (e) { /* ignore */ }
+          }
+        };
+
+        const label = document.createElement('div');
+        label.style.cssText = 'font-size: 10px; color: #333; text-align: center; margin-top: 4px; font-weight: 600;';
+        label.textContent = fieldName;
+
+        const resizeHandle = document.createElement('div');
+        resizeHandle.style.cssText = 'position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; background: #007bff; cursor: nwse-resize; border-radius: 2px; opacity: 0.7;';
+        resizeHandle.title = 'Resize';
+
+        const valueDisplay = document.createElement('div');
+        valueDisplay.id = `valve-${valveDomId}`;
+        valueDisplay.style.display = 'none';
+        // Bind to live value so restored icons reflect actual valve states
+        valueDisplay.setAttribute('data-spin', `@${realDevice}.value.${fieldName}`);
+
+        // Initialize visual from latestValues if available (normalize with toNumeric)
+        try {
+          const d = latestValues[realDevice];
+          const liveRaw = d && d.value && d.value.value && typeof d.value.value[fieldName] !== 'undefined' ? d.value.value[fieldName] : undefined;
+          if (typeof liveRaw !== 'undefined') {
+            const lv = toNumeric(liveRaw);
+            if (isSwitch) {
+              updateSwitchRotation(imgContainer, lv);
+              const valveEl = imgContainer.closest('.valve-icon');
+              if (valveEl) valveEl.dataset.open = lv === 1 ? '1' : '0';
+            } else {
+              updateValveImage(valveDomId, lv === 1);
+              // store optimistic/open state so subsequent queries read consistent state
+              const valveEl = imgContainer.closest('.valve-icon');
+              if (valveEl) valveEl.dataset.open = lv === 1 ? '1' : '0';
+            }
+            // Add non-intrusive init debug info to the element title (visible on hover)
+            try {
+              const valveEl = imgContainer.closest('.valve-icon');
+              if (valveEl) valveEl.title = `init ${fieldName}: ${String(liveRaw)} -> ${lv}`;
+            } catch (e) { /* ignore */ }
+          }
+        } catch (e) { /* ignore init errors */ }
+
+        valveIcon.appendChild(imgContainer);
+        valveIcon.appendChild(label);
+        valveIcon.appendChild(resizeHandle);
+        valveIcon.appendChild(valueDisplay);
+
+        const grid = document.getElementById('device-grid');
+        if (grid) {
+          grid.appendChild(valveIcon);
+        }
+        makeValveIconDraggable(valveIcon);
+        makeValveIconResizable(valveIcon, imgContainer);
+
+        // Ensure we have image listeners for this device (safe to call multiple times)
+        try { setupValveImageListeners(realDevice, deviceDomId(realDevice)); } catch (e) { /* ignore */ }
+      } catch (e) {
+        // swallow individual icon errors
+      }
+    });
+  }
+
+  // After restoring valve icons, reload Spin to bind new data-spin attributes
+  if (window.Spin && window.Spin.reload) {
+    window.Spin.reload();
   }
 }
 

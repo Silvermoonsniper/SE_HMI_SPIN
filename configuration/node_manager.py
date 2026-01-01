@@ -187,7 +187,7 @@ class NodeManagerDevice(BaseDevice):
     
         self.log.info("NodeManager initialized")
     
-        self.update_nodes_param()
+ 
 
     def update_nodes_param(self):
     

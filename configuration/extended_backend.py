@@ -1,10 +1,9 @@
 from spin.backend import Backend, Update, State
 import asyncio
 import os, json
+import threading
 from flask import Flask, jsonify
 from flask_cors import CORS
-from waitress import serve
-from threading import Thread
 """
 an extended backend to poll all device parameters to port 8001 every poll_interval
 for frontend spin updates
@@ -54,7 +53,7 @@ class ExtendedBackend(Backend):
                         except Exception:
                             pass
                         
-                        # Store latest value of all parameters for API
+                        # Store for API
                         try:
                           
                                 ExtendedBackend.latest_values[key] = {
@@ -65,7 +64,7 @@ class ExtendedBackend(Backend):
                                 }
                         except Exception:
                             pass
-                
+                        print(update)
                         await self.send_update(update)
                        
                     except Exception as e:
@@ -77,9 +76,7 @@ class ExtendedBackend(Backend):
     def start(self, conf, asset_list):
         # Add nodemanager protocol if missing, use correct module name
         if 'nodemanager' not in self.protos:
-           
             self.protos['nodemanager'] = 'configuration.node_manager'
-        
         super().start(conf, asset_list)
 
     # Set all_params for each device from device_params.json
@@ -121,13 +118,4 @@ def start_api_server():
    
         return jsonify(ExtendedBackend.latest_values)
    
-    
-    # start WSGI server in background with separate thread
-    def run_waitress():
-         serve(app, host='0.0.0.0', port=8001)
-
-   # Start in a background thread
-    Thread(target=run_waitress, daemon=True).start()
-
- 
-    
+    threading.Thread(target=lambda: app.run(host='0.0.0.0', port=8001, debug=False), daemon=True).start()

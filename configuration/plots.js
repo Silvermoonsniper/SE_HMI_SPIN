@@ -321,7 +321,7 @@ startPollingLatestValues();
       
       const data = traces.map(t => t.traceObj);
       
-      console.debug('[Debug] refreshPlot: calling Plotly.react for plot', p.id, 'with traces:', traces.map(t => t.name));
+  // debug: refreshPlot calling Plotly.react for plot (removed console output)
       
       Plotly.react(p.plotDiv, data, layoutForType(), {responsive:true}).then(()=>{
       
@@ -1094,7 +1094,7 @@ function createPlotFromSpinPlot(div)
 
     script.src = 'https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js';
 
-    script.onload = function(){ console.log('interact.js loaded'); };
+    script.onload = function(){};
 
     document.head.appendChild(script);
 

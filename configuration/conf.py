@@ -337,41 +337,34 @@ class SpinConfigManager:
             config.devices = dev_config
            
             # Write device data (params + commands) to JSON file for frontend
-           
-            self.write_to_json(self.DEVICE_PARAMS_FILE, all_device_data) 
-            
-            self.config = config
+            try:
    
-            return config
-    def write_to_json(self,file,data):
-        
-         try:
-   
-                with open(file, 'w') as f:
+                with open(self.DEVICE_PARAMS_FILE, 'w') as f:
                     
-                    json.dump(data, f)
+                    json.dump(all_device_data, f)
    
-                print(f"Device data saved to {file}")
+                print(f"Device data saved to {self.DEVICE_PARAMS_FILE}")
    
-         except Exception as e:
+            except Exception as e:
    
                 print(f"Error saving device data: {e}")
    
-       
+            self.config = config
             
-    # start extended backend with poller and Flask API to poll all parameters    
-    
+          
+   
+            return config
+
     def start_extended_backend(self, config):
-            
-            #  initialie event loop
+   
             loop = asyncio.get_event_loop()
    
             connections = []
-            #  get logger 
+   
             log = mlzlog.getLogger("spin")
    
             backend = ExtendedBackend(loop, connections, log)
-            #  start extended backend 
+   
             backend.start(config, [])
 
 
@@ -386,10 +379,17 @@ manager = SpinConfigManager()
 
 # Prefer an existing nodes.json (useful when running in Docker where UDP discovery fails).
 # If nodes.json exists, load it and use those entries; otherwise run discovery.
-manager.write_to_json(manager.NODES_FILE, [])
-manager.write_to_json(manager.DEVICE_PARAMS_FILE, [])
+nodes = []
+if os.path.exists(NODES_FILE):
+    try:
+        with open(NODES_FILE, 'r') as f:
+            nodes = json.load(f)
+        print(f"Using nodes from {NODES_FILE}: {nodes}")
+    except Exception as e:
+        print(f"Failed to read {NODES_FILE}, falling back to discovery: {e}")
 
-nodes = asyncio.get_event_loop().run_until_complete(manager.discover_and_save_nodes(timeout=2.0))
+if not nodes:
+    nodes = asyncio.get_event_loop().run_until_complete(manager.discover_and_save_nodes(timeout=2.0))
 
 if not nodes:
     print("No SECoP nodes discovered on the network.")
