@@ -2107,7 +2107,9 @@ function debug(msg) {
 }
 
 // Small on-page toast to show last valve action (non-console) for debugging
-function showActionToast(msg, type) {
+function showActionToast(msg, type) 
+
+{
   try {
     let el = document.getElementById('action-toast');
     if (!el) {

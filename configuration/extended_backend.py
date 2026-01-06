@@ -64,7 +64,7 @@ class ExtendedBackend(Backend):
                                 }
                         except Exception:
                             pass
-                        print(update)
+                      
                         await self.send_update(update)
                        
                     except Exception as e:
