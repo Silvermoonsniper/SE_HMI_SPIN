@@ -50,7 +50,18 @@ def resolve_host(host):
     # In Docker, use host.docker.internal to access host services
     return 'host.docker.internal'
 
+"""
+
+args:
+    data: dict - descriptive data from SEC node
+returns:
+    module_list: list of (module_name, unique_name) tuples
+    parameter_map: dict of unique_name -> list of parameter names
+    device_data_map: dict of unique_name -> device data dict
+       
+"""
 def extract_modules_and_parameters(data, prefix=""):
+   
     modules = data.get("modules", {})
     
     parameter_map = {}
@@ -139,7 +150,18 @@ def extract_modules_and_parameters(data, prefix=""):
 
     return module_list, parameter_map, device_data_map
 
+"""
+args:
+   
+   host: str - hostname or IP of the node manager
+   
+   port: int - port number of the node manager
 
+returns:
+   mod_list: list of (module_name, unique_name) tuples
+   para_map: dict of unique_name -> list of parameter names
+   dev_data: dict of unique_name -> device data dict
+"""
 def connect_and_fetch_params(host, port):
     # Resolve the host for Docker environment
     resolved_host = resolve_host(host)
