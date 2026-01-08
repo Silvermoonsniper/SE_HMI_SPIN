@@ -312,7 +312,7 @@ function displayNodesInfo(nodesList) {
   nodesList.forEach((node, index) => {
     const nodeName = `${node.host}:${node.port}`;
     html += `<li style="padding: 4px 0; border-bottom: 1px solid #e9ecef;">
-      <strong>Node ${index + 1}:</strong> ${nodeName} (${node.equipment_id || 'Unknown Device'})
+      <strong>Node ${index + 1}:</strong> ${nodeName} (${node.equipment_id})
     </li>`;
   });
   html += '</ul>';
@@ -2136,111 +2136,7 @@ function showActionToast(msg, type)
 }
 
 
-updateLayoutList();
-loadSavedBackground();
-fetchNodesList();
-fetchDeviceParams();
 
-// Listen for Spin lifecycle events
-window.addEventListener('spinstartup', function() { debug('✓ Spin startup event fired'); });
-window.addEventListener('spinconnect', function() { 
-   
-    fetchNodesList();
-    // Also request server-side saved layouts when connection opens
-    if (window.Spin && window.Spin.send_request) {
-      try {
-        window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null);
-      } catch (e) {
-        console.error('list_layouts request failed', e);
-      }
-    }
-    
-});
-
-window.addEventListener('spindisconnect', function() { debug('⚠ WebSocket disconnected from backend'); });
-window.addEventListener('spinupdate', function(event) {
-  var val = event.detail.value;
- 
-});
-
-// ===== Context Menu Logic =====
-let contextMenuTarget = null;
-let ctxMenu = null;
-let ctxColor = null;
-
-// Initialize context menu elements after DOM loads
-document.addEventListener('DOMContentLoaded', () => {
-  ctxMenu = document.getElementById('context-menu');
-  ctxColor = document.getElementById('ctx-color-picker');
-  
-  // Set up color picker listener
-  if (ctxColor) {
-    ctxColor.addEventListener('input', (e) => {
-      if (contextMenuTarget) {
-        const color = e.target.value;
-        if (contextMenuTarget.dataset.type === 'label') {
-          contextMenuTarget.style.color = color;
-        } else {
-          const visual = contextMenuTarget.querySelector('.deco-visual');
-          if (visual) visual.style.backgroundColor = color;
-        }
-      }
-    });
-  }
-  
-  // Set up remove button listener
-  const ctxRemoveBtn = document.getElementById('ctx-remove-btn');
-  if (ctxRemoveBtn) {
-    ctxRemoveBtn.addEventListener('click', () => {
-      if (contextMenuTarget) {
-        contextMenuTarget.remove();
-        contextMenuTarget = null;
-        if (ctxMenu) ctxMenu.style.display = 'none';
-      }
-    });
-  }
-});
-
-// Hide menu on left click elsewhere
-document.addEventListener('mousedown', (e) => {
-  // Only handle left clicks for closing
-  if (e.button !== 0) return;
-  
-  if (ctxMenu && ctxMenu.style.display === 'block' && !ctxMenu.contains(e.target)) {
-    ctxMenu.style.display = 'none';
-  }
-});
-
-// Delegate contextmenu event
-document.addEventListener('contextmenu', (e) => {
-  const box = e.target.closest('.deco-box');
-  if (box && ctxMenu && ctxColor) {
-    e.preventDefault();
-    contextMenuTarget = box;
-    
-    // Set current color in picker
-    let currentColor = '#cccccc';
-    
-    if (box.dataset.type === 'label') {
-        // Try to get color from style
-        if (box.style.color) currentColor = rgbToHex(box.style.color) || box.style.color;
-    } else {
-        const visual = box.querySelector('.deco-visual');
-        if (visual && visual.style.backgroundColor) {
-             currentColor = rgbToHex(visual.style.backgroundColor) || visual.style.backgroundColor;
-        }
-    }
-    // Ensure it's a valid hex for input type=color
-    if (currentColor.startsWith('rgb')) currentColor = rgbToHex(currentColor);
-    if (!currentColor.startsWith('#')) currentColor = '#cccccc'; // Fallback
-    
-    ctxColor.value = currentColor;
-
-    ctxMenu.style.left = e.pageX + 'px';
-    ctxMenu.style.top = e.pageY + 'px';
-    ctxMenu.style.display = 'block';
-  }
-});
 
 // Removed duplicate listeners - now in DOMContentLoaded above
 
@@ -2255,11 +2151,6 @@ function rgbToHex(col) {
     return '#' + r + g + b;
 }
 
-// ===== Pan & Zoom Logic =====
-// Variables moved to top of script
-// let scale = 1;
-// let panX = 0;
-// let panY = 0;
 
 function updateTransform() {
   // Disabled
@@ -2755,3 +2646,112 @@ function applyLayout(layout) {
   }
 }
 
+
+
+updateLayoutList();
+loadSavedBackground();
+fetchNodesList();
+fetchDeviceParams();
+
+
+
+// Listen for Spin lifecycle events
+window.addEventListener('spinstartup', function() { debug('✓ Spin startup event fired'); });
+window.addEventListener('spinconnect', function() { 
+   
+    fetchNodesList();
+    // Also request server-side saved layouts when connection opens
+    if (window.Spin && window.Spin.send_request) {
+      try {
+        window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null);
+      } catch (e) {
+        console.error('list_layouts request failed', e);
+      }
+    }
+    
+});
+
+window.addEventListener('spindisconnect', function() { debug('⚠ WebSocket disconnected from backend'); });
+window.addEventListener('spinupdate', function(event) {
+  var val = event.detail.value;
+ 
+});
+
+// ===== Context Menu Logic =====
+let contextMenuTarget = null;
+let ctxMenu = null;
+let ctxColor = null;
+
+// Initialize context menu elements after DOM loads
+document.addEventListener('DOMContentLoaded', () => {
+  ctxMenu = document.getElementById('context-menu');
+  ctxColor = document.getElementById('ctx-color-picker');
+  
+  // Set up color picker listener
+  if (ctxColor) {
+    ctxColor.addEventListener('input', (e) => {
+      if (contextMenuTarget) {
+        const color = e.target.value;
+        if (contextMenuTarget.dataset.type === 'label') {
+          contextMenuTarget.style.color = color;
+        } else {
+          const visual = contextMenuTarget.querySelector('.deco-visual');
+          if (visual) visual.style.backgroundColor = color;
+        }
+      }
+    });
+  }
+  
+  // Set up remove button listener
+  const ctxRemoveBtn = document.getElementById('ctx-remove-btn');
+  if (ctxRemoveBtn) {
+    ctxRemoveBtn.addEventListener('click', () => {
+      if (contextMenuTarget) {
+        contextMenuTarget.remove();
+        contextMenuTarget = null;
+        if (ctxMenu) ctxMenu.style.display = 'none';
+      }
+    });
+  }
+});
+
+// Hide menu on left click elsewhere
+document.addEventListener('mousedown', (e) => {
+  // Only handle left clicks for closing
+  if (e.button !== 0) return;
+  
+  if (ctxMenu && ctxMenu.style.display === 'block' && !ctxMenu.contains(e.target)) {
+    ctxMenu.style.display = 'none';
+  }
+});
+
+// Delegate contextmenu event
+document.addEventListener('contextmenu', (e) => {
+  const box = e.target.closest('.deco-box');
+  if (box && ctxMenu && ctxColor) {
+    e.preventDefault();
+    contextMenuTarget = box;
+    
+    // Set current color in picker
+    let currentColor = '#cccccc';
+    
+    if (box.dataset.type === 'label') {
+        // Try to get color from style
+        if (box.style.color) currentColor = rgbToHex(box.style.color) || box.style.color;
+    } else {
+        const visual = box.querySelector('.deco-visual');
+        if (visual && visual.style.backgroundColor) {
+             currentColor = rgbToHex(visual.style.backgroundColor) || visual.style.backgroundColor;
+        }
+    }
+    // Ensure it's a valid hex for input type=color
+    if (currentColor.startsWith('rgb')) currentColor = rgbToHex(currentColor);
+    if (!currentColor.startsWith('#')) currentColor = '#cccccc'; // Fallback
+    
+    ctxColor.value = currentColor;
+
+    ctxMenu.style.left = e.pageX + 'px';
+    ctxMenu.style.top = e.pageY + 'px';
+    ctxMenu.style.display = 'block';
+  }
+});

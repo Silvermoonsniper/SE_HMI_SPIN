@@ -16,14 +16,10 @@ services:
       - ./content:/app/content
     environment:
       - PYTHONUNBUFFERED=1
-    # Add host.docker.internal mapping for Linux compatibility
-    # On macOS/Windows this is automatic, but Linux needs it explicitly
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: unless-stopped
-    networks:
-      - se_hmi_network
 
-networks:
-  se_hmi_network:
-    driver: bridge
+    restart: unless-stopped
+
+    network_mode: "host"
+
+
+

@@ -93,21 +93,17 @@ class SpinConfigManager:
     
         self.nodes = []
 
-    def is_running_in_docker(self):
-    
-        return os.path.exists('/.dockerenv') or os.path.exists('/run/.containerenv')
+   
 
     def resolve_host(self, host):
     
-            if not self.is_running_in_docker():
-    
-                return host
+            
     
             if host not in ('localhost', '127.0.0.1'):
     
                 return host
     
-            return 'host.docker.internal'
+            return host
 
     def extract_modules_and_parameters(self, data, prefix=""):
     
@@ -212,9 +208,31 @@ class SpinConfigManager:
                 def connection_made(self, transport):
    
                     self.transport = transport
+                
+                def get_local_ip(self):
+                   """
+                   Function to automatically get the local IP address
+                   """
+                   s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                   
+                   s.settimeout(0)
+                   
+                   try:
+                       s.connect(('8.8.8.8', 1))  # Connecting to an external address (Google DNS)
+                       local_ip = s.getsockname()[0]  # Get the local IP address
+                   except Exception:
+                       local_ip = '127.0.0.1'  # If it fails, fallback to localhost
+                   finally:
+                       s.close()
+                   return local_ip    
    
                 def datagram_received(self, data, addr):
-   
+
+                    # get local ip 
+                    local_ip = self.get_local_ip()  
+                    # Ignore responses from localhost (127.0.0.1)
+                    if addr[0] != local_ip:
+                          return
                     try:
    
                         response = data.decode('utf-8').strip()
@@ -239,7 +257,7 @@ class SpinConfigManager:
                     except Exception as e:
    
                         print(f"Error parsing discovery response: {e}")
-   
+            
             DISCOVERY_PORT = 10767
    
             loop = asyncio.get_event_loop()
@@ -264,9 +282,12 @@ class SpinConfigManager:
                 transport.sendto(discovery_msg, ('255.255.255.255', DISCOVERY_PORT))
    
                 await asyncio.sleep(timeout)
-   
+                
+               
                 discovered_nodes = protocol.responses
-   
+                
+                      
+
                 transport.close()
    
             except Exception as e:
@@ -332,7 +353,7 @@ class SpinConfigManager:
                 'default': Page('../content/system.html', readonly=False),
                 'plots': Page('../content/plots.html', readonly=False),
             }
-           # dev_config['nodemanager'] = Device('nodemanager://localhost', pollinterval=1.0)
+            dev_config['nodemanager'] = Device('nodemanager://localhost', pollinterval=1.0)
    
             config.devices = dev_config
            
@@ -380,20 +401,18 @@ manager = SpinConfigManager()
 # Prefer an existing nodes.json (useful when running in Docker where UDP discovery fails).
 # If nodes.json exists, load it and use those entries; otherwise run discovery.
 nodes = {}
-
 if os.path.exists(NODES_FILE):
     try:
         with open(NODES_FILE, 'w') as f:
-            nodes = json.dump(nodes, f, indent=2)
- 
+            nodes = json.dump(nodes,f,indent=2)
+        print(f"Using nodes from {NODES_FILE}: {nodes}")
     except Exception as e:
         print(f"Failed to read {NODES_FILE}, falling back to discovery: {e}")
 
-
-nodes = asyncio.get_event_loop().run_until_complete(manager.discover_and_save_nodes(timeout=2.0))
-
 if not nodes:
-    print("No SECoP nodes discovered on the network.")
+    nodes = asyncio.get_event_loop().run_until_complete(manager.discover_and_save_nodes(timeout=1.0))
+
+
 
 config = manager.spin_server_start(nodes)
 
