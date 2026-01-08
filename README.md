@@ -3,7 +3,7 @@
 ## Getting started
 ## SE_HMI_SPIN
 
-An HMI front-end for SECoP devices built on top of the Spin framework. This repository contains the GUI (HTML/CSS/JS) and a small Spin plugin that discovers SECoP nodes, exposes device parameters to the frontend, and persists visual layouts to disk.
+An HMI front-end for SECoP devices built on top of the Spin framework. This repository contains the GUI (HTML/CSS/JS) and automatic discovery of SECoP nodes via UDP broadcasting, exposes device parameters to the frontend, and persists visual layouts to disk.
 
 This README explains how to run the project, the recommended development workflow (where to edit files), and troubleshooting steps for layout persistence and asset serving.
 
@@ -12,7 +12,7 @@ This README explains how to run the project, the recommended development workflo
 - Frontend logic split into `content/system.js` and `content/system.css` for easier editing
 - Backend plugin `configuration/node_manager.py`:
 	- Discovers SECoP nodes
-	- Exposes device parameters to the frontend (`device_params.json`)
+	- Exposes device parameters to the frontend (`device_params.json`, the json will be automatically generated once you start the application)
 	- Saves / lists / serves layout JSON files from project `layout/` directory
 - Layout persistence with both localStorage (browser) and server-side save/load
 
@@ -32,25 +32,8 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
-Open the browser at the address Spin shows (default: http://localhost:8080) and navigate to the `system` page.
+Open the browser at the address Spin shows (default: http://localhost:8000), if you want to open plot pages, open another webpage with URL: http://localhost:8000/plots.
 
----
-
-## Project layout (important files)
-
-- `content/` — canonical HTML/CSS/JS you should edit during development:
-	- `content/system.html` — page markup
-	- `content/system.js` — frontend logic (device boxes, layout save/load, Spin handlers)
-	- `content/system.css` — styles
-- `configuration/` — Spin configuration and runtime files (served from `/c/` by Spin):
-	- `configuration/node_manager.py` — Spin plugin that handles discovery and layout persistence
-	- `configuration/device_params.json` — device metadata used by the UI
-	- `configuration/system.js` and `configuration/system.css` — runtime copies (often symlinked to `content/`)
-- `layout/` — server-side saved layout JSON files; the server writes files here on `nodemanager.save_layout`.
-
-Important note: Spin serves `/c/*` assets from the configuration root; the recommended development pattern is to edit files in `content/` and expose them to Spin by creating symlinks (or copies) under `configuration/` so the runtime files are available at `/c/system.js` and `/c/system.css`.
-
----
 
 ## Development workflow (recommended)
 
@@ -83,18 +66,7 @@ How to save a layout to the server:
 2. The frontend requests `nodemanager.save_layout` — the Spin plugin writes `layout/<name>.json` and replies with the written path.
 3. The frontend then requests `nodemanager.list_layouts` and replaces the layout dropdown with the authoritative server list.
 
-If you save and the file does not appear under your *host* project's `layout/` folder, possible causes:
 
-- The plugin wrote the file inside a container but the project directory is not mounted into the container. If you're running Spin inside Docker, make sure the container mounts the repository folder (docker-compose should do this). Check with `docker compose logs -f` to see the plugin's "Saving layout 'NAME' to /path/layout/NAME.json" message.
-- File permission issues in the target directory. Ensure the process running Spin can write to `layout/` (chown/chmod or adjust container user).
-
-Quick checks:
-
-- In browser DevTools Console, run:
-	- `Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null)` — forces server to send current list
-- In server logs you should see messages like: `Saving layout 'my_layout' to /path/to/project/layout/my_layout.json` and the file should appear there on the host if volumes are configured correctly.
-
----
 
 
 
