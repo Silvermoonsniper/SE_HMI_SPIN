@@ -158,26 +158,101 @@ function loadSavedBackground() {
 
   const raw = localStorage.getItem('system_bg');
 
-  if (raw) {
+      if (match) {
+        select.value = match;
+        createDeviceDisplay(); // This creates it at default pos
+        // Find the newly created box (last one)
+        const boxes = document.querySelectorAll('.device-box');
+        const newBox = boxes[boxes.length - 1];
+        if (newBox) {
+          newBox.style.left = d.left;
+          newBox.style.top = d.top;
+          if(d.width) newBox.style.width = d.width;
+          if(d.height) newBox.style.height = d.height;
+        }
+      } else {
+        // If this device wasn't matched to an available device, it may be
+        // a synthetic element such as a sample magazine slot (id starts with
+        // 'mag-'). Restore a placeholder slot so saved positions are kept.
+        try {
+          const isMag = (d.logicalName && d.logicalName.startsWith && d.logicalName.startsWith('mag-')) || (d.id && d.id.startsWith && d.id.startsWith('mag-'));
+          if (isMag) {
+            const grid = document.getElementById('device-grid');
+            if (grid) {
+              const slot = document.createElement('div');
+              slot.className = 'sample-slot device-box';
+              slot.id = d.id || ('mag-' + Date.now());
+              slot.style.position = 'absolute';
+              slot.style.left = d.left || '200px';
+              slot.style.top = d.top || '50px';
+              if (d.width) slot.style.width = d.width; else slot.style.width = '120px';
+              if (d.height) slot.style.height = d.height; else slot.style.height = '120px';
+              slot.style.padding = '6px';
+              slot.style.boxSizing = 'border-box';
+              slot.style.cursor = 'move';
+              slot.style.zIndex = '5';
 
-    const urls = raw.split(',').map(u => u.trim()).filter(u => u);
+              // Header with title and remove button
+              const header = document.createElement('div');
+              header.className = 'device-header';
+              header.style.height = '20px';
+              header.style.display = 'flex';
+              header.style.alignItems = 'center';
+              header.style.justifyContent = 'space-between';
 
-    const imgs = document.querySelectorAll('.bg-img');
+              const title = document.createElement('div');
+              title.className = 'device-title';
+              title.textContent = d.device || slot.id;
+              title.style.fontSize = '12px';
+              title.style.paddingRight = '6px';
+              header.appendChild(title);
 
-    imgs.forEach((img, i) => {
+              const removeBtn = document.createElement('div');
+              removeBtn.className = 'deco-remove';
+              removeBtn.innerHTML = '&times;';
+              removeBtn.style.cursor = 'pointer';
+              removeBtn.onclick = (e) => { e.stopPropagation(); slot.remove(); };
+              header.appendChild(removeBtn);
+              slot.appendChild(header);
 
-      let url = urls[i % urls.length];
+              // image placeholder
+              const imgHolder = document.createElement('div');
+              imgHolder.style.width = '100%';
+              imgHolder.style.height = '86px';
+              imgHolder.style.display = 'flex';
+              imgHolder.style.alignItems = 'center';
+              imgHolder.style.justifyContent = 'center';
+              imgHolder.style.overflow = 'hidden';
 
-      img.style.backgroundImage = `url('${url}')`;
+              const img = document.createElement('img');
+              img.style.maxWidth = '100%';
+              img.style.maxHeight = '100%';
+              img.style.objectFit = 'contain';
+              img.src = '/c/assets/sample_holder.png';
+              // If layout provided an image URL for this saved slot, use it
+              try { if (d && d.image) img.src = d.image; } catch (e) { /* ignore */ }
+              imgHolder.appendChild(img);
+              slot.appendChild(imgHolder);
 
-    });
+              const resizeHandle = document.createElement('div');
+              resizeHandle.className = 'resize-handle';
+              slot.appendChild(resizeHandle);
 
+              grid.appendChild(slot);
+              makeDraggable(slot);
+              makeResizable(slot);
+            }
+          }
+        } catch (err) {
+          console.error('applyLayout: failed to restore synthetic device', err);
+        }
+      }
     const input = document.getElementById('conn-bg-url');
 
     if (input) input.value = raw;
 
   }
-}
+
 
 //function to add node connection
 function addNodeConnection() {
@@ -655,6 +730,66 @@ function updateParamDisplay(device, domId, param) {
 // ===== Extra Parameters Panel =====
 const latestValues = {};
 
+// Try to fetch latest values from the extended backend API and merge them
+// into the frontend `latestValues` cache. This helps when websocket/spin
+// updates arrive late or the UI loads before the cached values are populated.
+async function fetchAndMergeLatestValuesOnce() {
+  try {
+    let res = null;
+    // First try relative path (works if server proxies /api)
+    try {
+      res = await fetch('/api/latest_values');
+    } catch (e) {
+      res = null;
+    }
+    // Fallback to direct backend port (CORS is enabled on the backend)
+    if (!res || !res.ok) {
+      try {
+        res = await fetch('http://127.0.0.1:8001/api/latest_values');
+      } catch (e) {
+        console.debug('fetchLatestValues: both relative and absolute fetch failed', e);
+        return;
+      }
+    }
+    if (!res.ok) {
+      console.debug('fetchLatestValues: /api/latest_values returned', res.status);
+      return;
+    }
+    const data = await res.json();
+    for (const k of Object.keys(data)) {
+      try {
+        const entry = data[k];
+        const parts = k.split('.');
+        if (parts.length < 2) continue;
+        const device = parts[0];
+        const param = parts.slice(1).join('.');
+        if (!latestValues[device]) latestValues[device] = {};
+        latestValues[device][param] = {
+          value: entry.value,
+          unit: entry.unit,
+          state: entry.state,
+          state_str: entry.state_str
+        };
+       
+      } catch (e) {
+        console.debug('fetchLatestValues: failed to merge key', k, e);
+      }
+    }
+    // Extra debug for the sample changer storage device
+    if (latestValues['sim_sample_changer_storage']) {
+      try {
+       
+      } catch (e) {}
+    }
+  } catch (e) {
+    console.debug('fetchLatestValues: error', e);
+  }
+}
+
+// Run once now and again shortly after to catch late-arriving data
+fetchAndMergeLatestValuesOnce();
+setTimeout(fetchAndMergeLatestValuesOnce, 1500);
+
 // device name to sanitized DOM ID
 function deviceDomId(device) {
   // Use the full device name, just sanitized for DOM ID safety
@@ -869,7 +1004,7 @@ function createDeviceDisplay(deviceNameOverride)
   const select = document.getElementById('device-select');
   const device = deviceNameOverride || select.value;
   
-  if (!device) 
+  if (!device)  
   
     {
     alert('Please select a device first.');
@@ -890,8 +1025,14 @@ function createDeviceDisplay(deviceNameOverride)
   const isValveController = (displayName && displayName.toLowerCase().includes('valve_controller')) || 
                             device.toLowerCase().includes('valve_controller');
   
+  // check if this is a sample_magazine device
+  const isSample_magazine_device = (displayName && displayName.toLowerCase().includes('storage')) || 
+                            device.toLowerCase().includes('storage');
+
   const templateId = isValveController ? 'valve-controller-template' : 'device-template';
+  
   const template = document.getElementById(templateId);
+  
   const clone = template.content.cloneNode(true);
   
   // Replace placeholders in HTML
@@ -984,12 +1125,162 @@ function createDeviceDisplay(deviceNameOverride)
   } else {
       debug('Error: window.Spin not found');
   }
-  
+ 
   // For valve_controller, setup valve displays after Spin connects
   if (isValveController) {
       setTimeout(() => setupValveController(device, domId), 1000);
   }
+
+  // for sample magazine, create slots display for all samples
+  if (isSample_magazine_device) {
+    console.log('isSample_magazine_device', device, isSample_magazine_device);
+    setTimeout(() => setupSampleMagazine(device, domId), 1000);
+  }
 }
+
+// make sample magazine display: create independent slot elements appended
+// directly to #device-grid so each slot can be moved/resized independently.
+async function setupSampleMagazine(device, domId) {
+  // Be tolerant: ensure data exists
+  const data = latestValues[device];
+  if (!data) return;
+
+  // Prefer 'value' then 'target'
+  let valueEntry = data.value || data.target;
+  if (!valueEntry || !valueEntry.value || !Array.isArray(valueEntry.value)) return;
+  const arr = valueEntry.value;
+
+  const grid = document.getElementById('device-grid');
+  if (!grid) return;
+
+  // We'll create one slot element per entry and append directly to grid.
+  // Use placeholder from runtime configuration; allow a per-slot localStorage override.
+  const placeholder = '/c/assets/sample_holder.png';
+
+  arr.forEach((item, idx) => {
+    const slotId = `mag-${domId}-slot-${idx}`;
+
+    // If a slot with the same id already exists (for example restored from a saved
+    // layout), keep it and only refresh its image/handlers. This prevents
+    // setupSampleMagazine from overwriting positions that were restored by
+    // applyLayout.
+    const prev = document.getElementById(slotId);
+    if (prev) {
+      try {
+        const storageKey = `magimg:${device}:${idx}`;
+        const override = (localStorage && localStorage.getItem) ? localStorage.getItem(storageKey) : null;
+        const imgEl = prev.querySelector && prev.querySelector('img');
+        if (imgEl) {
+          if (override) imgEl.src = override;
+          else if (!imgEl.src) imgEl.src = placeholder;
+        }
+      } catch (err) {
+        // ignore localStorage errors
+      }
+      // Re-apply draggable/resizable in case handlers are missing
+      try { makeDraggable(prev); } catch (e) {}
+      try { makeResizable(prev); } catch (e) {}
+      // Existing slot preserved — skip creating a new one
+      return;
+    }
+
+    const slot = document.createElement('div');
+    slot.className = 'sample-slot device-box';
+    slot.id = slotId;
+    slot.style.position = 'absolute';
+    // Position slots in a row starting at x=200, y=50 (similar spacing as before)
+    slot.style.left = (200 + idx * 130) + 'px';
+    slot.style.top = '50px';
+    slot.style.width = '120px';
+    slot.style.height = '120px';
+    slot.style.padding = '6px';
+    slot.style.boxSizing = 'border-box';
+    slot.style.cursor = 'move';
+    slot.style.zIndex = '5';
+
+    const header = document.createElement('div');
+    header.className = 'device-header';
+    header.style.height = '20px';
+    header.style.display = 'flex';
+    header.style.alignItems = 'center';
+    header.style.justifyContent = 'space-between';
+
+    const title = document.createElement('div');
+    title.className = 'device-title';
+    title.textContent = `Slot ${idx + 1}`;
+    title.style.fontSize = '12px';
+    title.style.paddingRight = '6px';
+    header.appendChild(title);
+
+    const removeBtn = document.createElement('div');
+    removeBtn.className = 'deco-remove';
+    removeBtn.innerHTML = '&times;';
+    removeBtn.style.cursor = 'pointer';
+    removeBtn.onclick = (e) => { e.stopPropagation(); slot.remove(); };
+    header.appendChild(removeBtn);
+
+    slot.appendChild(header);
+
+    const imgHolder = document.createElement('div');
+    imgHolder.style.width = '100%';
+    imgHolder.style.height = '86px';
+    imgHolder.style.display = 'flex';
+    imgHolder.style.alignItems = 'center';
+    imgHolder.style.justifyContent = 'center';
+    imgHolder.style.overflow = 'hidden';
+
+    const img = document.createElement('img');
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = '100%';
+    img.style.objectFit = 'contain';
+
+    // For configuration/runtime copy we force the placeholder by default to avoid
+    // treating backend sample names as URLs; allow a local override per-slot.
+    const storageKey = `magimg:${device}:${idx}`;
+    let override = null;
+    try { override = localStorage.getItem(storageKey); } catch (e) { override = null; }
+
+    if (override) {
+      img.src = override;
+    } else {
+      img.src = placeholder;
+    }
+
+    img.style.cursor = 'pointer';
+    img.title = 'Click to set image URL (saved locally)';
+    img.onclick = (e) => {
+      e.stopPropagation();
+      const current = img.src && img.src.startsWith('data:') ? '' : (override || '');
+      const url = prompt('Enter image URL for this slot (or leave empty to clear):', current);
+      try {
+        if (url) {
+          localStorage.setItem(storageKey, url);
+          img.src = url;
+          override = url;
+        } else {
+          localStorage.removeItem(storageKey);
+          override = null;
+          img.src = placeholder;
+        }
+      } catch (err) { console.error('Failed to save mag image override', err); }
+    };
+
+    imgHolder.appendChild(img);
+    slot.appendChild(imgHolder);
+
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    
+    slot.appendChild(resizeHandle);
+
+    grid.appendChild(slot);
+
+    // Make each slot individually draggable/resizable
+    makeDraggable(slot);
+    makeResizable(slot);
+  });
+}
+
 
 async function setupValveController(device, domId) {
    
@@ -1532,7 +1823,10 @@ function makeDraggable(el)
 
     // If user clicked inside editable text, do not start dragging — allow editing
     try {
-      if (e.target.isContentEditable) return;
+      // Allow dragging when the user clicks the dedicated drag handle even
+      // if the wrapper is contentEditable. Otherwise, clicks inside the
+      // editable text should not start a drag.
+      if (e.target.isContentEditable && !(e.target.classList && e.target.classList.contains('deco-drag-handle'))) return;
     } catch (err) { /* ignore */ }
 
     const style = window.getComputedStyle(el);
@@ -1711,15 +2005,28 @@ function createDecoration() {
     wrapper.textContent = 'Label';
     wrapper.style.color = color;
     wrapper.style.resize = 'none'; 
-  // Add a small drag handle (tiny dot) so labels can be moved without interfering with editing
+    // Add a small drag handle (tiny dot) so labels can be moved without interfering with editing
     const dragHandle = document.createElement('div');
     dragHandle.className = 'deco-drag-handle';
     dragHandle.title = 'Drag to move';
-  // Position the handle at the top-left outside the label so it doesn't block text clicks
-    dragHandle.style.cssText = 'position:absolute; top:-6px; left:-6px; width:12px; height:12px; background:rgba(0,0,0,0.22); border-radius:50%; cursor:move;';
-  // allow events to bubble so makeDraggable can handle mousedown on the handle
+    // Position the handle at the top-left outside the label so it doesn't block text clicks.
+    // Use inline styles to override the default centered CSS for labels and make it visible.
+    dragHandle.style.position = 'absolute';
+    dragHandle.style.top = '-6px';
+    dragHandle.style.left = '-6px';
+    dragHandle.style.transform = 'none';
+    dragHandle.style.width = '12px';
+    dragHandle.style.height = '12px';
+    dragHandle.style.background = 'rgba(0,0,0,0.22)';
+    dragHandle.style.borderRadius = '50%';
+    dragHandle.style.cursor = 'move';
     dragHandle.style.pointerEvents = 'auto';
+    // Keep handle visible for easy dragging of labels
+    dragHandle.style.display = 'block';
+    dragHandle.style.zIndex = '20';
     wrapper.appendChild(dragHandle);
+    // Ensure wrapper is positioned absolutely so left/top moves apply
+    wrapper.style.position = wrapper.style.position || 'absolute';
   } 
   
   else if (type === 'control-panel') 
@@ -2058,12 +2365,45 @@ function populateParamsForDevice(device, info, domId) {
 }
 
 function sendCommand(device, cmd) {
-  if (confirm(`Execute command '${cmd}' on ${device}?`)) {
-      const key = device + '.' + cmd;
-      Spin.send_request(key, "", "input", "", null);
-  // Sent command logged
+  if (!confirm(`Execute command '${cmd}' on ${device}?`)) return;
+
+  const spinSocket =
+    window.Spin &&
+    window.Spin.current_socket &&
+    window.Spin.current_socket.readyState === WebSocket.OPEN
+      ? window.Spin.current_socket
+      : null;
+
+  try {
+    if (!spinSocket) {
+      console.error('Spin WebSocket not available or not open');
+      return;
+    }
+
+    let commandToSend = cmd;
+
+    // If the command is an internal-style method (starts with '_'),
+    // map to a SECoP "do <module>:<cmd>" command
+    if (cmd && cmd.startsWith('_')) {
+      // device is '<node>_<module>' → extract module
+      const moduleName =
+        device && device.includes('_')
+          ? device.split('_').pop()
+          : device;
+
+      // Build full SECoP command line
+      commandToSend = `do ${moduleName}:${cmd}`;
+    }
+
+    // Send raw line via Spin WebSocket
+  
+    spinSocket.send(commandToSend + '\n');
+
+  } catch (e) {
+    console.error('sendCommand failed', e);
   }
 }
+
 
 // Cache values for extra panel
 window.addEventListener('spinupdate', function(event) {
@@ -2346,6 +2686,13 @@ function getCurrentLayoutData() {
     if (window.WRITABLE_PARAMS && window.WRITABLE_PARAMS[logicalName]) {
       deviceInfo = window.WRITABLE_PARAMS[logicalName];
     }
+    // If this device-box contains an image (sample slot), record it so layouts
+    // can restore per-slot images.
+    let imageSrc = null;
+    try {
+      const imgEl = box.querySelector('img');
+      if (imgEl && imgEl.src) imageSrc = imgEl.src;
+    } catch (e) { imageSrc = null; }
     layout.devices.push({
       id: box.id,
       device: title,
@@ -2354,7 +2701,8 @@ function getCurrentLayoutData() {
       top: box.style.top,
       width: box.style.width,
       height: box.style.height,
-      info: deviceInfo
+      info: deviceInfo,
+      image: imageSrc
     });
   });
   
@@ -2445,7 +2793,80 @@ function applyLayout(layout) {
           if(d.height) newBox.style.height = d.height;
         }
       } else {
+        // If this device wasn't matched to an available device, it may be
+        // a synthetic element such as a sample magazine slot (id starts with
+        // 'mag-'). Restore a placeholder slot so saved positions are kept.
+        try {
+          const isMag = (d.logicalName && d.logicalName.startsWith && d.logicalName.startsWith('mag-')) || (d.id && d.id.startsWith && d.id.startsWith('mag-'));
+          if (isMag) {
+            const grid = document.getElementById('device-grid');
+            if (grid) {
+              const slot = document.createElement('div');
+              slot.className = 'sample-slot device-box';
+              slot.id = d.id || ('mag-' + Date.now());
+              slot.style.position = 'absolute';
+              slot.style.left = d.left || '200px';
+              slot.style.top = d.top || '50px';
+              if (d.width) slot.style.width = d.width; else slot.style.width = '120px';
+              if (d.height) slot.style.height = d.height; else slot.style.height = '120px';
+              slot.style.padding = '6px';
+              slot.style.boxSizing = 'border-box';
+              slot.style.cursor = 'move';
+              slot.style.zIndex = '5';
+
+              // Header with title and remove button
+              const header = document.createElement('div');
+              header.className = 'device-header';
+              header.style.height = '20px';
+              header.style.display = 'flex';
+              header.style.alignItems = 'center';
+              header.style.justifyContent = 'space-between';
+
+              const title = document.createElement('div');
+              title.className = 'device-title';
+              title.textContent = d.device || slot.id;
+              title.style.fontSize = '12px';
+              title.style.paddingRight = '6px';
+              header.appendChild(title);
+
+              const removeBtn = document.createElement('div');
+              removeBtn.className = 'deco-remove';
+              removeBtn.innerHTML = '&times;';
+              removeBtn.style.cursor = 'pointer';
+              removeBtn.onclick = (e) => { e.stopPropagation(); slot.remove(); };
+              header.appendChild(removeBtn);
+              slot.appendChild(header);
+
+              // image placeholder
+              const imgHolder = document.createElement('div');
+              imgHolder.style.width = '100%';
+              imgHolder.style.height = '86px';
+              imgHolder.style.display = 'flex';
+              imgHolder.style.alignItems = 'center';
+              imgHolder.style.justifyContent = 'center';
+              imgHolder.style.overflow = 'hidden';
+
+              const img = document.createElement('img');
+              img.style.maxWidth = '100%';
+              img.style.maxHeight = '100%';
+              img.style.objectFit = 'contain';
+              img.src = '/c/assets/sample_holder.png';
+              imgHolder.appendChild(img);
+              slot.appendChild(imgHolder);
+
+              const resizeHandle = document.createElement('div');
+              resizeHandle.className = 'resize-handle';
+              slot.appendChild(resizeHandle);
+
+              grid.appendChild(slot);
+              makeDraggable(slot);
+              makeResizable(slot);
             }
+          }
+        } catch (err) {
+          console.error('applyLayout: failed to restore synthetic device', err);
+        }
+      }
     });
   }
   

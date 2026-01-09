@@ -1,0 +1,157 @@
+{
+  "devices": [
+    {
+      "id": "box-sim_reactor_cell_pressure_inlet",
+      "device": "pressure_inlet",
+      "logicalName": "sim_reactor_cell_pressure_inlet",
+      "left": "777px",
+      "top": "44px",
+      "width": "",
+      "height": "auto",
+      "info": {
+        "params": [
+          "_pre_flux",
+          "pollinterval"
+        ],
+        "all_params": [
+          "_pre_flux",
+          "pollinterval"
+        ],
+        "commands": [],
+        "original_name": "pressure_inlet",
+        "interface_classes": [
+          "Readable"
+        ]
+      }
+    },
+    {
+      "id": "box-sim_reactor_cell_pressure_outlet",
+      "device": "pressure_outlet",
+      "logicalName": "sim_reactor_cell_pressure_outlet",
+      "left": "1167px",
+      "top": "47px",
+      "width": "",
+      "height": "auto",
+      "info": {
+        "params": [
+          "_pre_flux",
+          "pollinterval"
+        ],
+        "all_params": [
+          "_pre_flux",
+          "pollinterval"
+        ],
+        "commands": [],
+        "original_name": "pressure_outlet",
+        "interface_classes": [
+          "Readable"
+        ]
+      }
+    },
+    {
+      "id": "box-sim_sample_changer_storage",
+      "device": "storage",
+      "logicalName": "sim_sample_changer_storage",
+      "left": "416px",
+      "top": "153px",
+      "width": "374px",
+      "height": "auto",
+      "info": {
+        "params": [
+          "pollinterval"
+        ],
+        "all_params": [
+          "_load",
+          "_scan",
+          "_unload",
+          "pollinterval",
+          "reset",
+          "stop"
+        ],
+        "commands": [
+          "_load",
+          "_scan",
+          "_unload",
+          "reset",
+          "stop"
+        ],
+        "original_name": "storage",
+        "interface_classes": [
+          "Readable"
+        ]
+      }
+    },
+    {
+      "id": "mag-sim_sample_changer_storage-slot-0",
+      "device": "Slot 1",
+      "logicalName": "mag-sim_sample_changer_storage-slot-0",
+      "left": "28px",
+      "top": "29px",
+      "width": "120px",
+      "height": "120px",
+      "info": {}
+    },
+    {
+      "id": "mag-sim_sample_changer_storage-slot-1",
+      "device": "Slot 2",
+      "logicalName": "mag-sim_sample_changer_storage-slot-1",
+      "left": "200px",
+      "top": "31px",
+      "width": "120px",
+      "height": "120px",
+      "info": {}
+    },
+    {
+      "id": "mag-sim_sample_changer_storage-slot-2",
+      "device": "Slot 3",
+      "logicalName": "mag-sim_sample_changer_storage-slot-2",
+      "left": "27px",
+      "top": "165px",
+      "width": "120px",
+      "height": "120px",
+      "info": {}
+    },
+    {
+      "id": "mag-sim_sample_changer_storage-slot-3",
+      "device": "Slot 4",
+      "logicalName": "mag-sim_sample_changer_storage-slot-3",
+      "left": "200px",
+      "top": "170px",
+      "width": "120px",
+      "height": "120px",
+      "info": {}
+    },
+    {
+      "id": "mag-sim_sample_changer_storage-slot-4",
+      "device": "Slot 5",
+      "logicalName": "mag-sim_sample_changer_storage-slot-4",
+      "left": "24px",
+      "top": "294px",
+      "width": "120px",
+      "height": "120px",
+      "info": {}
+    },
+    {
+      "id": "mag-sim_sample_changer_storage-slot-5",
+      "device": "Slot 6",
+      "logicalName": "mag-sim_sample_changer_storage-slot-5",
+      "left": "200px",
+      "top": "300px",
+      "width": "120px",
+      "height": "120px",
+      "info": {}
+    }
+  ],
+  "valveIcons": [],
+  "decorations": [
+    {
+      "type": "label",
+      "left": "442px",
+      "top": "29px",
+      "width": "",
+      "height": "",
+      "color": "rgb(0, 0, 0)",
+      "text": "sample changer interface"
+    }
+  ]
+}
