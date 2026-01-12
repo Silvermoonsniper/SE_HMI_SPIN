@@ -406,6 +406,8 @@ function connectToGUI() {
     return;
   }
   
+  // Switch to main panel
+  enterSystem();
   // Then load selected layout
   const select = document.getElementById('layout-select');
   const name = select.value;
@@ -440,8 +442,7 @@ function connectToGUI() {
 
   }
 
-  // Switch to main panel
-  enterSystem();
+  
 }
 
 
@@ -2376,6 +2377,16 @@ function populateParamsForDevice(device, info, domId) {
     }
 }
 
+
+
+
+
+function getModuleName(device) {
+  return fetch('./c/device_params.json')
+    .then(res => res.json())
+    .then(data => data[device]["module_name"]);
+}
+
 function sendCommand(device, cmd) {
   if (!confirm(`Execute command '${cmd}' on ${device}?`)) return;
 
@@ -2393,13 +2404,13 @@ function sendCommand(device, cmd) {
     // map to a SECoP "do <module>:<cmd>" command
   if (cmd && cmd.startsWith('_')) {
       // device is '<node>_<module>' → extract module
-      const moduleName =
-        device && device.includes('_')
-          ? device.split('_').pop()
-          : device;
+      getModuleName(device).then(moduleName => {
+     
 
       // Build full SECoP command line
       commandToSend = `do ${moduleName}:${cmd}`;
+     
+      })
     }
 
   

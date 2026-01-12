@@ -157,7 +157,9 @@ class SpinConfigManager:
    
                     "original_name": module_name,
    
-                    "interface_classes": module_info.get("interface_classes", [])
+                    "interface_classes": module_info.get("interface_classes", []),
+
+                    "module_name": module_name,
                 }
    
             return module_list, parameter_map, device_data_map
