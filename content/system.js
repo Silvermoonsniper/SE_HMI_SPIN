@@ -122,6 +122,11 @@ let panX = 0;
 let panY = 0;
 const STORAGE_KEY = 'gas_system_layouts';
 
+// Backend API base used for HTTP fallbacks (Flask API runs on port 8001)
+const API_BASE = (function(){
+  try { return `${location.protocol}//${location.hostname}:8001`; } catch (e) { return 'http://127.0.0.1:8001'; }
+})();
+
 // Helper to coerce different incoming shapes into numeric 0/1
 function toNumeric(v) {
   if (v && typeof v.value !== 'undefined') v = v.value;
@@ -1133,7 +1138,7 @@ function createDeviceDisplay(deviceNameOverride)
 
   // for sample magazine, create slots display for all samples
   if (isSample_magazine_device) {
-    console.log('isSample_magazine_device', device, isSample_magazine_device);
+   
     setTimeout(() => setupSampleMagazine(device, domId), 1000);
   }
 }
@@ -1736,10 +1741,10 @@ function selectDeco(el) {
             const sel = window.getSelection();
             sel.removeAllRanges();
             sel.addRange(range);
-          } catch (e) { /* ignore focus errors */ }
+          } catch (e) { }
         }, 0);
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) {  }
     }
   }
 }
@@ -2375,16 +2380,11 @@ function sendCommand(device, cmd) {
       : null;
 
   try {
-    if (!spinSocket) {
-      console.error('Spin WebSocket not available or not open');
-      return;
-    }
-
     let commandToSend = cmd;
 
     // If the command is an internal-style method (starts with '_'),
     // map to a SECoP "do <module>:<cmd>" command
-    if (cmd && cmd.startsWith('_')) {
+  if (cmd && cmd.startsWith('_')) {
       // device is '<node>_<module>' → extract module
       const moduleName =
         device && device.includes('_')
@@ -2395,9 +2395,53 @@ function sendCommand(device, cmd) {
       commandToSend = `do ${moduleName}:${cmd}`;
     }
 
-    // Send raw line via Spin WebSocket
   
-    spinSocket.send(commandToSend + '\n');
+   
+
+    // Fallback: POST to backend HTTP proxy which will open a StreamConnection.
+    // First try to resolve node addr automatically for this device.
+    (async () => {
+      try {
+        // Ask server which node handles this device
+          const ndResp = await fetch(API_BASE + '/api/node_for_device', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ device: device })
+        });
+        let addr = null;
+        if (ndResp.ok) {
+          const j = await ndResp.json();
+          if (j && j.status === 'ok' && j.addr) addr = j.addr;
+        }
+
+        // If we couldn't resolve, ask user for node address
+        if (!addr) {
+          const manual = prompt('Could not auto-resolve node for device "' + device + '". Enter host:port to send command:', '127.0.0.1:10803');
+          if (!manual) return;
+          addr = manual;
+        }
+
+          const sendResp = await fetch(API_BASE + '/api/send_request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ addr: addr, command: commandToSend })
+        });
+        if (!sendResp.ok) {
+          const err = await sendResp.text();
+          alert('Failed to send command via proxy: ' + err);
+          return;
+        }
+        const sr = await sendResp.json();
+        if (sr && sr.status && sr.status === 'sent') {
+          alert('Command sent via proxy. Response: ' + (sr.response || ''));
+        } else {
+          alert('Proxy response: ' + JSON.stringify(sr));
+        }
+      } catch (err) {
+        console.error('HTTP fallback send failed', err);
+        alert('Failed to send command: ' + err);
+      }
+    })();
 
   } catch (e) {
     console.error('sendCommand failed', e);
