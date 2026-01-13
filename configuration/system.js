@@ -483,6 +483,9 @@ window.addEventListener('spinupdate', function(event) {
     
     fetchNodesList(); 
     loadNodesInfo();
+    fetchAndMergeLatestValuesOnce();
+    setTimeout(fetchAndMergeLatestValuesOnce, 1500);
+    
 
     if (key === 'nodemanager.nodes') {
         var nodes = event.detail.value;
@@ -549,14 +552,10 @@ window.addEventListener('spinupdate', function(event) {
       if (resp && resp.name) {
    
         // Refresh server list so dropdown shows the new file
-        if (window.Spin && window.Spin.send_request) {
-          
+        if (window.Spin && window.Spin.send_request) {  
           try 
-          
           { 
-            
             window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null); 
-          
           } 
           
           catch 
@@ -572,16 +571,11 @@ window.addEventListener('spinupdate', function(event) {
       }
     } 
     catch 
-    
     (
       e
-    
     ) 
-    
     { 
-      
       console.error('save_layout spinupdate error', e); 
-    
     }
     return;
   }
@@ -622,7 +616,22 @@ window.addEventListener('spinupdate', function(event) {
         if (gasEl) gasEl.textContent = formatted;
     }
     
-
+    // If this is a sample-magazine-like device
+    // update the slot images accordingly.
+  
+    if (device.includes('storage'))
+    {   
+    try
+    {  
+       
+       arr =latestValues[device]['value'].value;
+       
+       updateSampleSlotImages(device, arr); 
+    } 
+    catch (e) 
+    { 
+      console.error('sample slot update error', e);
+    }}
 
   } catch(e) { 
     console.error('status update error', e);
@@ -749,23 +758,21 @@ const latestValues = {};
 async function fetchAndMergeLatestValuesOnce() {
   try {
     let res = null;
-    // First try relative path (works if server proxies /api)
-    try {
-      res = await fetch('/api/latest_values');
-    } catch (e) {
-      res = null;
-    }
+   
     // Fallback to direct backend port (CORS is enabled on the backend)
-    if (!res || !res.ok) {
-      try {
+    if (!res || !res.ok)
+       {
+      // relative failed or returned non-ok; try absolute backend URL
+      try 
+      {
         res = await fetch('http://127.0.0.1:8001/api/latest_values');
+  
       } catch (e) {
         console.debug('fetchLatestValues: both relative and absolute fetch failed', e);
         return;
       }
     }
     if (!res.ok) {
-      console.debug('fetchLatestValues: /api/latest_values returned', res.status);
       return;
     }
     const data = await res.json();
@@ -788,20 +795,24 @@ async function fetchAndMergeLatestValuesOnce() {
         console.debug('fetchLatestValues: failed to merge key', k, e);
       }
     }
-    // Extra debug for the sample changer storage device
-    if (latestValues['sim_sample_changer_storage']) {
-      try {
+    // After merging, proactively update any storage-style devices so the
+    // sample-slot images reflect the freshly fetched backend cache.
+    try {
+      for (const dev of Object.keys(latestValues)) {
+        if (dev.includes('storage')) continue;
+        const entry = latestValues[dev] && latestValues[dev]['value'];
+        if (!entry) continue;
+        const arr = (entry && typeof entry.value !== 'undefined') ? entry.value : entry;
        
-      } catch (e) {}
-    }
+      }
+    } catch (e) {}
+   
   } catch (e) {
     console.debug('fetchLatestValues: error', e);
   }
 }
 
-// Run once now and again shortly after to catch late-arriving data
-fetchAndMergeLatestValuesOnce();
-setTimeout(fetchAndMergeLatestValuesOnce, 1500);
+
 
 // device name to sanitized DOM ID
 function deviceDomId(device) 
@@ -1331,6 +1342,45 @@ async function setupSampleMagazine(device, domId) {
   });
 }
 
+// Update images for sample magazine slots for a given device.
+// arr is the array value coming from the device parameter. If an
+// element is falsy, the corresponding slot image is hidden/cleared.
+function updateSampleSlotImages(device, arr) {
+  try {
+    if (!Array.isArray(arr)) return;
+    const domId = deviceDomId(device);
+    const placeholder = '/c/assets/sample_holder.svg';
+    
+    // Ensure slots exist; if not, create them (setupSampleMagazinn preserves positions of existing slots)
+    const existing = document.querySelectorAll(`[id^="mag-${domId}-slot-"]`);
+    if (existing.length < arr.length) {
+      try { setupSampleMagazine(device, domId); } catch (e) {}
+    }
+  
+    arr.forEach((item, idx) => {
+      const slotId = `mag-${domId}-slot-${idx}`;
+      const slot = document.getElementById(slotId);
+      if (!slot) return;
+      const imgEl = slot.querySelector && slot.querySelector('img');
+      if (!imgEl) return;
+
+      // local override takes precedence
+      const storageKey = `magimg:${device}:${idx}`;
+      let override = null;
+      try { override = localStorage.getItem(storageKey); } catch (e) { override = null; }
+
+      if (arr[idx] != "") 
+      {
+        // item is non-empty → show placeholder 
+      imgEl.src = placeholder;
+      imgEl.style.display = 'flex';
+      
+      }  
+    });
+  } catch (e) {
+    console.error('updateSampleSlotImages failed', e);
+  }
+}
 
 async function setupValveController(device, domId) {
    
@@ -2535,6 +2585,10 @@ window.addEventListener('spinupdate', function(event) {
     if (paramSelect && paramSelect.value === param) {
       updateParamDisplay(device, domId, param);
     }
+    
+  
+   
+    
   } catch (e) { 
     console.error('cache spinupdate failed', e); 
   }
