@@ -616,22 +616,36 @@ window.addEventListener('spinupdate', function(event) {
         if (gasEl) gasEl.textContent = formatted;
     }
     
-    // If this is a sample-magazine-like device
-    // update the slot images accordingly.
-  
-    if (device.includes('storage'))
-    {   
-    try
-    {  
-       
-       arr =latestValues[device]['value'].value;
-       
-       updateSampleSlotImages(device, arr); 
-    } 
-    catch (e) 
-    { 
-      console.error('sample slot update error', e);
-    }}
+    // If this is a sample-magazine-like device, update the slot images.
+    if (device.includes('storage')) {
+      try {
+        // Safely retrieve the array from latestValues. The backend cache
+        // may not have populated latestValues[device] yet, so guard access
+        // and fall back to 'target' if 'value' is missing.
+        let arr = null;
+        const devEntry = latestValues[device];
+        if (devEntry && devEntry['value']) {
+          const v = devEntry['value'];
+          arr = (v && typeof v.value !== 'undefined') ? v.value : v;
+        } else if (devEntry && devEntry['target']) {
+          const t = devEntry['target'];
+          arr = (t && typeof t.value !== 'undefined') ? t.value : t;
+        } else {
+          // no data yet — try to merge from backend once then bail; the
+          // fetch will call updateSampleSlotImages again after merging.
+          try { fetchAndMergeLatestValuesOnce(); } catch (e) {}
+          return;
+        }
+      
+        if (Array.isArray(arr)) {
+          updateSampleSlotImages(device, arr);
+        } else {
+          console.debug('sample slot update: expected array but got', typeof arr, arr);
+        }
+      } catch (e) {
+        console.error('sample slot update error', e);
+      }
+    }
 
   } catch(e) { 
     console.error('status update error', e);
@@ -799,13 +813,18 @@ async function fetchAndMergeLatestValuesOnce() {
     // sample-slot images reflect the freshly fetched backend cache.
     try {
       for (const dev of Object.keys(latestValues)) {
-        if (dev.includes('storage')) continue;
+        if (!dev || !dev.includes('storage')) continue;
         const entry = latestValues[dev] && latestValues[dev]['value'];
         if (!entry) continue;
         const arr = (entry && typeof entry.value !== 'undefined') ? entry.value : entry;
-       
+        try {
+         
+          updateSampleSlotImages(dev, arr);
+        } catch (e) {
+          console.debug('fetchLatestValues: updateSampleSlotImages failed for', dev, e);
+        }
       }
-    } catch (e) {}
+    } catch (e) { console.debug('fetchLatestValues: post-merge storage update failed', e); }
    
   } catch (e) {
     console.debug('fetchLatestValues: error', e);
@@ -1347,35 +1366,57 @@ async function setupSampleMagazine(device, domId) {
 // element is falsy, the corresponding slot image is hidden/cleared.
 function updateSampleSlotImages(device, arr) {
   try {
-    if (!Array.isArray(arr)) return;
+    if (!Array.isArray(arr)) {
+      
+      return;
+    }
+   
     const domId = deviceDomId(device);
     const placeholder = '/c/assets/sample_holder.svg';
     
-    // Ensure slots exist; if not, create them (setupSampleMagazinn preserves positions of existing slots)
+    // Ensure slots exist; if not, create them (setupSampleMagazine preserves positions of existing slots)
     const existing = document.querySelectorAll(`[id^="mag-${domId}-slot-"]`);
     if (existing.length < arr.length) {
       try { setupSampleMagazine(device, domId); } catch (e) {}
     }
   
     arr.forEach((item, idx) => {
+     
       const slotId = `mag-${domId}-slot-${idx}`;
       const slot = document.getElementById(slotId);
+      
       if (!slot) return;
       const imgEl = slot.querySelector && slot.querySelector('img');
+      
       if (!imgEl) return;
 
       // local override takes precedence
       const storageKey = `magimg:${device}:${idx}`;
       let override = null;
       try { override = localStorage.getItem(storageKey); } catch (e) { override = null; }
-
-      if (arr[idx] != "") 
-      {
-        // item is non-empty → show placeholder 
-      imgEl.src = placeholder;
-      imgEl.style.display = 'flex';
       
-      }  
+      if (override) {
+        imgEl.src = override;
+        imgEl.style.display = '';
+        
+      } else if (item) {
+        // item is non-empty → try to map item -> URL when possible
+        try {
+            
+            // Fallback to placeholder to indicate presence
+            imgEl.src = placeholder;
+          
+        } catch (e) {
+          imgEl.src = placeholder;
+        }
+        imgEl.style.display = '';
+        
+      } else {
+        // empty slot — hide image
+        imgEl.src = '';
+        imgEl.style.display = 'none';
+       
+      }
     });
   } catch (e) {
     console.error('updateSampleSlotImages failed', e);
