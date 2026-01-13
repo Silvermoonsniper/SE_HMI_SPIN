@@ -308,10 +308,19 @@ document.addEventListener('DOMContentLoaded', () => {
     { 
       console.error('updateLayoutList error', e); 
     }
-    //If a layout was previously selected, apply it
+
+     apply_previous_layout();
+   
+  });
+});
+
+function apply_previous_layout()
+{
+   //If a layout was previously selected, apply it
     const selectedLayout = sessionStorage.getItem('selectedLayout');
   
-    if (selectedLayout) {
+    if (selectedLayout)
+    {
   
       const layouts = getStoredLayouts();
   
@@ -323,8 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
       }
     }
-  });
-});
+}
 
 function waitForSpin(callback) {
   // Wait for Spin to be ready and connected
@@ -614,6 +622,8 @@ window.addEventListener('spinupdate', function(event) {
         if (gasEl) gasEl.textContent = formatted;
     }
     
+
+
   } catch(e) { 
     console.error('status update error', e);
   }
@@ -1036,8 +1046,12 @@ function createDeviceDisplay(deviceNameOverride)
   // check if this is a sample_magazine device
   const isSample_magazine_device = (displayName && displayName.toLowerCase().includes('storage')) || 
                             device.toLowerCase().includes('storage');
+  // check if this is a sample position device
+  const isSample_position_device = (displayName && displayName.toLowerCase().includes('sample_at_measurement')) || 
+                            device.toLowerCase().includes('sample_at_measurement');
+  // If isSample_magazine_device is true, choose  drivable device template, Default to device-template if both conditions are false
+  const templateId = isSample_magazine_device ? 'drivable_device-template': isValveController ? 'valve-controller-template' : 'device-template';  // 
 
-  const templateId = isValveController ? 'valve-controller-template' : 'device-template';
   
   const template = document.getElementById(templateId);
   
@@ -1080,6 +1094,26 @@ function createDeviceDisplay(deviceNameOverride)
   const labelDiv = newBox.querySelector('.device-field > div:first-child');
   const targetSpan = newBox.querySelector(`#target-${domId}`);
   const gasSpan = newBox.querySelector(`#gas-${domId}`);
+  if (device.toLowerCase().includes('massflow'))
+    {
+     targetSpan.style.display = 'inline';     
+     gasSpan.style.display = 'inline';     
+    } 
+  else 
+    {
+        if (isSample_position_device)
+      {
+       labelDiv.textContent = 'current sample';    
+      }
+       else
+        {
+          labelDiv.textContent = 'Val / Target'; 
+        }
+     
+     targetSpan.style.display = 'none';     
+        
+  
+    } 
   const sep1 = newBox.querySelector('.sep-1');
   const sep2 = newBox.querySelector('.sep-2');
 
@@ -1100,7 +1134,8 @@ function createDeviceDisplay(deviceNameOverride)
       if (sep2) sep2.style.display = 'none';
   }
   else if (lowerDev.includes('backpress') || lowerDev.includes('temp')) 
-  {
+  {   
+     
       // Show only Value and Target
       if (labelDiv) labelDiv.textContent = 'Val / Target';
       if (gasSpan) gasSpan.style.display = 'none';
@@ -1168,7 +1203,7 @@ async function setupSampleMagazine(device, domId) {
   arr.forEach((item, idx) => {
     const slotId = `mag-${domId}-slot-${idx}`;
     
-    console.log(arr[idx])
+
     // If a slot with the same id already exists (for example restored from a saved
     // layout), keep it and only refresh its image/handlers. This prevents
     // setupSampleMagazine from overwriting positions that were restored by
@@ -2413,9 +2448,9 @@ function sendCommand(device, cmd) {
       })
     }
 
-  
+    
    
-
+  
     // Fallback: POST to backend HTTP proxy which will open a StreamConnection.
     // First try to resolve node addr automatically for this device.
     (async () => {
@@ -2464,6 +2499,8 @@ function sendCommand(device, cmd) {
   } catch (e) {
     console.error('sendCommand failed', e);
   }
+
+  
 }
 
 
@@ -2546,9 +2583,7 @@ function zoomCanvas(delta) {
   }
 }
 
-function toggleAnimation() {
-  // Animation feature removed
-}
+
 
 function resetView() {
   currentZoom = 1.0;
@@ -3103,38 +3138,6 @@ function applyLayout(layout) {
 
 
 
-// updateLayoutList();
-// loadSavedBackground();
-// fetchNodesList();
-// fetchDeviceParams();
-
-
-
-// Listen for Spin lifecycle events
-// window.addEventListener('spinstartup', function() { debug('✓ Spin startup event fired'); });
-// window.addEventListener('spinconnect', function() { 
-   
-//     fetchNodesList();
-//     // Also request server-side saved layouts when connection opens
-//     if (window.Spin && window.Spin.send_request) {
-//       try {
-//         window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null);
-//       } catch (e) {
-//         console.error('list_layouts request failed', e);
-//       }
-//     }
-    
-// });
-
-// window.addEventListener('spindisconnect', function() { debug('⚠ WebSocket disconnected from backend'); });
-// window.addEventListener('spinupdate', function(event) {
-//   var val = event.detail.value;
-//   fetchNodesList();
-
-
-//   loadNodesInfo() ;
-
-// });
 
 // ===== Context Menu Logic =====
 let contextMenuTarget = null;

@@ -226,6 +226,47 @@ function toggleConfigView() {
   </div>
 </template>
 
+<template id="drivable_device-template">
+  <div class="device-box" id="box-{{DOM_ID}}">
+    <div class="device-header">
+      <div class="device-title">{{TITLE}}</div>
+      <div id="status-{{DOM_ID}}" class="status-badge state-warn"><span data-spin='@{{DEVICE}} status "%s"'></span></div>
+      <button class="close-btn" onclick="removeDevice('{{DOM_ID}}')">&times;</button>
+    </div>
+    <div class="device-field">
+      <div>Val / Target </div>
+      <div class="device-value">
+        <span id="val-{{DOM_ID}}" class="inline-small" data-spin='@{{DEVICE}} "%s {unit}"'>--</span> <span class="sep-1">/</span> 
+        <span id="target-{{DOM_ID}}" class="inline-small" data-spin='@{{DEVICE}}.target "%s {unit}"'>--</span> <span class="sep-2">/</span> 
+       
+      </div>
+    </div>
+
+    <div class="expand-btn" id="expand-btn-{{DOM_ID}}" onclick="toggleDeviceBody('{{DOM_ID}}')">▼</div>
+
+  <div id="body-{{DOM_ID}}" class="device-body">
+      <div class="control-section">
+        <div class="control-field">
+          <select id="param-select-{{DOM_ID}}" class="control-input" aria-label="Parameter" onchange="onParamSelectChange('{{DEVICE}}', '{{DOM_ID}}')">
+            <option value="">--</option>
+          </select>
+          <div id="param-input-container-{{DOM_ID}}" class="param-input-row">
+            <input type="text" id="param-value-{{DOM_ID}}" class="control-input flex-1" placeholder="val" />
+          </div>
+          <button class="control-button" onclick="sendSelectedParam('{{DEVICE}}', '{{DOM_ID}}')">Set</button>
+        </div>
+  <div id="param-current-value-{{DOM_ID}}" class="param-current"></div>
+      </div>
+      
+      <div id="commands-{{DOM_ID}}" class="commands-section"></div>
+
+  <div class="toggle-row"><button class="toggle-btn" id="toggle-{{DOM_ID}}" onclick="toggleExtra('{{DEVICE}}')">More ▾</button></div>
+      <div id="extra-{{DOM_ID}}" class="extra-panel" aria-hidden="true"></div>
+    </div>
+    <div class="resize-handle"></div>
+  </div>
+</template>
+
 <!-- Valve Controller Template -->
 <template id="valve-controller-template">
   <div class="device-box" id="box-{{DOM_ID}}">
