@@ -484,7 +484,7 @@ window.addEventListener('spinupdate', function(event) {
     fetchNodesList(); 
     loadNodesInfo();
     fetchAndMergeLatestValuesOnce();
-    setTimeout(fetchAndMergeLatestValuesOnce, 1500);
+    //setTimeout(fetchAndMergeLatestValuesOnce, 1000);
     
 
     if (key === 'nodemanager.nodes') {
@@ -622,20 +622,23 @@ window.addEventListener('spinupdate', function(event) {
         // Safely retrieve the array from latestValues. The backend cache
         // may not have populated latestValues[device] yet, so guard access
         // and fall back to 'target' if 'value' is missing.
-        let arr = null;
+        let arr = [""];
+    
         const devEntry = latestValues[device];
-        if (devEntry && devEntry['value']) {
+        if (devEntry && devEntry['value']) 
+        {
           const v = devEntry['value'];
           arr = (v && typeof v.value !== 'undefined') ? v.value : v;
-        } else if (devEntry && devEntry['target']) {
-          const t = devEntry['target'];
-          arr = (t && typeof t.value !== 'undefined') ? t.value : t;
-        } else {
+        } 
+        
+        else 
+        {
           // no data yet — try to merge from backend once then bail; the
           // fetch will call updateSampleSlotImages again after merging.
           try { fetchAndMergeLatestValuesOnce(); } catch (e) {}
           return;
         }
+        
       
         if (Array.isArray(arr)) {
           updateSampleSlotImages(device, arr);
@@ -647,10 +650,33 @@ window.addEventListener('spinupdate', function(event) {
       }
     }
 
+    
+    if (device.includes("sample_at_measurement"))
+    {
+     
+        const devEntry = latestValues[device];
+        if (devEntry && devEntry['value']) 
+        {
+          const v = devEntry['value'];
+          presence_val = (v && typeof v.value !== 'undefined') ? v.value : v;
+        } 
+       
+        else 
+        {
+          // no data yet — try to merge from backend once then bail; the
+          // fetch will call updateSampleSlotImages again after merging.
+          try { fetchAndMergeLatestValuesOnce(); } catch (e) {}
+          return;
+        }
+      
+    
+      updateSamplepresence(device, presence_val)
+    }
   } catch(e) { 
     console.error('status update error', e);
   }
 });
+
 
 // ===== Send Values to Backend =====
 function sendValue(key, inputElementId) {
@@ -1209,11 +1235,142 @@ function createDeviceDisplay(deviceNameOverride)
    
     setTimeout(() => setupSampleMagazine(device, domId), 1000);
   }
+
+  // create a slot block to indicate sample presence at measurement location
+  if (isSample_position_device) {
+   
+    setTimeout(() => setupSample_presence(device), 1000);
+  }
 }
+
 
 // make sample magazine display: create independent slot elements appended
 // directly to #device-grid so each slot can be moved/resized independently.
-async function setupSampleMagazine(device, domId) {
+async function setupSample_presence(device) 
+{
+  // Be tolerant: ensure data exists
+  const data = latestValues[device];
+  if (!data) return;
+
+  // get value
+  let valueEntry = data.value; 
+  const sample_ID = valueEntry.value;
+
+  const grid = document.getElementById('device-grid');
+  if (!grid) return;
+  
+  const placeholder = '/c/assets/sample_holder.svg';
+  
+  const Id = `sample_presence`;
+    
+
+    // If an element with the same id already exists (for example restored from a saved
+    // layout), keep it and only refresh its image/handlers. 
+  const prev = document.getElementById(Id);
+  if (prev) {
+      try {
+        const storageKey = `sample_presence`;
+        const override = (localStorage && localStorage.getItem) ? localStorage.getItem(storageKey) : null;
+        const imgEl = prev.querySelector && prev.querySelector('img');
+        if (imgEl) {
+          if (override) imgEl.src = override;
+          else if (!imgEl.src) imgEl.src = placeholder;
+        }
+      } catch (err) {
+        // ignore localStorage errors
+      }
+      // Re-apply draggable/resizable in case handlers are missing
+      try { makeDraggable(prev); } catch (e) {}
+      try { makeResizable(prev); } catch (e) {}
+      // Existing slot preserved — skip creating a new one
+    return;
+
+}
+   slot = make_slot(Id,0,"sample presence");
+
+  // check presence, shows sample image if presents
+   if (sample_ID != "") 
+    {
+    const imgHolder = document.createElement('div');
+    imgHolder.style.width = '100%';
+    imgHolder.style.height = '86px';
+    imgHolder.style.display = 'flex';
+    imgHolder.style.alignItems = 'center';
+    imgHolder.style.justifyContent = 'center';
+    imgHolder.style.overflow = 'hidden';
+
+    const img = document.createElement('img');
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = '100%';
+    img.style.objectFit = 'contain';
+    img.src = placeholder;
+    img.style.cursor = 'pointer';
+    imgHolder.appendChild(img);
+    slot.appendChild(imgHolder);
+    }
+
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    
+    slot.appendChild(resizeHandle);
+
+    grid.appendChild(slot);
+
+    // Make each slot individually draggable/resizable
+    makeDraggable(slot);
+    makeResizable(slot); 
+
+}
+
+function make_slot(slotId,idx,slot_label)
+{
+    const slot = document.createElement('div');
+    slot.className = 'sample-slot device-box';
+    slot.id = slotId;
+    slot.style.position = 'absolute';
+    // Position slots in a row starting at x=200, y=50 (similar spacing as before)
+    slot.style.left = (200 + idx * 130) + 'px';
+    slot.style.top = '50px';
+    slot.style.width = '120px';
+    slot.style.height = '120px';
+    slot.style.padding = '6px';
+    slot.style.boxSizing = 'border-box';
+    slot.style.cursor = 'move';
+    slot.style.zIndex = '5';
+
+    const header = document.createElement('div');
+    header.className = 'device-header';
+    header.style.height = '20px';
+    header.style.display = 'flex';
+    header.style.alignItems = 'center';
+    header.style.justifyContent = 'space-between';
+
+    const title = document.createElement('div');
+    title.className = 'device-title';
+    title.textContent = slot_label;
+    title.style.fontSize = '12px';
+    title.style.paddingRight = '6px';
+    header.appendChild(title);
+
+    const removeBtn = document.createElement('div');
+    removeBtn.className = 'deco-remove';
+    removeBtn.innerHTML = '&times;';
+    removeBtn.style.position = 'absolute'; // or 'relative'
+    removeBtn.style.top = '10px'; // adjust as necessary
+    removeBtn.style.right = '10px'; // adjust as necessary
+
+    removeBtn.style.cursor = 'pointer';
+    removeBtn.onclick = (e) => { e.stopPropagation(); slot.remove(); };
+    header.appendChild(removeBtn);
+
+    slot.appendChild(header);
+
+    return slot
+}
+// make sample magazine display: create independent slot elements appended
+// directly to #device-grid so each slot can be moved/resized independently.
+async function setupSampleMagazine(device, domId) 
+{
   // Be tolerant: ensure data exists
   const data = latestValues[device];
   if (!data) return;
@@ -1258,46 +1415,7 @@ async function setupSampleMagazine(device, domId) {
       return;
     }
     
-    const slot = document.createElement('div');
-    slot.className = 'sample-slot device-box';
-    slot.id = slotId;
-    slot.style.position = 'absolute';
-    // Position slots in a row starting at x=200, y=50 (similar spacing as before)
-    slot.style.left = (200 + idx * 130) + 'px';
-    slot.style.top = '50px';
-    slot.style.width = '120px';
-    slot.style.height = '120px';
-    slot.style.padding = '6px';
-    slot.style.boxSizing = 'border-box';
-    slot.style.cursor = 'move';
-    slot.style.zIndex = '5';
-
-    const header = document.createElement('div');
-    header.className = 'device-header';
-    header.style.height = '20px';
-    header.style.display = 'flex';
-    header.style.alignItems = 'center';
-    header.style.justifyContent = 'space-between';
-
-    const title = document.createElement('div');
-    title.className = 'device-title';
-    title.textContent = `Slot ${idx + 1}`;
-    title.style.fontSize = '12px';
-    title.style.paddingRight = '6px';
-    header.appendChild(title);
-
-    const removeBtn = document.createElement('div');
-    removeBtn.className = 'deco-remove';
-    removeBtn.innerHTML = '&times;';
-    removeBtn.style.position = 'absolute'; // or 'relative'
-    removeBtn.style.top = '10px'; // adjust as necessary
-    removeBtn.style.right = '10px'; // adjust as necessary
-
-    removeBtn.style.cursor = 'pointer';
-    removeBtn.onclick = (e) => { e.stopPropagation(); slot.remove(); };
-    header.appendChild(removeBtn);
-
-    slot.appendChild(header);
+    slot = make_slot(slotId, idx, `Slot ${idx + 1}`);
     
     if (arr[idx] != "") 
     {
@@ -1318,14 +1436,7 @@ async function setupSampleMagazine(device, domId) {
     // treating backend sample names as URLs; allow a local override per-slot.
     const storageKey = `magimg:${device}:${idx}`;
     let override = null;
-    //    try { override = localStorage.getItem(storageKey); } catch (e) { override = null; }
-
-    //    if (override) {
-    //    img.src = override;
-    //  } else {
     img.src = placeholder;
-    //}
-
     img.style.cursor = 'pointer';
     img.title = 'Click to set image URL (saved locally)';
     img.onclick = (e) => {
@@ -1360,6 +1471,61 @@ async function setupSampleMagazine(device, domId) {
     makeResizable(slot);
   });
 }
+
+
+// Update sample presence at measurement location
+function updateSamplepresence(device, presence_val) {
+  try {
+   
+   
+    const domId = deviceDomId(device);
+    const placeholder = '/c/assets/sample_holder.svg';
+    
+   
+  
+    
+     
+    const slotId = `sample_presence`;
+    const slot = document.getElementById(slotId);
+      
+    if (!slot) return;
+    const imgEl = slot.querySelector && slot.querySelector('img');
+      
+    
+    if (!imgEl) return;
+
+      // local override takes precedence
+      const storageKey = `sample presence`;
+      let override = null;
+      try { override = localStorage.getItem(storageKey); } catch (e) { override = null; }
+      
+      if (override) {
+        imgEl.src = override;
+        imgEl.style.display = '';
+        
+      } else if (presence_val) {
+        // item is non-empty → try to map item -> URL when possible
+        try {
+            
+            // Fallback to placeholder to indicate presence
+            imgEl.src = placeholder;
+          
+        } catch (e) {
+          imgEl.src = placeholder;
+        }
+        imgEl.style.display = '';
+        
+      } else {
+        // empty slot — hide image
+        imgEl.src = '';
+        imgEl.style.display = 'none';
+       
+      };
+  } catch (e) {
+    console.error('update Sample presence failed', e);
+  }
+}
+
 
 // Update images for sample magazine slots for a given device.
 // arr is the array value coming from the device parameter. If an
@@ -2636,14 +2802,6 @@ window.addEventListener('spinupdate', function(event) {
 });
 
 
-
-
-
-
-
-
-// Removed duplicate listeners - now in DOMContentLoaded above
-
 function rgbToHex(col) {
     if(!col) return null;
     if(col.startsWith('#')) return col;
@@ -2697,10 +2855,7 @@ function resetView() {
 let isPanning = false;
 let startPanX, startPanY;
 
-// Initialize listeners when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    // No pan/zoom listeners
-});
+
 
 
 
