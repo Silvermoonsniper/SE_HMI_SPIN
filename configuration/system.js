@@ -669,7 +669,7 @@ window.addEventListener('spinupdate', function(event) {
           return;
         }
       
-    
+     
       updateSamplepresence(device, presence_val)
     }
   } catch(e) { 
@@ -1480,42 +1480,49 @@ function updateSamplepresence(device, presence_val) {
    
     const domId = deviceDomId(device);
     const placeholder = '/c/assets/sample_holder.svg';
-    
+    const slotId = `sample_presence`;
    
-  
     
      
-    const slotId = `sample_presence`;
+  
     const slot = document.getElementById(slotId);
-      
+  
     if (!slot) return;
     const imgEl = slot.querySelector && slot.querySelector('img');
-      
+ 
     
-    if (!imgEl) return;
-
+       
       // local override takes precedence
-      const storageKey = `sample presence`;
-      let override = null;
-      try { override = localStorage.getItem(storageKey); } catch (e) { override = null; }
-      
-      if (override) {
+    const storageKey = `sample_presence`;
+    let override = null;
+    try { override = localStorage.getItem(storageKey); } catch (e) { override = null; }
+    
+    if (override) {
         imgEl.src = override;
         imgEl.style.display = '';
         
-      } else if (presence_val) {
+      } 
+      else if (presence_val) 
+      {
         // item is non-empty → try to map item -> URL when possible
-        try {
+      try 
+        {
             
+         
             // Fallback to placeholder to indicate presence
             imgEl.src = placeholder;
           
-        } catch (e) {
+        } 
+      catch (e) 
+        {
           imgEl.src = placeholder;
         }
-        imgEl.style.display = '';
+    
+      imgEl.style.display = '';
         
-      } else {
+      } 
+      else 
+      {
         // empty slot — hide image
         imgEl.src = '';
         imgEl.style.display = 'none';
@@ -3114,7 +3121,7 @@ function applyLayout(layout) {
         // a synthetic element such as a sample magazine slot (id starts with
         // 'mag-'). Restore a placeholder slot so saved positions are kept.
         try {
-          const isMag = (d.logicalName && d.logicalName.startsWith && d.logicalName.startsWith('mag-')) || (d.id && d.id.startsWith && d.id.startsWith('mag-'));
+          const isMag = (d.logicalName && d.logicalName.startsWith && d.logicalName.startsWith('mag-')) || (d.id && d.id.startsWith && d.id.startsWith('mag-') || d.logicalName == "sample_presence");
           if (isMag) {
             const grid = document.getElementById('device-grid');
             if (grid) {
@@ -3163,8 +3170,8 @@ function applyLayout(layout) {
               imgHolder.style.justifyContent = 'center';
               imgHolder.style.overflow = 'hidden';
               
-              if (d.image != null) 
-              {
+             
+              
               const img = document.createElement('img');
               img.style.maxWidth = '100%';
               img.style.maxHeight = '100%';
@@ -3172,7 +3179,7 @@ function applyLayout(layout) {
               img.src = '/c/assets/sample_holder.svg';
               imgHolder.appendChild(img);
               slot.appendChild(imgHolder);
-              }
+              
               const resizeHandle = document.createElement('div');
               resizeHandle.className = 'resize-handle';
               slot.appendChild(resizeHandle);
