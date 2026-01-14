@@ -615,7 +615,7 @@ window.addEventListener('spinupdate', function(event) {
         var gasEl = document.getElementById('gas-' + domId);
         if (gasEl) gasEl.textContent = formatted;
     }
-    
+   
     // If this is a sample-magazine-like device, update the slot images.
     if (device.includes('storage')) {
       try {
@@ -1415,10 +1415,9 @@ async function setupSampleMagazine(device, domId)
       return;
     }
     
-    slot = make_slot(slotId, idx, `Slot ${idx + 1}`);
+    slot = make_slot(slotId, idx, arr[idx]);
     
-    if (arr[idx] != "") 
-    {
+    
     const imgHolder = document.createElement('div');
     imgHolder.style.width = '100%';
     imgHolder.style.height = '86px';
@@ -1458,7 +1457,7 @@ async function setupSampleMagazine(device, domId)
 
     imgHolder.appendChild(img);
     slot.appendChild(imgHolder);
-  }
+  
     const resizeHandle = document.createElement('div');
     resizeHandle.className = 'resize-handle';
     
@@ -1552,11 +1551,12 @@ function updateSampleSlotImages(device, arr) {
     if (existing.length < arr.length) {
       try { setupSampleMagazine(device, domId); } catch (e) {}
     }
-  
+    
     arr.forEach((item, idx) => {
      
       const slotId = `mag-${domId}-slot-${idx}`;
       const slot = document.getElementById(slotId);
+     
       
       if (!slot) return;
       const imgEl = slot.querySelector && slot.querySelector('img');
@@ -1589,6 +1589,7 @@ function updateSampleSlotImages(device, arr) {
         imgEl.src = '';
         imgEl.style.display = 'none';
        
+    
       }
     });
   } catch (e) {
