@@ -477,15 +477,16 @@ function disconnectNode() {
 }
 
 // ===== Status Badge Updates =====
-window.addEventListener('spinupdate', function(event) {
+window.addEventListener('spinupdate', function(event) 
+{
   try {
     var key = event.detail.key || '';
     
     fetchNodesList(); 
     loadNodesInfo();
+    fetchDeviceParams();
     fetchAndMergeLatestValuesOnce();
-    //setTimeout(fetchAndMergeLatestValuesOnce, 1000);
-    
+  
 
     if (key === 'nodemanager.nodes') {
         var nodes = event.detail.value;
@@ -505,10 +506,12 @@ window.addEventListener('spinupdate', function(event) {
 
     if (key === 'nodemanager.device_params') {
         var data = event.detail.value;
+      
         if (data) {
             WRITABLE_PARAMS = data;
             populateDeviceList(data);
         }
+       
         return;
     }
 
@@ -546,9 +549,12 @@ window.addEventListener('spinupdate', function(event) {
     return;
   }
 
-  if (key === 'nodemanager.save_layout') {
+  if (key === 'nodemanager.save_layout') 
+  {
     try {
+      
       const resp = event.detail.value;
+
       if (resp && resp.name) {
    
         // Refresh server list so dropdown shows the new file
@@ -567,7 +573,7 @@ window.addEventListener('spinupdate', function(event) {
           }
         }
           try { alert('Layout saved on server as "' + resp.name + '"' + (resp.path ? (' at ' + resp.path) : '')); }
-        catch (e) { /* alert suppressed */ }
+          catch (e) { /* alert suppressed */ }
       }
     } 
     catch 
@@ -579,7 +585,7 @@ window.addEventListener('spinupdate', function(event) {
     }
     return;
   }
-
+    
     var state = event.detail.state || '';
     var state_str = event.detail.state_str || '';
     
@@ -593,9 +599,7 @@ window.addEventListener('spinupdate', function(event) {
     if (statusEl && (state || state_str)) {
       statusEl.textContent = state_str || state || 'unknown';
       statusEl.className = 'status-badge ' + (state ? ('state-' + state) : 'state-warn');
-    } else {
-    
-    }
+    } else {}
 
     // 2. Update Value/Target Fields (Manual update for dynamic elements)
     var val = event.detail.value;
@@ -617,7 +621,10 @@ window.addEventListener('spinupdate', function(event) {
     }
    
     // If this is a sample-magazine-like device, update the slot images.
-    if (device.includes('storage')) {
+    if (device.includes('storage')) 
+    { 
+      
+    
       try {
         // Safely retrieve the array from latestValues. The backend cache
         // may not have populated latestValues[device] yet, so guard access
@@ -641,36 +648,44 @@ window.addEventListener('spinupdate', function(event) {
         
       
         if (Array.isArray(arr)) {
+        
           updateSampleSlotImages(device, arr);
-        } else {
+        
+        } 
+        else 
+        {
           console.debug('sample slot update: expected array but got', typeof arr, arr);
         }
-      } catch (e) {
+      } 
+      catch (e) 
+      {
         console.error('sample slot update error', e);
       }
     }
 
     
     if (device.includes("sample_at_measurement"))
-    {
-     
+    {   
+        
         const devEntry = latestValues[device];
-        if (devEntry && devEntry['value']) 
+        if (devEntry && devEntry['target']) 
         {
-          const v = devEntry['value'];
+          const v = devEntry['target'];
           presence_val = (v && typeof v.value !== 'undefined') ? v.value : v;
         } 
        
         else 
         {
-          // no data yet — try to merge from backend once then bail; the
-          // fetch will call updateSampleSlotImages again after merging.
-          try { fetchAndMergeLatestValuesOnce(); } catch (e) {}
+          
           return;
         }
       
-     
-      updateSamplepresence(device, presence_val)
+      //try to merge from backend once then bail; the
+      // fetch will call updateSampleSlotImages again after merging.
+        try { fetchAndMergeLatestValuesOnce(); } catch (e) {}
+      
+        updateSamplepresence(device, presence_val)
+    
     }
   } catch(e) { 
     console.error('status update error', e);
@@ -835,22 +850,7 @@ async function fetchAndMergeLatestValuesOnce() {
         console.debug('fetchLatestValues: failed to merge key', k, e);
       }
     }
-    // After merging, proactively update any storage-style devices so the
-    // sample-slot images reflect the freshly fetched backend cache.
-    try {
-      for (const dev of Object.keys(latestValues)) {
-        if (!dev || !dev.includes('storage')) continue;
-        const entry = latestValues[dev] && latestValues[dev]['value'];
-        if (!entry) continue;
-        const arr = (entry && typeof entry.value !== 'undefined') ? entry.value : entry;
-        try {
-         
-          updateSampleSlotImages(dev, arr);
-        } catch (e) {
-          console.debug('fetchLatestValues: updateSampleSlotImages failed for', dev, e);
-        }
-      }
-    } catch (e) { console.debug('fetchLatestValues: post-merge storage update failed', e); }
+
    
   } catch (e) {
     console.debug('fetchLatestValues: error', e);
@@ -884,9 +884,7 @@ function renderExtra(device)
     return;
   }
   
-  // Get parameter metadata if available
-  const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
-  
+   
   let html = '';
   
   for (let k of filteredKeys) {
@@ -1050,6 +1048,7 @@ var WRITABLE_PARAMS = null;
 
 function fetchDeviceParams()
 {
+    
     if (window.Spin) {
         Spin.send_request('nodemanager.get_device_params', "", "read", "read", null);
     }
@@ -1194,6 +1193,7 @@ function createDeviceDisplay(deviceNameOverride)
      
       // Show only Value and Target
       if (labelDiv) labelDiv.textContent = 'Val / Target';
+      if (targetSpan) targetSpan.style.display = 'inline';
       if (gasSpan) gasSpan.style.display = 'none';
       if (sep2) sep2.style.display = 'none';
   }
@@ -1262,7 +1262,6 @@ async function setupSample_presence(device)
   const placeholder = '/c/assets/sample_holder.svg';
   
   const Id = `sample_presence`;
-    
 
     // If an element with the same id already exists (for example restored from a saved
     // layout), keep it and only refresh its image/handlers. 
@@ -1473,7 +1472,8 @@ async function setupSampleMagazine(device, domId)
 
 
 // Update sample presence at measurement location
-function updateSamplepresence(device, presence_val) {
+function updateSamplepresence(device, presence_val) 
+{
   try {
    
    
@@ -1489,19 +1489,8 @@ function updateSamplepresence(device, presence_val) {
     if (!slot) return;
     const imgEl = slot.querySelector && slot.querySelector('img');
  
-    
-       
-      // local override takes precedence
-    const storageKey = `sample_presence`;
-    let override = null;
-    try { override = localStorage.getItem(storageKey); } catch (e) { override = null; }
-    
-    if (override) {
-        imgEl.src = override;
-        imgEl.style.display = '';
-        
-      } 
-      else if (presence_val) 
+   
+    if (presence_val!="") 
       {
         // item is non-empty → try to map item -> URL when possible
       try 
@@ -1546,11 +1535,7 @@ function updateSampleSlotImages(device, arr) {
     const domId = deviceDomId(device);
     const placeholder = '/c/assets/sample_holder.svg';
     
-    // Ensure slots exist; if not, create them (setupSampleMagazine preserves positions of existing slots)
-    const existing = document.querySelectorAll(`[id^="mag-${domId}-slot-"]`);
-    if (existing.length < arr.length) {
-      try { setupSampleMagazine(device, domId); } catch (e) {}
-    }
+    
     
     arr.forEach((item, idx) => {
      
@@ -2120,9 +2105,7 @@ function makeDraggable(el)
 
   // Make the whole element draggable on mousedown (simple, immediate behavior)
   el.addEventListener('mousedown', (e) => {
-    // Debug: log the click target for diagnosing drag-blocks
-    try { console.debug('makeDraggable mousedown', { tag: e.target.tagName, cls: e.target.className, isContentEditable: !!e.target.isContentEditable }); } catch (err) {}
-
+    
     // Ignore non-left clicks
     if (e.button !== 0) return;
 
@@ -2903,16 +2886,16 @@ function updateLayoutList() {
     option.text = name;
     select.add(option);
   });
-}
-  // Also request server-side layouts (if Spin available)
-  if (window.Spin && window.Spin.send_request) {
-    try {
-      window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null);
-    } catch (e) {
-      console.error('list_layouts request failed', e);
-    }
-  }
 
+  // Also request server-side layouts (if Spin available)
+  // if (window.Spin && window.Spin.send_request) {
+  //   try {
+  //     window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null);
+  //   } catch (e) {
+  //     console.error('list_layouts request failed', e);
+  //   }
+  // }
+}
 
 function saveLayoutToStorage() {
   const name = prompt('Enter a name for this layout:');
@@ -2923,15 +2906,15 @@ function saveLayoutToStorage() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
   updateLayoutList();
   // Try to save on server as well if Spin is available
-  if (window.Spin && window.Spin.send_request) {
-    try {
-      window.Spin.send_request('nodemanager.save_layout', '', 'input', 'set', {name: name, layout: layout});
-      // Ask server for updated list (server will write file into layout/)
-      window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null);
-    } catch (e) {
-      console.error('save_layout request failed', e);
-    }
-  }
+  // if (window.Spin && window.Spin.send_request) {
+  //   try {
+  //     window.Spin.send_request('nodemanager.save_layout', '', 'input', 'set', {name: name, layout: layout});
+  //     // Ask server for updated list (server will write file into layout/)
+  //     window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null);
+  //   } catch (e) {
+  //     console.error('save_layout request failed', e);
+  //   }
+  // }
   alert('Layout "' + name + '" saved locally (and requested save on server if available).');
 }
 
@@ -3090,7 +3073,8 @@ function applyLayout(layout) {
   document.getElementById('device-grid').innerHTML = '';
   
   // Restore Devices with robust matching to current SEC node configuration
-  if (layout.devices) {
+  if (layout.devices) 
+    {
     const select = document.getElementById('device-select');
     const availableDevices = Array.from(select.options).map(opt => opt.value);
     layout.devices.forEach(d => {
@@ -3123,6 +3107,7 @@ function applyLayout(layout) {
         // 'mag-'). Restore a placeholder slot so saved positions are kept.
         try {
           const isMag = (d.logicalName && d.logicalName.startsWith && d.logicalName.startsWith('mag-')) || (d.id && d.id.startsWith && d.id.startsWith('mag-') || d.logicalName == "sample_presence");
+        
           if (isMag) {
             const grid = document.getElementById('device-grid');
             if (grid) {
@@ -3381,10 +3366,15 @@ function applyLayout(layout) {
         makeValveIconResizable(valveIcon, imgContainer);
 
         // Ensure we have image listeners for this device (safe to call multiple times)
-        try { setupValveImageListeners(realDevice, deviceDomId(realDevice)); } catch (e) { /* ignore */ }
-      } catch (e) {
-        // swallow individual icon errors
-      }
+        try 
+        {
+           setupValveImageListeners(realDevice, deviceDomId(realDevice)); 
+        } 
+        catch (e) 
+        {}
+      } 
+      catch (e) 
+      {}
     });
   }
 
