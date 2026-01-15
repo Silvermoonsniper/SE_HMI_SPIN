@@ -40,131 +40,11 @@ startPollingLatestValues();
 // Simplified plots manager: single plot with add/delete lines driven by device parameter dropdown
 
 (function(){
-  // --- Layout save/load infrastructure ---
+  // Layout/save UI removed: plots will use the device grid workspace and
+  // rely on the main system layout persistence. (Layout save/load code removed.)
 
-  const layoutDropdown = document.getElementById('plot-layout-dropdown');
-
-  const saveBtn = document.getElementById('save-layout');
-
-  function getCurrentLayout() {
-    // Collect all plot configs: title, parameters, position, size
-
-    return Object.values(plotsMap).map(p => {
-
-      const rect = p.containerDiv.getBoundingClientRect();
-
-      return {
-
-        title: p.containerDiv.querySelector('.plot-title-label')?.innerText || '',
-
-        params: Object.keys(p.traces),
-
-        x: p.containerDiv.getAttribute('data-x') || 0,
-
-        y: p.containerDiv.getAttribute('data-y') || 0,
-
-        width: p.containerDiv.style.width || rect.width,
-
-        height: p.containerDiv.style.height || rect.height
-
-      };
-
-    });
-
-  }
-
-  function saveLayout() {
-
-    const name = prompt('Enter a name for this layout:');
-
-    if (!name) return;
-
-    const layouts = JSON.parse(localStorage.getItem('plotLayouts') || '{}');
-
-    layouts[name] = getCurrentLayout();
-
-    localStorage.setItem('plotLayouts', JSON.stringify(layouts));
-
-    updateLayoutDropdown();
-
-    alert('Layout saved!');
-
-  }
-
-  function updateLayoutDropdown() {
-
-    const layouts = JSON.parse(localStorage.getItem('plotLayouts') || '{}');
-
-    layoutDropdown.innerHTML = '<option value="">-- Select Layout --</option>';
-
-    Object.keys(layouts).forEach(name => {
-
-      const opt = document.createElement('option');
-
-      opt.value = name;
-
-      opt.innerText = name;
-
-      layoutDropdown.appendChild(opt);
-
-    });
-
-  }
-
-  function restoreLayout(name) {
-
-    const layouts = JSON.parse(localStorage.getItem('plotLayouts') || '{}');
-
-    const layout = layouts[name];
-
-    if (!layout) return;
-
-    // Remove existing plots
-
-    Object.values(plotsMap).forEach(p => p.containerDiv.remove());
-
-    Object.keys(plotsMap).forEach(k => delete plotsMap[k]);
-
-    plotCounter = 0;
-    // Recreate plots from layout
-
-    layout.forEach(cfg => {
-      // Stage parameters
-
-      Object.keys(staged).forEach(k=> delete staged[k]);
-
-      cfg.params.forEach(param => staged[param] = { suffix: param });
-      // Create plot
-      createBtn.click();
-      // Set title, position, size
-      const lastPlot = Object.values(plotsMap)[Object.values(plotsMap).length-1];
-
-      if (lastPlot) {
-
-        lastPlot.containerDiv.querySelector('.plot-title-label').innerText = cfg.title;
-
-        lastPlot.containerDiv.style.width = typeof cfg.width === 'number' ? cfg.width + 'px' : cfg.width;
-
-        lastPlot.containerDiv.style.height = typeof cfg.height === 'number' ? cfg.height + 'px' : cfg.height;
-
-        lastPlot.containerDiv.setAttribute('data-x', cfg.x);
-
-        lastPlot.containerDiv.setAttribute('data-y', cfg.y);
-
-        lastPlot.containerDiv.style.transform = `translate(${cfg.x}px, ${cfg.y}px)`;
-      }
-    });
-  }
-
-  saveBtn.addEventListener('click', saveLayout);
-
-  layoutDropdown.addEventListener('change', function(){
-    if (layoutDropdown.value) restoreLayout(layoutDropdown.value);
-  });
-
-  updateLayoutDropdown();
-
-  const plotArea = document.getElementById('plot-area');
+  // Use device-grid as the primary plot container (no fallback).
+  const plotArea = document.getElementById('device-grid');
 
   const plotTypeSelect = document.getElementById('plot-type');
 
@@ -297,7 +177,7 @@ startPollingLatestValues();
   }
 
   function ensurePlot(){
-    // noop: plots are created by Create Plot which appends panels under plotArea
+    // noop: plots are created by Create Plot which appends panels under the device grid
     return;
   }
 
@@ -331,6 +211,49 @@ startPollingLatestValues();
   
     });
   
+  }
+
+  // Enable draggable/resizable behavior for a plot panel using interact.js if available.
+  function enablePlotPanelDragResize(container, plotDiv) {
+    if (window.interact) {
+      try {
+        interact(container)
+        .draggable({
+          inertia: true,
+          listeners: {
+            move (event) {
+              const x = (parseFloat(container.getAttribute('data-x')) || 0) + event.dx;
+              const y = (parseFloat(container.getAttribute('data-y')) || 0) + event.dy;
+              container.style.transform = `translate(${x}px, ${y}px)`;
+              container.setAttribute('data-x', x);
+              container.setAttribute('data-y', y);
+            }
+          }
+        })
+        .resizable({
+          edges: { left: true, right: true, bottom: true, top: true },
+          listeners: {
+            move (event) {
+              let { x, y } = event.target.dataset;
+              x = (parseFloat(x) || 0) + event.deltaRect.left;
+              y = (parseFloat(y) || 0) + event.deltaRect.top;
+              Object.assign(event.target.style, {
+                width: `${event.rect.width}px`,
+                height: `${event.rect.height}px`,
+                transform: `translate(${x}px, ${y}px)`
+              });
+              event.target.dataset.x = x;
+              event.target.dataset.y = y;
+              // Resize plotly plot
+              try { Plotly.Plots.resize(plotDiv); } catch(e) {}
+            }
+          },
+          inertia: true
+        });
+      } catch(e) { console.debug('enablePlotPanelDragResize failed', e); }
+    } else {
+      setTimeout(()=>enablePlotPanelDragResize(container, plotDiv), 500);
+    }
   }
 
   function addLine(){
@@ -460,10 +383,12 @@ startPollingLatestValues();
       el.id = 'spinupdate-indicator';
   
       el.style.position = 'fixed';
-  
+      
       el.style.top = '8px';
-  
-      el.style.right = '16px';
+      
+  // center the indicator horizontally
+      el.style.left = '50%';
+      el.style.transform = 'translateX(-50%)';
   
       el.style.background = '#e0ffe0';
   
@@ -631,7 +556,7 @@ startPollingLatestValues();
   createBtn && createBtn.addEventListener('click', ()=>{
     // Create a new plot panel below using all currently staged lines.
   
-    if(!plotArea) return alert('Plot area not available');
+  // plots will be inserted into the device grid (or document body) when created
     // if there are no staged lines, but a device param is selected, stage it automatically
   
     const preselected = deviceParamsSelect && deviceParamsSelect.value ? deviceParamsSelect.value.trim() : '';
@@ -697,9 +622,20 @@ startPollingLatestValues();
   
     const plotDiv = document.createElement('div'); plotDiv.id = id + '_plot'; plotDiv.style.width = '100%'; plotDiv.style.height = '360px';
     
-    container.appendChild(plotDiv);
-    
-    plotArea.appendChild(container);
+  container.appendChild(plotDiv);
+  // Insert plot panel into the main device grid so plots share the same workspace
+  const grid = document.getElementById('device-grid');
+  container.style.position = 'absolute';
+  container.style.left = '200px';
+  container.style.top = '80px';
+  // make plots wider by default and allow exceeding the device-box CSS max-width
+  container.style.width = '700px';
+  container.style.maxWidth = 'none';
+  container.style.zIndex = '5';
+  container.classList.add('device-box', 'plot-panel');
+  grid.appendChild(container);
+  try { makeDraggable(container); } catch (e) {}
+  try { makeResizable(container); } catch (e) {}
 
     const plotEntry = { id, containerDiv: container, plotDiv: plotDiv, traces: {} };
     // transfer staged lines into this new plot
@@ -802,7 +738,9 @@ startPollingLatestValues();
         setTimeout(()=>makePanelDraggableResizable(container, plotDiv), 500);
       }
     }
-    makePanelDraggableResizable(container, plotDiv);
+  // enable interact-based dragging/resizing
+  try { makePanelDraggableResizable(container, plotDiv); } catch(e) {}
+  try { enablePlotPanelDragResize(container, plotDiv); } catch(e) {}
 
     // clear staged and UI staged list
     Object.keys(staged).forEach(k=> delete staged[k]);
@@ -939,7 +877,20 @@ startPollingLatestValues();
     
       plotDiv = document.createElement('div'); plotDiv.style.width='100%'; plotDiv.style.height='360px';
     
-      container.appendChild(header); container.appendChild(plotDiv); plotArea.appendChild(container);
+  container.appendChild(header); container.appendChild(plotDiv);
+  // place auto-created plot into the main device grid workspace
+  const grid2 = document.getElementById('device-grid');
+  container.style.position = 'absolute';
+  container.style.left = '220px';
+  container.style.top = '120px';
+  // make auto-created plots wider by default
+  container.style.width = '700px';
+  container.style.maxWidth = 'none';
+  container.style.zIndex = '5';
+  container.classList.add('device-box', 'plot-panel');
+  grid2.appendChild(container);
+  try { makeDraggable(container); } catch (e) {}
+  try { makeResizable(container); } catch (e) {}
     }
 
     const plotEntry = { id, containerDiv: container, plotDiv: plotDiv, traces: {} };
@@ -979,6 +930,7 @@ startPollingLatestValues();
     
     Plotly.newPlot(plotDiv, Object.values(plotEntry.traces).map(t=>t.traceObj), layout).then(()=>{
       Object.values(plotEntry.traces).forEach((t,i)=> t._traceIndex = i);
+      try { enablePlotPanelDragResize(container, plotDiv); } catch(e) {}
     }).catch(e=>{ console.warn('Plotly.newPlot auto plot failed', e); });
   
   }

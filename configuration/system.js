@@ -2887,14 +2887,14 @@ function updateLayoutList() {
     select.add(option);
   });
 
-  // Also request server-side layouts (if Spin available)
-  // if (window.Spin && window.Spin.send_request) {
-  //   try {
-  //     window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null);
-  //   } catch (e) {
-  //     console.error('list_layouts request failed', e);
-  //   }
-  // }
+  //Also request server-side layouts (if Spin available)
+  if (window.Spin && window.Spin.send_request) {
+    try {
+      window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null);
+    } catch (e) {
+      console.error('list_layouts request failed', e);
+    }
+  }
 }
 
 function saveLayoutToStorage() {
@@ -2906,15 +2906,15 @@ function saveLayoutToStorage() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
   updateLayoutList();
   // Try to save on server as well if Spin is available
-  // if (window.Spin && window.Spin.send_request) {
-  //   try {
-  //     window.Spin.send_request('nodemanager.save_layout', '', 'input', 'set', {name: name, layout: layout});
-  //     // Ask server for updated list (server will write file into layout/)
-  //     window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null);
-  //   } catch (e) {
-  //     console.error('save_layout request failed', e);
-  //   }
-  // }
+  if (window.Spin && window.Spin.send_request) {
+    try {
+      window.Spin.send_request('nodemanager.save_layout', '', 'input', 'set', {name: name, layout: layout});
+      // Ask server for updated list (server will write file into layout/)
+      window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null);
+    } catch (e) {
+      console.error('save_layout request failed', e);
+    }
+  }
   alert('Layout "' + name + '" saved locally (and requested save on server if available).');
 }
 
@@ -2981,12 +2981,15 @@ function getCurrentLayoutData() {
   const layout = {
     devices: [],
     valveIcons: [],
-    decorations: []
+    decorations: [],
+    plots: []
   };
   
   // Save Devices (regular device boxes) with full device info
-  document.querySelectorAll('.device-box').forEach(box => {
-    const title = box.querySelector('.device-title').textContent;
+    // Exclude plot panels (they are saved separately below)
+    document.querySelectorAll('.device-box:not(.plot-panel)').forEach(box => {
+    const titleEl = box.querySelector('.device-title');
+    const title = titleEl ? titleEl.textContent : '';
     // Try to get logical device name from box id
     const logicalName = box.id.replace(/^box-/, '');
     // Get device info from WRITABLE_PARAMS if available
@@ -3013,6 +3016,37 @@ function getCurrentLayoutData() {
       image: imageSrc
     });
   });
+
+  // Save Plot panels (if any) so they are restored with layouts.
+  try {
+    const plotsMap = window._plots && window._plots.plotsMap ? window._plots.plotsMap : null;
+    document.querySelectorAll('.plot-panel').forEach(box => {
+      const plotId = box.id || null; // e.g., 'plot_1_panel'
+      const titleEl = box.querySelector('.plot-title-label');
+      const title = titleEl ? titleEl.textContent : (box.querySelector('.plot-header strong') ? box.querySelector('.plot-header strong').textContent : '');
+      // find traces from plotsMap if available
+      let traces = [];
+      if (plotsMap) {
+        Object.keys(plotsMap).forEach(pid => {
+          const p = plotsMap[pid];
+          try {
+            if (p && p.containerDiv && p.containerDiv.id === plotId) {
+              traces = Object.keys(p.traces || {}).map(k => k);
+            }
+          } catch (e) { }
+        });
+      }
+      layout.plots.push({
+        id: plotId,
+        title: title,
+        left: box.style.left,
+        top: box.style.top,
+        width: box.style.width,
+        height: box.style.height,
+        traces: traces
+      });
+    });
+  } catch (e) { console.debug('getCurrentLayoutData: plot save skipped', e); }
   
   // Save Valve Icons (individual valve/switch icons)
   document.querySelectorAll('.valve-icon').forEach(icon => {
@@ -3182,6 +3216,73 @@ function applyLayout(layout) {
     });
   }
   
+  // Restore Plots (if any) so saved plot panels reappear in the workspace
+  if (layout.plots && Array.isArray(layout.plots)) {
+    try {
+      // ensure window._plots exists
+      window._plots = window._plots || { plotsMap: {}, staged: {} };
+      window._plots._restoreCounter = window._plots._restoreCounter || 0;
+      layout.plots.forEach(p => {
+        try {
+          const grid = document.getElementById('device-grid');
+          if (!grid) return;
+          const container = document.createElement('div');
+          container.className = 'device-box plot-panel';
+          container.id = p.id || ('restored_plot_' + (++window._plots._restoreCounter) + '_panel');
+          container.style.position = 'absolute';
+          if (p.left) container.style.left = p.left;
+          if (p.top) container.style.top = p.top;
+          if (p.width) container.style.width = p.width;
+          if (p.height) container.style.height = p.height;
+          container.style.zIndex = '5';
+
+          // Title
+          const titleDiv = document.createElement('div');
+          titleDiv.className = 'plot-title-label';
+          titleDiv.contentEditable = true;
+          titleDiv.innerText = p.title || '';
+          titleDiv.style.fontWeight = 'bold';
+          titleDiv.style.fontSize = '18px';
+          titleDiv.style.textAlign = 'center';
+          titleDiv.style.margin = '8px 0 4px 0';
+          titleDiv.style.outline = 'none';
+          container.appendChild(titleDiv);
+
+          // plot div
+          const plotDiv = document.createElement('div');
+          plotDiv.id = (container.id ? container.id + '_plot' : ('restored_plot_' + window._plots._restoreCounter + '_plot'));
+          plotDiv.style.width = '100%';
+          plotDiv.style.height = (p.height || '360px');
+          container.appendChild(plotDiv);
+
+          grid.appendChild(container);
+          try { makeDraggable(container); } catch (e) {}
+          try { makeResizable(container); } catch (e) {}
+
+          // Register a plotsMap entry so plots.js update logic will pick it up
+          const newKey = 'restored_plot_' + (++window._plots._restoreCounter);
+          const plotEntry = { id: newKey, containerDiv: container, plotDiv: plotDiv, traces: {} };
+          if (Array.isArray(p.traces)) {
+            p.traces.forEach(tkey => {
+              const trace = { x: [], y: [], mode: 'lines+markers', name: tkey };
+              plotEntry.traces[tkey] = { traceObj: trace, suffix: tkey, _traceIndex: undefined, _lastSent: 0 };
+            });
+          }
+          window._plots.plotsMap[newKey] = plotEntry;
+
+          // initialize plotly with empty traces
+          try {
+            const data = Object.values(plotEntry.traces).map(t => t.traceObj);
+            Plotly.newPlot(plotDiv, data).then(() => {
+              Object.values(plotEntry.traces).forEach((t, i) => { t._traceIndex = i; t._lastSent = t.traceObj.x.length; });
+            }).catch(()=>{});
+          } catch(e) {}
+
+        } catch (err) { console.debug('applyLayout: failed to restore plot', err); }
+      });
+    } catch (err) { console.debug('applyLayout: plots restore skipped', err); }
+  }
+
   // Restore Decorations
   if (layout.decorations) {
       layout.decorations.forEach(d => {
