@@ -762,8 +762,19 @@ function updateParamDisplay(device, domId, param)
   
   if (!entry || entry.value === undefined) {
     currentValueDiv.innerHTML = `<em>Current: (no data)</em>`;
-    // Keep text input
-    inputContainer.innerHTML = '<input type="text" id="param-value-' + domId + '" class="control-input" placeholder="val" style="flex: 1;" />';
+    // Ensure a text input exists, but don't replace it if the user is interacting
+    let existing = inputContainer.querySelector('#param-value-' + domId);
+    if (!existing || existing.tagName.toLowerCase() !== 'input') {
+      // remove children and add input
+      inputContainer.innerHTML = '';
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.id = 'param-value-' + domId;
+      inp.className = 'control-input';
+      inp.placeholder = 'val';
+      inp.style.flex = '1';
+      inputContainer.appendChild(inp);
+    }
     return;
   }
   
@@ -784,36 +795,69 @@ function updateParamDisplay(device, domId, param)
   
   // Check if parameter has enum values in WRITABLE_PARAMS
   const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
- 
-  let paramInfo = deviceInfo.param_info;
-   
+  if (!deviceInfo || !deviceInfo.param_info) return;
 
-  paramInfo.forEach(item => {
-  
+  const paramInfo = deviceInfo.param_info;
 
-  if (item[param]) {
-  // If parameter has enum members, show dropdown instead of text input
-  if (item[param].datainfo.type === 'enum') 
-  {
-    // get members 
-    const enumNames = item[param].datainfo.members;
-   
-    let selectHtml = '<select id="param-value-' + domId + '" class="control-input" style="flex: 1;">';
-    selectHtml += '<option value="">-- Select --</option>';
-    
-    Object.keys(enumNames).forEach(enumName => {
-      const selected = enumName === String(value) ? ' selected' : '';
-      selectHtml += `<option value="${enumName}"${selected}>${enumName}</option>`;
-    });
-    selectHtml += '</select>';
-    inputContainer.innerHTML = selectHtml;
-  } 
-  else 
-    {
-    // Use text input for other types
-    inputContainer.innerHTML = '<input type="text" id="param-value-' + domId + '" class="control-input" placeholder="val" style="flex: 1;" />';
+  // Find the param definition
+  let found = null;
+  for (let i = 0; i < paramInfo.length; i++) {
+    const item = paramInfo[i];
+    if (item[param]) { found = item[param]; break; }
   }
-}})
+  if (!found) {
+    // default to text input if we don't know the type
+    let existing = inputContainer.querySelector('#param-value-' + domId);
+    if (!existing || existing.tagName.toLowerCase() !== 'input') {
+      inputContainer.innerHTML = '';
+      const inp = document.createElement('input');
+      inp.type = 'text'; inp.id = 'param-value-' + domId; inp.className = 'control-input'; inp.placeholder = 'val'; inp.style.flex = '1';
+      inputContainer.appendChild(inp);
+    }
+    return;
+  }
+
+  // If enum type, ensure a select exists and update its options without clobbering user's interaction
+  if (found.datainfo && found.datainfo.type === 'enum') {
+    const enumNames = found.datainfo.members || {};
+    const keys = Object.keys(enumNames);
+    let sel = inputContainer.querySelector('#param-value-' + domId);
+    if (!sel || sel.tagName.toLowerCase() !== 'select') {
+      // create select
+      inputContainer.innerHTML = '';
+      sel = document.createElement('select');
+      sel.id = 'param-value-' + domId;
+      sel.className = 'control-input';
+      sel.style.flex = '1';
+      const opt = document.createElement('option'); opt.value = ''; opt.text = '-- Select --'; sel.appendChild(opt);
+      keys.forEach(name => {
+        const o = document.createElement('option'); o.value = name; o.text = name;
+        if (String(name) === String(value)) o.selected = true;
+        sel.appendChild(o);
+      });
+      inputContainer.appendChild(sel);
+    } else {
+      // update options only if user isn't interacting with the control
+      if (document.activeElement === sel) return;
+      sel.innerHTML = '';
+      const opt = document.createElement('option'); opt.value = ''; opt.text = '-- Select --'; sel.appendChild(opt);
+      keys.forEach(name => {
+        const o = document.createElement('option'); o.value = name; o.text = name;
+        if (String(name) === String(value)) o.selected = true;
+        sel.appendChild(o);
+      });
+    }
+  } else {
+    // Use text input for other types. Preserve existing input value if user is typing.
+    let existing = inputContainer.querySelector('#param-value-' + domId);
+    if (!existing || existing.tagName.toLowerCase() !== 'input') {
+      inputContainer.innerHTML = '';
+      const inp = document.createElement('input');
+      inp.type = 'text'; inp.id = 'param-value-' + domId; inp.className = 'control-input'; inp.placeholder = 'val'; inp.style.flex = '1';
+      inputContainer.appendChild(inp);
+    }
+    // don't overwrite existing.value here; leave user input intact
+  }
 }
 
 // ===== Extra Parameters Panel =====
