@@ -33,44 +33,7 @@ def resolve_host(host):
     # (configured via extra_hosts in docker-compose.yml for Linux)
     return 'host.docker.internal'
 
-def extract_modules_and_parameters(data, prefix=""):
-    modules = data.get("modules", {})
-    
-    parameter_map = {}
-    device_data_map = {}
-    module_list = []
 
-    for module_name, module_info in modules.items():
-        # Create unique name if prefix provided
-        unique_name = f"{prefix}_{module_name}" if prefix else module_name
-        module_list.append((module_name, unique_name))
-
-        params = module_info.get("accessibles", {})
-        parameter_list = []
-        writable_list = []
-        command_list = []
-
-        for param_name, param_info in params.items():
-            datainfo = param_info.get("datainfo", {})
-            dtype = datainfo.get("type")
-        
-            parameter_list.append(param_name)
-            
-            if dtype == 'command':
-                command_list.append(param_name)
-            elif not param_info.get("readonly", False):
-                writable_list.append(param_name)
-
-        parameter_map[unique_name] = parameter_list
-        device_data_map[unique_name] = {
-            "params": writable_list,
-            "all_params": parameter_list,
-            "commands": command_list,
-            "original_name": module_name,
-            "interface_classes": module_info.get("interface_classes", [])
-        }
-
-    return module_list, parameter_map, device_data_map
 
 def connect_node(host, port):
     # Resolve the host for Docker environment
@@ -128,6 +91,8 @@ class SpinConfigManager:
                 writable_list = []
    
                 command_list = []
+
+                param_info_List = []
    
                 for param_name, param_info in params.items():
    
@@ -144,6 +109,8 @@ class SpinConfigManager:
                     elif not param_info.get("readonly", False):
    
                         writable_list.append(param_name)
+
+                    param_info_List.append({param_name: param_info})
    
                 parameter_map[unique_name] = parameter_list
    
@@ -160,6 +127,8 @@ class SpinConfigManager:
                     "interface_classes": module_info.get("interface_classes", []),
 
                     "module_name": module_name,
+
+                     "param_info": list(param_info_List),
                 }
    
             return module_list, parameter_map, device_data_map

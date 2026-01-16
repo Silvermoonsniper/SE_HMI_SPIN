@@ -746,7 +746,8 @@ function onParamSelectChange(device, domId) {
   updateParamDisplay(device, domId, param);
 }
 
-function updateParamDisplay(device, domId, param) {
+function updateParamDisplay(device, domId, param) 
+{
   const currentValueDiv = document.getElementById('param-current-value-' + domId);
   const inputContainer = document.getElementById('param-input-container-' + domId);
   
@@ -783,27 +784,36 @@ function updateParamDisplay(device, domId, param) {
   
   // Check if parameter has enum values in WRITABLE_PARAMS
   const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
-  
+ 
+  let paramInfo = deviceInfo.param_info;
    
-  const paramInfo = deviceInfo && deviceInfo.param_info && deviceInfo.param_info[param] ? deviceInfo.param_info[param] : null;
+
+  paramInfo.forEach(item => {
   
+
+  if (item[param]) {
   // If parameter has enum members, show dropdown instead of text input
-  if (paramInfo && paramInfo.type === 'enum' && paramInfo.members) {
-    // members is an object with enum_name: value pairs
-    const enumNames = Object.keys(paramInfo.members);
+  if (item[param].datainfo.type === 'enum') 
+  {
+    // get members 
+    const enumNames = item[param].datainfo.members;
    
     let selectHtml = '<select id="param-value-' + domId + '" class="control-input" style="flex: 1;">';
     selectHtml += '<option value="">-- Select --</option>';
-    enumNames.forEach(enumName => {
+    
+    Object.keys(enumNames).forEach(enumName => {
       const selected = enumName === String(value) ? ' selected' : '';
       selectHtml += `<option value="${enumName}"${selected}>${enumName}</option>`;
     });
     selectHtml += '</select>';
     inputContainer.innerHTML = selectHtml;
-  } else {
+  } 
+  else 
+    {
     // Use text input for other types
     inputContainer.innerHTML = '<input type="text" id="param-value-' + domId + '" class="control-input" placeholder="val" style="flex: 1;" />';
   }
+}})
 }
 
 // ===== Extra Parameters Panel =====
@@ -3517,7 +3527,7 @@ let ctxMenu = null;
 let ctxColor = null;
 
 // Initialize context menu elements after DOM loads
-document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', () => {
   ctxMenu = document.getElementById('context-menu');
   ctxColor = document.getElementById('ctx-color-picker');
   

@@ -1,0 +1,256 @@
+{
+  "devices": [
+    {
+      "id": "box-sample_changer_sim_storage",
+      "device": "storage",
+      "logicalName": "sample_changer_sim_storage",
+      "left": "593px",
+      "top": "297px",
+      "width": "349px",
+      "height": "auto",
+      "info": {
+        "params": [
+          "pollinterval"
+        ],
+        "all_params": [
+          "_load",
+          "_scan",
+          "_unload",
+          "pollinterval",
+          "reset",
+          "stop"
+        ],
+        "commands": [
+          "_load",
+          "_scan",
+          "_unload",
+          "reset",
+          "stop"
+        ],
+        "original_name": "storage",
+        "interface_classes": [
+          "Readable"
+        ],
+        "module_name": "storage"
+      },
+      "image": null
+    },
+    {
+      "id": "mag-sample_changer_sim_storage-slot-0",
+      "device": "Slot 1",
+      "logicalName": "mag-sample_changer_sim_storage-slot-0",
+      "left": "41px",
+      "top": "27px",
+      "width": "120px",
+      "height": "120px",
+      "info": {},
+      "image": "http://localhost:8000/"
+    },
+    {
+      "id": "mag-sample_changer_sim_storage-slot-1",
+      "device": "Slot 2",
+      "logicalName": "mag-sample_changer_sim_storage-slot-1",
+      "left": "208px",
+      "top": "31px",
+      "width": "120px",
+      "height": "120px",
+      "info": {},
+      "image": "http://localhost:8000/"
+    },
+    {
+      "id": "mag-sample_changer_sim_storage-slot-2",
+      "device": "Slot 3",
+      "logicalName": "mag-sample_changer_sim_storage-slot-2",
+      "left": "38px",
+      "top": "166px",
+      "width": "120px",
+      "height": "120px",
+      "info": {},
+      "image": "http://localhost:8000/"
+    },
+    {
+      "id": "mag-sample_changer_sim_storage-slot-3",
+      "device": "Slot 4",
+      "logicalName": "mag-sample_changer_sim_storage-slot-3",
+      "left": "208px",
+      "top": "172px",
+      "width": "120px",
+      "height": "120px",
+      "info": {},
+      "image": "http://localhost:8000/"
+    },
+    {
+      "id": "mag-sample_changer_sim_storage-slot-4",
+      "device": "Slot 5",
+      "logicalName": "mag-sample_changer_sim_storage-slot-4",
+      "left": "36px",
+      "top": "311px",
+      "width": "120px",
+      "height": "120px",
+      "info": {},
+      "image": "http://localhost:8000/"
+    },
+    {
+      "id": "mag-sample_changer_sim_storage-slot-5",
+      "device": "Slot 6",
+      "logicalName": "mag-sample_changer_sim_storage-slot-5",
+      "left": "209px",
+      "top": "311px",
+      "width": "120px",
+      "height": "120px",
+      "info": {},
+      "image": "http://localhost:8000/"
+    },
+    {
+      "id": "box-reactor_cell_pressure_inlet",
+      "device": "pressure_inlet",
+      "logicalName": "reactor_cell_pressure_inlet",
+      "left": "1295px",
+      "top": "24px",
+      "width": "",
+      "height": "auto",
+      "info": {
+        "params": [
+          "_pre_flux",
+          "pollinterval"
+        ],
+        "all_params": [
+          "_pre_flux",
+          "pollinterval"
+        ],
+        "commands": [],
+        "original_name": "pressure_inlet",
+        "interface_classes": [
+          "Readable"
+        ],
+        "module_name": "pressure_inlet"
+      },
+      "image": null
+    },
+    {
+      "id": "box-reactor_cell_pressure_outlet",
+      "device": "pressure_outlet",
+      "logicalName": "reactor_cell_pressure_outlet",
+      "left": "1783px",
+      "top": "27px",
+      "width": "",
+      "height": "auto",
+      "info": {
+        "params": [
+          "_pre_flux",
+          "pollinterval"
+        ],
+        "all_params": [
+          "_pre_flux",
+          "pollinterval"
+        ],
+        "commands": [],
+        "original_name": "pressure_outlet",
+        "interface_classes": [
+          "Readable"
+        ],
+        "module_name": "pressure_outlet"
+      },
+      "image": null
+    },
+    {
+      "id": "box-sample_changer_sim_sample_at_measurement_position",
+      "device": "sample_at_measurement_position",
+      "logicalName": "sample_changer_sim_sample_at_measurement_position",
+      "left": "593px",
+      "top": "163px",
+      "width": "345px",
+      "height": "auto",
+      "info": {
+        "params": [
+          "pollinterval",
+          "target"
+        ],
+        "all_params": [
+          "_next",
+          "pollinterval",
+          "stop",
+          "target"
+        ],
+        "commands": [
+          "_next",
+          "stop"
+        ],
+        "original_name": "sample_at_measurement_position",
+        "interface_classes": [
+          "Drivable"
+        ],
+        "module_name": "sample_at_measurement_position"
+      },
+      "image": null
+    },
+    {
+      "id": "box-sample_changer_sim_hardware",
+      "device": "hardware",
+      "logicalName": "sample_changer_sim_hardware",
+      "left": "591px",
+      "top": "452px",
+      "width": "343px",
+      "height": "auto",
+      "info": {
+        "params": [
+          "_powerstate",
+          "pollinterval"
+        ],
+        "all_params": [
+          "_powerstate",
+          "_run_program_by_path",
+          "pollinterval",
+          "stop"
+        ],
+        "commands": [
+          "_run_program_by_path",
+          "stop"
+        ],
+        "original_name": "hardware",
+        "interface_classes": [
+          "Readable"
+        ],
+        "module_name": "hardware"
+      },
+      "image": null
+    },
+    {
+      "id": "sample_presence",
+      "device": "sample presence",
+      "logicalName": "sample_presence",
+      "left": "1551px",
+      "top": "31px",
+      "width": "120px",
+      "height": "120px",
+      "info": {},
+      "image": "http://localhost:8000/"
+    }
+  ],
+  "valveIcons": [],
+  "decorations": [
+    {
+      "type": "label",
+      "left": "551px",
+      "top": "33px",
+      "width": "",
+      "height": "",
+      "color": "rgb(0, 0, 0)",
+      "text": "ROCK-IT automatic sample changer interface"
+    }
+  ],
+  "plots": [
+    {
+      "id": "plot_2_panel",
+      "title": "pressure plot",
+      "left": "200px",
+      "top": "80px",
+      "width": "700px",
+      "height": "",
+      "traces": [
+        "reactor_cell_pressure_inlet.value",
+        "reactor_cell_pressure_outlet.value"
+      ]
+    }
+  ]
+}

@@ -847,7 +847,7 @@ startPollingLatestValues();
     return res;
   
   }
-
+  // create plot 
   function createPlotFromSpec(spec, hostEl){
     
     const parsed = parseDataSpinPlot(spec);
@@ -877,20 +877,21 @@ startPollingLatestValues();
     
       plotDiv = document.createElement('div'); plotDiv.style.width='100%'; plotDiv.style.height='360px';
     
-  container.appendChild(header); container.appendChild(plotDiv);
+      container.appendChild(header); container.appendChild(plotDiv);
   // place auto-created plot into the main device grid workspace
-  const grid2 = document.getElementById('device-grid');
-  container.style.position = 'absolute';
-  container.style.left = '220px';
-  container.style.top = '120px';
+      const grid2 = document.getElementById('device-grid');
+      container.style.position = 'absolute';
+      container.style.left = '220px';
+      container.style.top = '120px';
   // make auto-created plots wider by default
-  container.style.width = '700px';
-  container.style.maxWidth = 'none';
-  container.style.zIndex = '5';
-  container.classList.add('device-box', 'plot-panel');
-  grid2.appendChild(container);
-  try { makeDraggable(container); } catch (e) {}
-  try { makeResizable(container); } catch (e) {}
+      container.style.width = '700px';
+      container.style.maxWidth = 'none';
+      container.style.zIndex = '5';
+      container.classList.add('device-box', 'plot-panel');
+      grid2.appendChild(container);
+      try { makeDraggable(container); } catch (e) {}
+      try { makeResizable(container); } catch (e) {}
+  
     }
 
     const plotEntry = { id, containerDiv: container, plotDiv: plotDiv, traces: {} };
