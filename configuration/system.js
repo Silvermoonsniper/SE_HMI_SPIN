@@ -174,6 +174,8 @@ function loadSavedBackground() {
           newBox.style.top = d.top;
           if(d.width) newBox.style.width = d.width;
           if(d.height) newBox.style.height = d.height;
+          // clear transform/data attributes so absolute left/top apply correctly
+          try { newBox.style.transform = ''; newBox.removeAttribute('data-x'); newBox.removeAttribute('data-y'); } catch(e){}
         }
       } else {
         // If this device wasn't matched to an available device, it may be
@@ -2987,11 +2989,13 @@ function getCurrentLayoutData() {
   
   // Save Devices (regular device boxes) with full device info
     // Exclude plot panels (they are saved separately below)
-    document.querySelectorAll('.device-box:not(.plot-panel)').forEach(box => {
-    const titleEl = box.querySelector('.device-title');
-    const title = titleEl ? titleEl.textContent : '';
-    // Try to get logical device name from box id
-    const logicalName = box.id.replace(/^box-/, '');
+  const gridEl = document.getElementById('device-grid');
+  const gridRect = gridEl ? gridEl.getBoundingClientRect() : { left:0, top:0 };
+  document.querySelectorAll('.device-box:not(.plot-panel)').forEach(box => {
+  const titleEl = box.querySelector('.device-title');
+  const title = titleEl ? titleEl.textContent : '';
+  // Try to get logical device name from box id
+  const logicalName = box.id.replace(/^box-/, '');
     // Get device info from WRITABLE_PARAMS if available
     let deviceInfo = {};
     if (window.WRITABLE_PARAMS && window.WRITABLE_PARAMS[logicalName]) {
@@ -3004,14 +3008,21 @@ function getCurrentLayoutData() {
       const imgEl = box.querySelector('img');
       if (imgEl && imgEl.src) imageSrc = imgEl.src;
     } catch (e) { imageSrc = null; }
+    // compute fallback position/size from bounding rect if inline style missing
+    const rect = box.getBoundingClientRect();
+    const left = box.style.left && box.style.left.trim() ? box.style.left : Math.round(rect.left - gridRect.left) + 'px';
+    const top = box.style.top && box.style.top.trim() ? box.style.top : Math.round(rect.top - gridRect.top) + 'px';
+    const width = box.style.width && box.style.width.trim() ? box.style.width : Math.round(rect.width) + 'px';
+    const height = box.style.height && box.style.height.trim() ? box.style.height : Math.round(rect.height) + 'px';
+
     layout.devices.push({
       id: box.id,
       device: title,
       logicalName: logicalName,
-      left: box.style.left,
-      top: box.style.top,
-      width: box.style.width,
-      height: box.style.height,
+      left: left,
+      top: top,
+      width: width,
+      height: height,
       info: deviceInfo,
       image: imageSrc
     });
@@ -3036,13 +3047,20 @@ function getCurrentLayoutData() {
           } catch (e) { }
         });
       }
+      // compute fallback from bounding rect relative to device-grid
+      const rect = box.getBoundingClientRect();
+      const leftVal = box.style.left && box.style.left.trim() ? box.style.left : Math.round(rect.left - gridRect.left) + 'px';
+      const topVal = box.style.top && box.style.top.trim() ? box.style.top : Math.round(rect.top - gridRect.top) + 'px';
+      const widthVal = box.style.width && box.style.width.trim() ? box.style.width : Math.round(rect.width) + 'px';
+      const heightVal = box.style.height && box.style.height.trim() ? box.style.height : Math.round(rect.height) + 'px';
+
       layout.plots.push({
         id: plotId,
         title: title,
-        left: box.style.left,
-        top: box.style.top,
-        width: box.style.width,
-        height: box.style.height,
+        left: leftVal,
+        top: topVal,
+        width: widthVal,
+        height: heightVal,
         traces: traces
       });
     });
@@ -3234,6 +3252,9 @@ function applyLayout(layout) {
           if (p.top) container.style.top = p.top;
           if (p.width) container.style.width = p.width;
           if (p.height) container.style.height = p.height;
+          // allow restored plots to exceed .device-box max-width
+          container.style.maxWidth = 'none';
+          container.style.boxSizing = 'border-box';
           container.style.zIndex = '5';
 
           // Title
@@ -3258,6 +3279,8 @@ function applyLayout(layout) {
           grid.appendChild(container);
           try { makeDraggable(container); } catch (e) {}
           try { makeResizable(container); } catch (e) {}
+          // clear any residual transform/data so saved left/top/width take effect
+          try { container.style.transform = ''; container.removeAttribute('data-x'); container.removeAttribute('data-y'); } catch(e){}
 
           // Register a plotsMap entry so plots.js update logic will pick it up
           const newKey = 'restored_plot_' + (++window._plots._restoreCounter);
