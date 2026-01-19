@@ -477,9 +477,7 @@ startPollingLatestValues();
         });
    
       });
-      // if(!matched){
-      //   console.warn(`[plots.js] spinupdate for key '${emittedKey}' did not match any staged trace. No plot will update.`);
-      // }
+     
       // For each updated plot, append the latest value only to the matching trace (like test stream)
       updatedPlots.forEach(id => {
    
@@ -622,20 +620,21 @@ startPollingLatestValues();
   
     const plotDiv = document.createElement('div'); plotDiv.id = id + '_plot'; plotDiv.style.width = '100%'; plotDiv.style.height = '360px';
     
-  container.appendChild(plotDiv);
+    container.appendChild(plotDiv);
   // Insert plot panel into the main device grid so plots share the same workspace
-  const grid = document.getElementById('device-grid');
-  container.style.position = 'absolute';
-  container.style.left = '200px';
-  container.style.top = '80px';
+    const grid = document.getElementById('device-grid');
+    container.style.position = 'absolute';
+    container.style.left = '200px';
+    container.style.top = '80px';
   // make plots wider by default and allow exceeding the device-box CSS max-width
-  container.style.width = '700px';
-  container.style.maxWidth = 'none';
-  container.style.zIndex = '5';
-  container.classList.add('device-box', 'plot-panel');
-  grid.appendChild(container);
-  try { makeDraggable(container); } catch (e) {}
-  try { makeResizable(container); } catch (e) {}
+    container.style.width = '700px';
+    container.style.maxWidth = 'none';
+    container.style.zIndex = '5';
+    container.classList.add('device-box', 'plot-panel');
+    grid.appendChild(container);
+  
+    try { makeDraggable(container); } catch (e) {console.debug("plot is not draggable")}
+    try { makeResizable(container); } catch (e) {console.debug("plot is not moveable")}
 
     const plotEntry = { id, containerDiv: container, plotDiv: plotDiv, traces: {} };
     // transfer staged lines into this new plot
@@ -655,18 +654,19 @@ startPollingLatestValues();
     plotsMap[id] = plotEntry;
     // initialize plotly and capture trace indices so we can extend traces incrementally
     Plotly.newPlot(plotDiv, Object.values(plotEntry.traces).map(t=>t.traceObj), layoutForType()).then(()=>{
-      Object.values(plotEntry.traces).forEach((t,i)=>{ t._traceIndex = i; t._lastSent = t.x.length; });
+    Object.values(plotEntry.traces).forEach((t,i)=>{ t._traceIndex = i; t._lastSent = t.x.length; });
       // Remove Plotly layout title so only the editable title above is visible
-      Plotly.relayout(plotDiv, { title: '' });
+    Plotly.relayout(plotDiv, { title: '' });
       // Ensure titleDiv is always visible after plotly redraws
-      if (titleDiv.parentNode !== container) {
+    if (titleDiv.parentNode !== container) 
+    {
         container.insertBefore(titleDiv, container.firstChild);
-      }
+    }
       // (Ensure no subtitle/label is inserted below the title)
       // Remove any subtitle/label below the title if it exists
-      const next = titleDiv.nextSibling;
+    const next = titleDiv.nextSibling;
    
-      if (next && next.className && (next.className.includes('plot-param-labels') || next.className.includes('plot-legend-labels'))) {
+    if (next && next.className && (next.className.includes('plot-param-labels') || next.className.includes('plot-legend-labels'))) {
    
         container.removeChild(next);
    
@@ -939,10 +939,12 @@ startPollingLatestValues();
   function scanDataSpinPlots(){
     try
     {
-      document.querySelectorAll('div[data-spin-plot]').forEach(d => {
+      document.querySelectorAll('div[data-spin-plot]').forEach(d => 
+      {
         const spec = d.getAttribute('data-spin-plot'); if(spec) createPlotFromSpec(spec, d);
       });
-      document.querySelectorAll('rect').forEach(r => {
+      document.querySelectorAll('rect').forEach(r => 
+      {
         const lbl = r.getAttribute('inkscape:label') || r.getAttribute('data-inkscape-label');
         if(lbl && lbl.trim().startsWith('!plot '))
             {
@@ -968,75 +970,77 @@ startPollingLatestValues();
  * Parse a data-spin-plot attribute string into a config object.
  * Supports: title, global modifiers, and curve definitions with @name.param and label/modifiers.
  */
-function parseSpinPlotAttribute(attr) {
-  // Simple parser for demonstration; extend as needed for full syntax
+// function parseSpinPlotAttribute(attr) {
+//   // Simple parser for demonstration; extend as needed for full syntax
 
-  const config = { title: '', modifiers: {}, curves: [] };
+//   const config = { title: '', modifiers: {}, curves: [] };
 
-  if (!attr) return config;
-  // Split by @ for curves
+//   if (!attr) return config;
+//   // Split by @ for curves
 
-  const parts = attr.split('@');
-  // First part: title and global modifiers
+//   const parts = attr.split('@');
+//   // First part: title and global modifiers
 
-  const global = parts.shift();
+//   const global = parts.shift();
 
-  const globalTokens = global.match(/"([^"]+)"|\S+/g) || [];
+//   const globalTokens = global.match(/"([^"]+)"|\S+/g) || [];
 
-  globalTokens.forEach(token => {
+//   globalTokens.forEach(token => {
 
-    if (token.startsWith('"') && token.endsWith('"')) config.title = token.replace(/"/g, '');
+//     if (token.startsWith('"') && token.endsWith('"')) config.title = token.replace(/"/g, '');
 
-    else if (token.includes('=')) {
+//     else if (token.includes('=')) {
 
-      const [k, v] = token.split('=');
+//       const [k, v] = token.split('=');
 
-      config.modifiers[k] = v;
+//       config.modifiers[k] = v;
 
-    } 
+//     } 
     
-    else if (token === 'logscale') 
+//     else if (token === 'logscale') 
       
-      config.modifiers.logscale = true;
+//       config.modifiers.logscale = true;
     
-    else if (token === 'legend=right' || token === 'legend=bottom' || token === 'legend=none') 
+//     else if (token === 'legend=right' || token === 'legend=bottom' || token === 'legend=none') 
       
-      config.modifiers.legend = token.split('=')[1];
+//       config.modifiers.legend = token.split('=')[1];
 
-    else if (token.startsWith('fontsize=')) 
+//     else if (token.startsWith('fontsize=')) 
       
-      config.modifiers.fontsize = token.split('=')[1];
+//       config.modifiers.fontsize = token.split('=')[1];
     
-      else if (token.startsWith('interval=')) 
+//       else if (token.startsWith('interval=')) 
       
-      config.modifiers.interval = token.split('=')[1];
-  });
-  // Remaining parts: curves
-  parts.forEach(curveStr => {
-    const curve = { label: '', key: '', modifiers: {} };
-    const tokens = curveStr.match(/"([^"]+)"|\S+/g) || [];
-    tokens.forEach(token => {
-      if (token.startsWith('"') && token.endsWith('"')) curve.label = token.replace(/"/g, '');
-      else if (token.startsWith('color=')) curve.modifiers.color = token.split('=')[1];
-      else if (token.startsWith('symbol=')) curve.modifiers.symbol = token.split('=')[1];
-      else if (token.startsWith('line=')) curve.modifiers.line = token.split('=')[1];
-      else if (token === 'y2') curve.modifiers.y2 = true;
-      else if (token.includes('.')) curve.key = token;
-    });
-    config.curves.push(curve);
-  });
-  return config;
-}
+//       config.modifiers.interval = token.split('=')[1];
+//   });
+//   // Remaining parts: curves
+//   parts.forEach(curveStr => {
+      
+//       const curve = { label: '', key: '', modifiers: {} };
+//       const tokens = curveStr.match(/"([^"]+)"|\S+/g) || [];
+//       tokens.forEach(token => {
+//       if (token.startsWith('"') && token.endsWith('"')) curve.label = token.replace(/"/g, '');
+//       else if (token.startsWith('color=')) curve.modifiers.color = token.split('=')[1];
+//       else if (token.startsWith('symbol=')) curve.modifiers.symbol = token.split('=')[1];
+//       else if (token.startsWith('line=')) curve.modifiers.line = token.split('=')[1];
+//       else if (token === 'y2') curve.modifiers.y2 = true;
+//       else if (token.includes('.')) curve.key = token;
+    
+//     });
+//     config.curves.push(curve);
+//   });
+//   return config;
+// }
 
-// Example usage in plot creation:
-function createPlotFromSpinPlot(div) 
+// // Example usage in plot creation:
+// function createPlotFromSpinPlot(div) 
 
-{
+// {
 
-  const attr = div.getAttribute('data-spin-plot');
+//   const attr = div.getAttribute('data-spin-plot');
 
-  const config = parseSpinPlotAttribute(attr);
-} 
+//   const config = parseSpinPlotAttribute(attr);
+// } 
 
 // Make sure interact.js is loaded
 (function ensureInteractLoaded(){

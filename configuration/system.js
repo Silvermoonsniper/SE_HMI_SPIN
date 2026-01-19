@@ -484,10 +484,10 @@ window.addEventListener('spinupdate', function(event)
   try {
     var key = event.detail.key || '';
     
-    fetchNodesList(); 
-    loadNodesInfo();
-    fetchDeviceParams();
-    fetchAndMergeLatestValuesOnce();
+    // fetchNodesList(); 
+    // loadNodesInfo();
+    // fetchDeviceParams();
+    // fetchAndMergeLatestValuesOnce();
   
 
     if (key === 'nodemanager.nodes') {
