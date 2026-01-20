@@ -484,10 +484,9 @@ window.addEventListener('spinupdate', function(event)
   try {
     var key = event.detail.key || '';
     
-    // fetchNodesList(); 
-    // loadNodesInfo();
-    // fetchDeviceParams();
-    // fetchAndMergeLatestValuesOnce();
+       fetchNodesList(); 
+       loadNodesInfo();
+
   
 
     if (key === 'nodemanager.nodes') {
@@ -818,7 +817,8 @@ function updateParamDisplay(device, domId, param)
   }
 
   // If enum type, ensure a select exists and update its options without clobbering user's interaction
-  if (found.datainfo && found.datainfo.type === 'enum') {
+  if (found.datainfo && found.datainfo.type === 'enum') 
+    {
     const enumNames = found.datainfo.members || {};
     const keys = Object.keys(enumNames);
     let sel = inputContainer.querySelector('#param-value-' + domId);
@@ -836,7 +836,9 @@ function updateParamDisplay(device, domId, param)
         sel.appendChild(o);
       });
       inputContainer.appendChild(sel);
-    } else {
+    } 
+    else 
+    {
       // update options only if user isn't interacting with the control
       if (document.activeElement === sel) return;
       sel.innerHTML = '';
@@ -847,7 +849,9 @@ function updateParamDisplay(device, domId, param)
         sel.appendChild(o);
       });
     }
-  } else {
+  } 
+  else 
+  {
     // Use text input for other types. Preserve existing input value if user is typing.
     let existing = inputContainer.querySelector('#param-value-' + domId);
     if (!existing || existing.tagName.toLowerCase() !== 'input') {
@@ -2469,29 +2473,28 @@ function sendCommand(device, cmd) {
       ? window.Spin.current_socket
       : null;
 
-  try {
+  try 
+  {
     let commandToSend = cmd;
 
-    // If the command is an internal-style method (starts with '_'),
-    // map to a SECoP "do <module>:<cmd>" command
-  if (cmd && cmd.startsWith('_')) {
-      // device is '<node>_<module>' → extract module
-      getModuleName(device).then(moduleName => {
-     
-
-      // Build full SECoP command line
-      commandToSend = `do ${moduleName}:${cmd}`;
-     
-      })
-    }
-
-    
    
-  
+      // device is '<node>_<module>' → extract module
+    getModuleName(device).then(moduleName => {
+      // Build full SECoP command line
+    commandToSend = `do ${moduleName}:${cmd}`;   
+    });
+    
+
+ 
     // Fallback: POST to backend HTTP proxy which will open a StreamConnection.
     // First try to resolve node addr automatically for this device.
+    //TODO command send is not robust, if send failure resend it,
+
     (async () => {
-      try {
+      try 
+      
+      { 
+
         // Ask server which node handles this device
           const ndResp = await fetch(API_BASE + '/api/node_for_device', {
           method: 'POST',
@@ -2510,30 +2513,44 @@ function sendCommand(device, cmd) {
           if (!manual) return;
           addr = manual;
         }
+        
+        let send_status = false;
 
-          const sendResp = await fetch(API_BASE + '/api/send_request', {
+        while (!send_status) 
+          {
+          
+          sendResp = await fetch(API_BASE + '/api/send_request', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ addr: addr, command: commandToSend })
-        });
-        if (!sendResp.ok) {
-          const err = await sendResp.text();
-          alert('Failed to send command via proxy: ' + err);
-          return;
-        }
+          });
+         
+          send_status = sendResp.ok;
+        
+          }
+         
+
         const sr = await sendResp.json();
-        if (sr && sr.status && sr.status === 'sent') {
+        
+        if (sr && sr.status && sr.status === 'sent') 
+        {
           alert('Command sent via proxy. Response: ' + (sr.response || ''));
         } else {
           alert('Proxy response: ' + JSON.stringify(sr));
         }
-      } catch (err) {
+      } 
+
+      catch (err) 
+      
+      {
         console.error('HTTP fallback send failed', err);
         alert('Failed to send command: ' + err);
       }
     })();
 
-  } catch (e) {
+  }
+  catch (e) 
+  {
     console.error('sendCommand failed', e);
   }
 
@@ -2930,7 +2947,8 @@ function applyLayout(layout) {
       }
       if (match) {
         select.value = match;
-        createDeviceDisplay(); // This creates it at default pos
+        createDeviceDisplay(); 
+        // This creates it at default pos
         // Find the newly created box (last one)
         const boxes = document.querySelectorAll('.device-box');
         const newBox = boxes[boxes.length - 1];

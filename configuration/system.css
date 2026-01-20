@@ -636,13 +636,13 @@ input.control-input {
   width: 16px;
   height: 16px;
   background: red;
-  color: white;
+  color: rgb(31, 29, 29);
   border-radius: 50%;
   text-align: center;
   line-height: 14px;
   font-size: 12px;
   cursor: pointer;
-  display: none;
+  display: inline;
   z-index: 20;
 }
 .deco-drag-handle {

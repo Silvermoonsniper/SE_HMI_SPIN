@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTop
 <div style="display:flex; gap:12px; align-items:flex-start;">
 
   <!-- Left: Plots panel -->
-  <div id="plots-panel" style="flex: 1 1 50%;">
+  <div id="plots-panel" style="flex: 1 1 40%;">
     <div class="plots-container" style="background:#f6fff6; border:1px solid #c7f0c7; padding:8px; border-radius:6px;">
       <div class="plots-top">
         <div class="control-row">
@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTop
   </div>
 
   <!-- Right: existing device/decoration/viewport area -->
-  <div id="config-panel" style="flex: 1 1 50%; max-width:760px; display:flex; flex-direction:column;">
+  <div id="config-panel" style="flex: 1 1 60%; max-width:760px; display:flex; flex-direction:column;">
 
   <div id="device-manager" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; gap: 10px; align-items: center;">
   <label for="device-select" style="font-weight: bold; font-size: 12px;">Add Device:</label>
@@ -240,8 +240,9 @@ document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTop
     <button onclick="zoomCanvas(0.1)" style="padding: 4px 8px; font-weight:bold;" title="Zoom In">+</button>
     <button onclick="zoomCanvas(-0.1)" style="padding: 4px 8px; font-weight:bold;" title="Zoom Out">-</button>
     <button onclick="resetView()" style="padding: 4px 8px; font-size:11px;">Reset View</button>
-    <button onclick="saveLayoutToStorage()" style="padding: 4px 8px; font-size:11px;">Save File</button>
-    <button onclick="loadLayoutFromFile()" style="padding: 4px 8px; font-size:11px;">Load File</button>
+    <button onclick="saveLayoutToStorage()" style="padding: 4px 8px; font-size:11px;">Save layout</button>
+    <button onclick="loadLayoutFromFile()" style="padding: 4px 8px; font-size:11px;">Load layout</button>
+     <button onclick="create_newLayoutFile()" style="padding: 4px 8px; font-size:11px;">New layout</button>
   </div>
   </div>
 
