@@ -40,131 +40,11 @@ startPollingLatestValues();
 // Simplified plots manager: single plot with add/delete lines driven by device parameter dropdown
 
 (function(){
-  // --- Layout save/load infrastructure ---
+  // Layout/save UI removed: plots will use the device grid workspace and
+  // rely on the main system layout persistence. (Layout save/load code removed.)
 
-  const layoutDropdown = document.getElementById('plot-layout-dropdown');
-
-  const saveBtn = document.getElementById('save-layout');
-
-  function getCurrentLayout() {
-    // Collect all plot configs: title, parameters, position, size
-
-    return Object.values(plotsMap).map(p => {
-
-      const rect = p.containerDiv.getBoundingClientRect();
-
-      return {
-
-        title: p.containerDiv.querySelector('.plot-title-label')?.innerText || '',
-
-        params: Object.keys(p.traces),
-
-        x: p.containerDiv.getAttribute('data-x') || 0,
-
-        y: p.containerDiv.getAttribute('data-y') || 0,
-
-        width: p.containerDiv.style.width || rect.width,
-
-        height: p.containerDiv.style.height || rect.height
-
-      };
-
-    });
-
-  }
-
-  function saveLayout() {
-
-    const name = prompt('Enter a name for this layout:');
-
-    if (!name) return;
-
-    const layouts = JSON.parse(localStorage.getItem('plotLayouts') || '{}');
-
-    layouts[name] = getCurrentLayout();
-
-    localStorage.setItem('plotLayouts', JSON.stringify(layouts));
-
-    updateLayoutDropdown();
-
-    alert('Layout saved!');
-
-  }
-
-  function updateLayoutDropdown() {
-
-    const layouts = JSON.parse(localStorage.getItem('plotLayouts') || '{}');
-
-    layoutDropdown.innerHTML = '<option value="">-- Select Layout --</option>';
-
-    Object.keys(layouts).forEach(name => {
-
-      const opt = document.createElement('option');
-
-      opt.value = name;
-
-      opt.innerText = name;
-
-      layoutDropdown.appendChild(opt);
-
-    });
-
-  }
-
-  function restoreLayout(name) {
-
-    const layouts = JSON.parse(localStorage.getItem('plotLayouts') || '{}');
-
-    const layout = layouts[name];
-
-    if (!layout) return;
-
-    // Remove existing plots
-
-    Object.values(plotsMap).forEach(p => p.containerDiv.remove());
-
-    Object.keys(plotsMap).forEach(k => delete plotsMap[k]);
-
-    plotCounter = 0;
-    // Recreate plots from layout
-
-    layout.forEach(cfg => {
-      // Stage parameters
-
-      Object.keys(staged).forEach(k=> delete staged[k]);
-
-      cfg.params.forEach(param => staged[param] = { suffix: param });
-      // Create plot
-      createBtn.click();
-      // Set title, position, size
-      const lastPlot = Object.values(plotsMap)[Object.values(plotsMap).length-1];
-
-      if (lastPlot) {
-
-        lastPlot.containerDiv.querySelector('.plot-title-label').innerText = cfg.title;
-
-        lastPlot.containerDiv.style.width = typeof cfg.width === 'number' ? cfg.width + 'px' : cfg.width;
-
-        lastPlot.containerDiv.style.height = typeof cfg.height === 'number' ? cfg.height + 'px' : cfg.height;
-
-        lastPlot.containerDiv.setAttribute('data-x', cfg.x);
-
-        lastPlot.containerDiv.setAttribute('data-y', cfg.y);
-
-        lastPlot.containerDiv.style.transform = `translate(${cfg.x}px, ${cfg.y}px)`;
-      }
-    });
-  }
-
-  saveBtn.addEventListener('click', saveLayout);
-
-  layoutDropdown.addEventListener('change', function(){
-    if (layoutDropdown.value) restoreLayout(layoutDropdown.value);
-  });
-
-  updateLayoutDropdown();
-
-  const plotArea = document.getElementById('plot-area');
+  // Use device-grid as the primary plot container (no fallback).
+  const plotArea = document.getElementById('device-grid');
 
   const plotTypeSelect = document.getElementById('plot-type');
 
@@ -297,7 +177,7 @@ startPollingLatestValues();
   }
 
   function ensurePlot(){
-    // noop: plots are created by Create Plot which appends panels under plotArea
+    // noop: plots are created by Create Plot which appends panels under the device grid
     return;
   }
 
@@ -331,6 +211,49 @@ startPollingLatestValues();
   
     });
   
+  }
+
+  // Enable draggable/resizable behavior for a plot panel using interact.js if available.
+  function enablePlotPanelDragResize(container, plotDiv) {
+    if (window.interact) {
+      try {
+        interact(container)
+        .draggable({
+          inertia: true,
+          listeners: {
+            move (event) {
+              const x = (parseFloat(container.getAttribute('data-x')) || 0) + event.dx;
+              const y = (parseFloat(container.getAttribute('data-y')) || 0) + event.dy;
+              container.style.transform = `translate(${x}px, ${y}px)`;
+              container.setAttribute('data-x', x);
+              container.setAttribute('data-y', y);
+            }
+          }
+        })
+        .resizable({
+          edges: { left: true, right: true, bottom: true, top: true },
+          listeners: {
+            move (event) {
+              let { x, y } = event.target.dataset;
+              x = (parseFloat(x) || 0) + event.deltaRect.left;
+              y = (parseFloat(y) || 0) + event.deltaRect.top;
+              Object.assign(event.target.style, {
+                width: `${event.rect.width}px`,
+                height: `${event.rect.height}px`,
+                transform: `translate(${x}px, ${y}px)`
+              });
+              event.target.dataset.x = x;
+              event.target.dataset.y = y;
+              // Resize plotly plot
+              try { Plotly.Plots.resize(plotDiv); } catch(e) {}
+            }
+          },
+          inertia: true
+        });
+      } catch(e) { console.debug('enablePlotPanelDragResize failed', e); }
+    } else {
+      setTimeout(()=>enablePlotPanelDragResize(container, plotDiv), 500);
+    }
   }
 
   function addLine(){
@@ -460,10 +383,12 @@ startPollingLatestValues();
       el.id = 'spinupdate-indicator';
   
       el.style.position = 'fixed';
-  
+      
       el.style.top = '8px';
-  
-      el.style.right = '16px';
+      
+  // center the indicator horizontally
+      el.style.left = '50%';
+      el.style.transform = 'translateX(-50%)';
   
       el.style.background = '#e0ffe0';
   
@@ -552,9 +477,7 @@ startPollingLatestValues();
         });
    
       });
-      // if(!matched){
-      //   console.warn(`[plots.js] spinupdate for key '${emittedKey}' did not match any staged trace. No plot will update.`);
-      // }
+     
       // For each updated plot, append the latest value only to the matching trace (like test stream)
       updatedPlots.forEach(id => {
    
@@ -631,7 +554,7 @@ startPollingLatestValues();
   createBtn && createBtn.addEventListener('click', ()=>{
     // Create a new plot panel below using all currently staged lines.
   
-    if(!plotArea) return alert('Plot area not available');
+  // plots will be inserted into the device grid (or document body) when created
     // if there are no staged lines, but a device param is selected, stage it automatically
   
     const preselected = deviceParamsSelect && deviceParamsSelect.value ? deviceParamsSelect.value.trim() : '';
@@ -698,8 +621,20 @@ startPollingLatestValues();
     const plotDiv = document.createElement('div'); plotDiv.id = id + '_plot'; plotDiv.style.width = '100%'; plotDiv.style.height = '360px';
     
     container.appendChild(plotDiv);
-    
-    plotArea.appendChild(container);
+  // Insert plot panel into the main device grid so plots share the same workspace
+    const grid = document.getElementById('device-grid');
+    container.style.position = 'absolute';
+    container.style.left = '200px';
+    container.style.top = '80px';
+  // make plots wider by default and allow exceeding the device-box CSS max-width
+    container.style.width = '700px';
+    container.style.maxWidth = 'none';
+    container.style.zIndex = '5';
+    container.classList.add('device-box', 'plot-panel');
+    grid.appendChild(container);
+  
+    try { makeDraggable(container); } catch (e) {console.debug("plot is not draggable")}
+    try { makeResizable(container); } catch (e) {console.debug("plot is not moveable")}
 
     const plotEntry = { id, containerDiv: container, plotDiv: plotDiv, traces: {} };
     // transfer staged lines into this new plot
@@ -719,18 +654,19 @@ startPollingLatestValues();
     plotsMap[id] = plotEntry;
     // initialize plotly and capture trace indices so we can extend traces incrementally
     Plotly.newPlot(plotDiv, Object.values(plotEntry.traces).map(t=>t.traceObj), layoutForType()).then(()=>{
-      Object.values(plotEntry.traces).forEach((t,i)=>{ t._traceIndex = i; t._lastSent = t.x.length; });
+    Object.values(plotEntry.traces).forEach((t,i)=>{ t._traceIndex = i; t._lastSent = t.x.length; });
       // Remove Plotly layout title so only the editable title above is visible
-      Plotly.relayout(plotDiv, { title: '' });
+    Plotly.relayout(plotDiv, { title: '' });
       // Ensure titleDiv is always visible after plotly redraws
-      if (titleDiv.parentNode !== container) {
+    if (titleDiv.parentNode !== container) 
+    {
         container.insertBefore(titleDiv, container.firstChild);
-      }
+    }
       // (Ensure no subtitle/label is inserted below the title)
       // Remove any subtitle/label below the title if it exists
-      const next = titleDiv.nextSibling;
+    const next = titleDiv.nextSibling;
    
-      if (next && next.className && (next.className.includes('plot-param-labels') || next.className.includes('plot-legend-labels'))) {
+    if (next && next.className && (next.className.includes('plot-param-labels') || next.className.includes('plot-legend-labels'))) {
    
         container.removeChild(next);
    
@@ -802,7 +738,9 @@ startPollingLatestValues();
         setTimeout(()=>makePanelDraggableResizable(container, plotDiv), 500);
       }
     }
-    makePanelDraggableResizable(container, plotDiv);
+  // enable interact-based dragging/resizing
+  try { makePanelDraggableResizable(container, plotDiv); } catch(e) {}
+  try { enablePlotPanelDragResize(container, plotDiv); } catch(e) {}
 
     // clear staged and UI staged list
     Object.keys(staged).forEach(k=> delete staged[k]);
@@ -909,7 +847,7 @@ startPollingLatestValues();
     return res;
   
   }
-
+  // create plot 
   function createPlotFromSpec(spec, hostEl){
     
     const parsed = parseDataSpinPlot(spec);
@@ -939,7 +877,21 @@ startPollingLatestValues();
     
       plotDiv = document.createElement('div'); plotDiv.style.width='100%'; plotDiv.style.height='360px';
     
-      container.appendChild(header); container.appendChild(plotDiv); plotArea.appendChild(container);
+      container.appendChild(header); container.appendChild(plotDiv);
+  // place auto-created plot into the main device grid workspace
+      const grid2 = document.getElementById('device-grid');
+      container.style.position = 'absolute';
+      container.style.left = '220px';
+      container.style.top = '120px';
+  // make auto-created plots wider by default
+      container.style.width = '700px';
+      container.style.maxWidth = 'none';
+      container.style.zIndex = '5';
+      container.classList.add('device-box', 'plot-panel');
+      grid2.appendChild(container);
+      try { makeDraggable(container); } catch (e) {}
+      try { makeResizable(container); } catch (e) {}
+  
     }
 
     const plotEntry = { id, containerDiv: container, plotDiv: plotDiv, traces: {} };
@@ -979,6 +931,7 @@ startPollingLatestValues();
     
     Plotly.newPlot(plotDiv, Object.values(plotEntry.traces).map(t=>t.traceObj), layout).then(()=>{
       Object.values(plotEntry.traces).forEach((t,i)=> t._traceIndex = i);
+      try { enablePlotPanelDragResize(container, plotDiv); } catch(e) {}
     }).catch(e=>{ console.warn('Plotly.newPlot auto plot failed', e); });
   
   }
@@ -986,10 +939,12 @@ startPollingLatestValues();
   function scanDataSpinPlots(){
     try
     {
-      document.querySelectorAll('div[data-spin-plot]').forEach(d => {
+      document.querySelectorAll('div[data-spin-plot]').forEach(d => 
+      {
         const spec = d.getAttribute('data-spin-plot'); if(spec) createPlotFromSpec(spec, d);
       });
-      document.querySelectorAll('rect').forEach(r => {
+      document.querySelectorAll('rect').forEach(r => 
+      {
         const lbl = r.getAttribute('inkscape:label') || r.getAttribute('data-inkscape-label');
         if(lbl && lbl.trim().startsWith('!plot '))
             {
@@ -1015,75 +970,77 @@ startPollingLatestValues();
  * Parse a data-spin-plot attribute string into a config object.
  * Supports: title, global modifiers, and curve definitions with @name.param and label/modifiers.
  */
-function parseSpinPlotAttribute(attr) {
-  // Simple parser for demonstration; extend as needed for full syntax
+// function parseSpinPlotAttribute(attr) {
+//   // Simple parser for demonstration; extend as needed for full syntax
 
-  const config = { title: '', modifiers: {}, curves: [] };
+//   const config = { title: '', modifiers: {}, curves: [] };
 
-  if (!attr) return config;
-  // Split by @ for curves
+//   if (!attr) return config;
+//   // Split by @ for curves
 
-  const parts = attr.split('@');
-  // First part: title and global modifiers
+//   const parts = attr.split('@');
+//   // First part: title and global modifiers
 
-  const global = parts.shift();
+//   const global = parts.shift();
 
-  const globalTokens = global.match(/"([^"]+)"|\S+/g) || [];
+//   const globalTokens = global.match(/"([^"]+)"|\S+/g) || [];
 
-  globalTokens.forEach(token => {
+//   globalTokens.forEach(token => {
 
-    if (token.startsWith('"') && token.endsWith('"')) config.title = token.replace(/"/g, '');
+//     if (token.startsWith('"') && token.endsWith('"')) config.title = token.replace(/"/g, '');
 
-    else if (token.includes('=')) {
+//     else if (token.includes('=')) {
 
-      const [k, v] = token.split('=');
+//       const [k, v] = token.split('=');
 
-      config.modifiers[k] = v;
+//       config.modifiers[k] = v;
 
-    } 
+//     } 
     
-    else if (token === 'logscale') 
+//     else if (token === 'logscale') 
       
-      config.modifiers.logscale = true;
+//       config.modifiers.logscale = true;
     
-    else if (token === 'legend=right' || token === 'legend=bottom' || token === 'legend=none') 
+//     else if (token === 'legend=right' || token === 'legend=bottom' || token === 'legend=none') 
       
-      config.modifiers.legend = token.split('=')[1];
+//       config.modifiers.legend = token.split('=')[1];
 
-    else if (token.startsWith('fontsize=')) 
+//     else if (token.startsWith('fontsize=')) 
       
-      config.modifiers.fontsize = token.split('=')[1];
+//       config.modifiers.fontsize = token.split('=')[1];
     
-      else if (token.startsWith('interval=')) 
+//       else if (token.startsWith('interval=')) 
       
-      config.modifiers.interval = token.split('=')[1];
-  });
-  // Remaining parts: curves
-  parts.forEach(curveStr => {
-    const curve = { label: '', key: '', modifiers: {} };
-    const tokens = curveStr.match(/"([^"]+)"|\S+/g) || [];
-    tokens.forEach(token => {
-      if (token.startsWith('"') && token.endsWith('"')) curve.label = token.replace(/"/g, '');
-      else if (token.startsWith('color=')) curve.modifiers.color = token.split('=')[1];
-      else if (token.startsWith('symbol=')) curve.modifiers.symbol = token.split('=')[1];
-      else if (token.startsWith('line=')) curve.modifiers.line = token.split('=')[1];
-      else if (token === 'y2') curve.modifiers.y2 = true;
-      else if (token.includes('.')) curve.key = token;
-    });
-    config.curves.push(curve);
-  });
-  return config;
-}
+//       config.modifiers.interval = token.split('=')[1];
+//   });
+//   // Remaining parts: curves
+//   parts.forEach(curveStr => {
+      
+//       const curve = { label: '', key: '', modifiers: {} };
+//       const tokens = curveStr.match(/"([^"]+)"|\S+/g) || [];
+//       tokens.forEach(token => {
+//       if (token.startsWith('"') && token.endsWith('"')) curve.label = token.replace(/"/g, '');
+//       else if (token.startsWith('color=')) curve.modifiers.color = token.split('=')[1];
+//       else if (token.startsWith('symbol=')) curve.modifiers.symbol = token.split('=')[1];
+//       else if (token.startsWith('line=')) curve.modifiers.line = token.split('=')[1];
+//       else if (token === 'y2') curve.modifiers.y2 = true;
+//       else if (token.includes('.')) curve.key = token;
+    
+//     });
+//     config.curves.push(curve);
+//   });
+//   return config;
+// }
 
-// Example usage in plot creation:
-function createPlotFromSpinPlot(div) 
+// // Example usage in plot creation:
+// function createPlotFromSpinPlot(div) 
 
-{
+// {
 
-  const attr = div.getAttribute('data-spin-plot');
+//   const attr = div.getAttribute('data-spin-plot');
 
-  const config = parseSpinPlotAttribute(attr);
-} 
+//   const config = parseSpinPlotAttribute(attr);
+// } 
 
 // Make sure interact.js is loaded
 (function ensureInteractLoaded(){

@@ -237,7 +237,7 @@ class NodeManagerDevice(BaseDevice):
             except:
                 pass
         # Ensure all_params is present and up to date for each device
-        changed = False
+      
         for dev, info in data.items():
             # Compute a robust all_params as the union of all known sources:
             # - keys of 'accessibles' (if present),
@@ -268,7 +268,7 @@ class NodeManagerDevice(BaseDevice):
          
       
       
-      
+    
         self.run_task(self.send_param('device_params', data, ''))
 
     async def _clear_status(self):
@@ -429,15 +429,7 @@ class NodeManagerDevice(BaseDevice):
                 self.run_task(self.send_param('status', msg, ''))
               
                 self.run_task(self._clear_status())
-                # Schedule a short delayed restart so the Spin process reloads devices
-                # from the updated nodes/device_params files. This allows the running
-                # container to recreate Device objects and the poller to start.
-                # try:
-                #     self.run_task(self._delayed_restart())
-                # except Exception:
-                #     pass
-              
-                # return Reply(request.connection, request.key, request.transform, 'ack', {"status": "ok", "message": msg})
+               
             
             except Exception as e:
                

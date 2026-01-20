@@ -2,6 +2,7 @@
  
 <!-- Explicit asset includes (helps when server does not auto-include page assets) -->
 <link rel="stylesheet" href="/c/system.css">
+<link rel="stylesheet" href="/c/plots.css">
 
 
 <div id="connection-panel">
@@ -108,7 +109,7 @@
         <option value="">-- Select Layout --</option>
       </select>
       <button id="delete-layout-btn" style="padding: 4px 8px; font-size:11px; background:#dc3545; color:white; border:none; border-radius:4px; margin-left:8px;" onclick="deleteSelectedLayout()">Delete</button>
-      </select>
+      
     </div>
     <!-- Action Buttons -->
     <div style="display: flex; gap: 10px;">
@@ -135,14 +136,19 @@ function toggleConfigView() {
     document.getElementById('decoration-manager'),
     // add other config sections here if needed
   ];
+  const plotsPanel = document.getElementById('plots-panel');
   const btnRow = document.getElementById('main-config-btns');
   const isHidden = configParts[0].style.display === 'none';
   if (isHidden) {
     configParts.forEach(el => { if (el) el.style.display = ''; });
+    if (plotsPanel) plotsPanel.style.display = '';
     btn.textContent = 'Show GUI';
     btnRow.style.display = 'flex';
-  } else {
+  } 
+  else 
+  {
     configParts.forEach(el => { if (el) el.style.display = 'none'; });
+    if (plotsPanel) plotsPanel.style.display = 'none';
     btn.textContent = 'Configure GUI';
     btnRow.style.display = 'flex';
   }
@@ -150,15 +156,75 @@ function toggleConfigView() {
 </script>
   </div>
 
-<div id="device-manager" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; gap: 10px; align-items: center;">
+<!-- Adjust plots-top height to match right-side config boxes -->
+<script>
+function setPlotsTopHeight(){
+  try{
+    const plotsTop = document.querySelector('.plots-top');
+    const deviceMgr = document.getElementById('device-manager');
+    const decoMgr = document.getElementById('decoration-manager');
+    if(!plotsTop || !deviceMgr || !decoMgr) return;
+    // computed height: sum of both manager heights plus gaps/margins
+    const style = window.getComputedStyle(deviceMgr);
+    const marginBottom = parseFloat(style.marginBottom || 0) || 0;
+    const total = deviceMgr.offsetHeight + decoMgr.offsetHeight + marginBottom + 8;
+    plotsTop.style.minHeight = total + 'px';
+  }catch(e){ console.debug('setPlotsTopHeight error', e); }
+}
+
+window.addEventListener('load', setPlotsTopHeight);
+window.addEventListener('resize', setPlotsTopHeight);
+// ensure adjustments after toggles
+document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTopHeight, 200); });
+</script>
+
+<!-- Two-column area: left = plots, right = device/decoration/config -->
+<div style="display:flex; gap:12px; align-items:flex-start;">
+
+  <!-- Left: Plots panel -->
+  <div id="plots-panel" style="flex: 1 1 40%;">
+    <div class="plots-container" style="background:#f6fff6; border:1px solid #c7f0c7; padding:8px; border-radius:6px;">
+      <div class="plots-top">
+        <div class="control-row">
+          <button id="create-plot" class="ctrl">Create Plot</button>
+          <select id="plot-type" class="ctrl">
+            <option value="line">Time series</option>
+            <option value="xy">XY scatter</option>
+            <option value="array">Array</option>
+          </select>
+
+          <select id="curve-key" class="ctrl">
+            <option value="">-- select device.param --</option>
+          </select>
+
+          <button id="add-curve" class="ctrl">Add Line</button>
+
+          <select id="added-lines" class="ctrl">
+            <option value="">-- added lines --</option>
+          </select>
+
+          <button id="delete-line" class="ctrl">Delete Line</button>
+        </div>
+      </div>
+
+      <div class="plots-main">
+        <!-- plot-area removed: plots will be placed into the main device grid -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: existing device/decoration/viewport area -->
+  <div id="config-panel" style="flex: 1 1 60%; max-width:760px; display:flex; flex-direction:column;">
+
+  <div id="device-manager" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; gap: 10px; align-items: center;">
   <label for="device-select" style="font-weight: bold; font-size: 12px;">Add Device:</label>
   <select id="device-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; min-width: 150px;">
     <option value="">-- Select Module --</option>
   </select>
   <button onclick="createDeviceDisplay()" style="padding: 4px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Create Display</button>
-</div>
+  </div>
 
-<div id="decoration-manager" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; gap: 10px; align-items: center;">
+  <div id="decoration-manager" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; gap: 10px; align-items: center;">
   <label for="deco-select" style="font-weight: bold; font-size: 12px;">Add customized display:</label>
   <select id="deco-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; min-width: 150px;">
     <option value="">-- Select Decoration --</option>
@@ -174,14 +240,22 @@ function toggleConfigView() {
     <button onclick="zoomCanvas(0.1)" style="padding: 4px 8px; font-weight:bold;" title="Zoom In">+</button>
     <button onclick="zoomCanvas(-0.1)" style="padding: 4px 8px; font-weight:bold;" title="Zoom Out">-</button>
     <button onclick="resetView()" style="padding: 4px 8px; font-size:11px;">Reset View</button>
-    <button onclick="saveLayoutToStorage()" style="padding: 4px 8px; font-size:11px;">Save File</button>
-    <button onclick="loadLayoutFromFile()" style="padding: 4px 8px; font-size:11px;">Load File</button>
+    <button onclick="saveLayoutToStorage()" style="padding: 4px 8px; font-size:11px;">Save layout</button>
+    <button onclick="loadLayoutFromFile()" style="padding: 4px 8px; font-size:11px;">Load layout</button>
+     <button onclick="create_newLayoutFile()" style="padding: 4px 8px; font-size:11px;">New layout</button>
   </div>
-</div>
+  </div>
 
-<div class="viewport" id="viewport" style="overflow: auto; position: relative;">
-  <div id="device-grid" style="width: 3000px; height: 2000px; position: relative; background: #fdfdfd;">
-    <!-- Devices will be added here -->
+  </div> <!-- end config-panel -->
+
+</div> <!-- end two-column area -->
+
+<!-- Full-width workspace: device grid spans the page width again -->
+<div style="width:100%; padding:8px 12px; box-sizing:border-box;">
+  <div class="viewport" id="viewport" style="overflow: auto; position: relative;">
+    <div id="device-grid" style="width: 3000px; height: 2000px; position: relative; background: #fdfdfd;">
+      <!-- Devices will be added here -->
+    </div>
   </div>
 </div>
 
@@ -198,6 +272,47 @@ function toggleConfigView() {
         <span id="val-{{DOM_ID}}" class="inline-small" data-spin='@{{DEVICE}} "%s {unit}"'>--</span> <span class="sep-1">/</span> 
         <span id="target-{{DOM_ID}}" class="inline-small" data-spin='@{{DEVICE}}.target "%s {unit}"'>--</span> <span class="sep-2">/</span> 
         <span id="gas-{{DOM_ID}}" class="inline-small" data-spin='@{{DEVICE}}._gastype "%s"'>--</span>
+      </div>
+    </div>
+
+    <div class="expand-btn" id="expand-btn-{{DOM_ID}}" onclick="toggleDeviceBody('{{DOM_ID}}')">▼</div>
+
+  <div id="body-{{DOM_ID}}" class="device-body">
+      <div class="control-section">
+        <div class="control-field">
+          <select id="param-select-{{DOM_ID}}" class="control-input" aria-label="Parameter" onchange="onParamSelectChange('{{DEVICE}}', '{{DOM_ID}}')">
+            <option value="">--</option>
+          </select>
+          <div id="param-input-container-{{DOM_ID}}" class="param-input-row">
+            <input type="text" id="param-value-{{DOM_ID}}" class="control-input flex-1" placeholder="val" />
+          </div>
+          <button class="control-button" onclick="sendSelectedParam('{{DEVICE}}', '{{DOM_ID}}')">Set</button>
+        </div>
+  <div id="param-current-value-{{DOM_ID}}" class="param-current"></div>
+      </div>
+      
+      <div id="commands-{{DOM_ID}}" class="commands-section"></div>
+
+  <div class="toggle-row"><button class="toggle-btn" id="toggle-{{DOM_ID}}" onclick="toggleExtra('{{DEVICE}}')">More ▾</button></div>
+      <div id="extra-{{DOM_ID}}" class="extra-panel" aria-hidden="true"></div>
+    </div>
+    <div class="resize-handle"></div>
+  </div>
+</template>
+
+<template id="drivable_device-template">
+  <div class="device-box" id="box-{{DOM_ID}}">
+    <div class="device-header">
+      <div class="device-title">{{TITLE}}</div>
+      <div id="status-{{DOM_ID}}" class="status-badge state-warn"><span data-spin='@{{DEVICE}} status "%s"'></span></div>
+      <button class="close-btn" onclick="removeDevice('{{DOM_ID}}')">&times;</button>
+    </div>
+    <div class="device-field">
+      <div>Val / Target </div>
+      <div class="device-value">
+        <span id="val-{{DOM_ID}}" class="inline-small" data-spin='@{{DEVICE}} "%s {unit}"'>--</span> <span class="sep-1">/</span> 
+        <span id="target-{{DOM_ID}}" class="inline-small" data-spin='@{{DEVICE}}.target "%s {unit}"'>--</span> <span class="sep-2">/</span> 
+       
       </div>
     </div>
 
@@ -267,4 +382,7 @@ function toggleConfigView() {
 <!-- Explicit script include in case server does not auto-include page scripts -->
 
 <script src="/c/system.js"></script>
+<!-- Plotly required for plots.js -->
+<script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+<script src="/c/plots.js"></script>
 

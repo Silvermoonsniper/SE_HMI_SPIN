@@ -11,3 +11,5 @@ configuration/__pycache__/
 configuration/device_params.json
 
 configuration/nodes.json
+
+spin.log
