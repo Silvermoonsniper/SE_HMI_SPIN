@@ -4421,6 +4421,15 @@
       "top": "168px",
       "width": "80px",
       "height": "100px"
+    },
+     {
+      "id": "icon-gas_dosing_valve_controller_Switch2",
+      "device": "gas_dosing_valve_controller",
+      "field": "Switch2",
+      "left": "829px",
+      "top": "118px",
+      "width": "80px",
+      "height": "100px"
     }
   ],
   "decorations": [

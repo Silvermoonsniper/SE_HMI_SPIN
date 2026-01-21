@@ -421,7 +421,6 @@ function connectToGUI() {
   // Then load selected layout
   const select = document.getElementById('layout-select');
   const name = select.value;
-  
 
   if (name) 
     {
@@ -1219,15 +1218,8 @@ function createDeviceDisplay(deviceNameOverride)
         if (isSample_position_device)
       {
        labelDiv.textContent = 'current sample';    
-      }
-       else
-        {
-          labelDiv.textContent = 'Val / Target'; 
-        }
-     
-     targetSpan.style.display = 'none';     
-        
-  
+      }       
+
     } 
   const sep1 = newBox.querySelector('.sep-1');
   const sep2 = newBox.querySelector('.sep-2');
@@ -1698,6 +1690,7 @@ async function setupValveController(device, domId) {
       const isValve = lowerField.includes('valve') || fieldName.startsWith('V');
       
       
+      
       if (!isSwitch && !isValve) return; // Skip non-valve fields
       
       const valveDomId = `${domId}_${fieldName}`;
@@ -1790,6 +1783,7 @@ async function setupValveController(device, domId) {
       const resizeHandle = document.createElement('div');
       resizeHandle.style.cssText = 'position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; background: #007bff; cursor: nwse-resize; border-radius: 2px; opacity: 0.7;';
       resizeHandle.title = 'Resize';
+      resizeHandle.style.display = "flex";
       
       // Hidden data-spin element for value updates
       const valueDisplay = document.createElement('div');
@@ -1804,7 +1798,15 @@ async function setupValveController(device, domId) {
       valveIcon.appendChild(label);
       valveIcon.appendChild(resizeHandle);
       valveIcon.appendChild(valueDisplay);
-      
+          // Remove button
+      const removeBtn = document.createElement('div');
+      removeBtn.className = 'deco-remove';
+      removeBtn.style.cursor = 'pointer';
+      removeBtn.onclick = function(e) {
+       e.stopPropagation(); // Prevent bubbling
+       valveIcon.remove();
+      };
+      valveIcon.appendChild(removeBtn);    
       // Add to grid
       const grid = document.getElementById('device-grid');
      
@@ -1815,6 +1817,9 @@ async function setupValveController(device, domId) {
         console.error('device-grid not found!');
       }
       
+  
+  
+  
       // Make it draggable (simple drag without device-box features)
       makeValveIconDraggable(valveIcon);
       makeValveIconResizable(valveIcon, imgContainer);
@@ -1935,8 +1940,10 @@ function setupValveImageListeners(device, domId) {
 function makeValveIconDraggable(el) {
   let isDragging = false;
   let startX, startY, initialLeft, initialTop;
-
+  
   el.addEventListener('mousedown', (e) => {
+
+    
     // Only start drag if clicking on the element itself, not the image
     if (e.target.tagName === 'IMG' || e.target.closest('img')) return;
     
@@ -1945,7 +1952,7 @@ function makeValveIconDraggable(el) {
     isDragging = true;
     startX = e.clientX;
     startY = e.clientY;
-    
+   
     const style = window.getComputedStyle(el);
     initialLeft = parseInt(style.left, 10) || el.offsetLeft;
     initialTop = parseInt(style.top, 10) || el.offsetTop;
@@ -1954,9 +1961,36 @@ function makeValveIconDraggable(el) {
     e.preventDefault();
   });
 
+ 
+
+  // Add resize handle if it doesn't exist (keep previous behavior)
+  let resizeHandle = el.querySelector('.resize-handle');
+  if (!resizeHandle && el.dataset.type !== 'label') {
+    resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    el.appendChild(resizeHandle);
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      if (e.button !== 0) return;
+
+      isResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+
+      const style = window.getComputedStyle(el);
+      initialWidth = parseInt(style.width, 10);
+      initialHeight = parseInt(style.height, 10);
+
+      e.preventDefault();
+    });
+
   window.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
     e.preventDefault();
+
+  
+
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
     el.style.left = `${initialLeft + dx}px`;
@@ -1969,7 +2003,7 @@ function makeValveIconDraggable(el) {
       el.style.zIndex = '10';
     }
   });
-}
+}}
 
 function makeValveIconResizable(valveIcon, imgContainer) {
   const resizeHandle = valveIcon.querySelector('div[title="Resize"]');
@@ -2783,6 +2817,36 @@ function loadSelectedLayout() {
   }
 }
 
+
+// funtion to get a new empty layout
+function create_newLayoutFile()
+{
+  
+   
+  // remove all device boxes
+  const gridEl = document.getElementById('device-grid');
+  document.querySelectorAll('.device-box:not(.plot-panel)').forEach(box => 
+  {
+  box.remove();
+  });
+
+  // remove Valve Icons (individual valve/switch icons)
+  document.querySelectorAll('.valve-icon').forEach(icon => {
+  icon.remove();
+  });
+
+  // remove decorations
+  document.querySelectorAll('.deco-box').forEach(box => {
+  box.remove();
+  });
+  // remove plots
+  document.querySelectorAll('.plot-panel').forEach(box => {
+  box.remove();
+  });
+}
+
+// function to get current layout description
+
 function getCurrentLayoutData() {
   const layout = {
     devices: [],
@@ -2808,17 +2872,24 @@ function getCurrentLayoutData() {
     // If this device-box contains an image (sample slot), record it so layouts
     // can restore per-slot images.
     let imageSrc = null;
-    try {
+    try 
+    {
       const imgEl = box.querySelector('img');
       if (imgEl && imgEl.src) imageSrc = imgEl.src;
-    } catch (e) { imageSrc = null; }
+    } 
+    catch 
+    (e) 
+    {
+    imageSrc = null; 
+    }
+    
     // compute fallback position/size from bounding rect if inline style missing
     const rect = box.getBoundingClientRect();
     const left = box.style.left && box.style.left.trim() ? box.style.left : Math.round(rect.left - gridRect.left) + 'px';
     const top = box.style.top && box.style.top.trim() ? box.style.top : Math.round(rect.top - gridRect.top) + 'px';
     const width = box.style.width && box.style.width.trim() ? box.style.width : Math.round(rect.width) + 'px';
     const height = box.style.height && box.style.height.trim() ? box.style.height : Math.round(rect.height) + 'px';
-
+   
     layout.devices.push({
       id: box.id,
       device: title,
@@ -2868,7 +2939,12 @@ function getCurrentLayoutData() {
         traces: traces
       });
     });
-  } catch (e) { console.debug('getCurrentLayoutData: plot save skipped', e); }
+  } 
+  catch 
+  (e) 
+  { 
+    console.debug('getCurrentLayoutData: plot save skipped', e); 
+  }
   
   // Save Valve Icons (individual valve/switch icons)
   document.querySelectorAll('.valve-icon').forEach(icon => {
@@ -2945,7 +3021,8 @@ function applyLayout(layout) {
           return info && info.original_name === d.device;
         });
       }
-      if (match) {
+      if (match) 
+        {
         select.value = match;
         createDeviceDisplay(); 
         // This creates it at default pos
@@ -2958,7 +3035,9 @@ function applyLayout(layout) {
           if(d.width) newBox.style.width = d.width;
           if(d.height) newBox.style.height = d.height;
         }
-      } else {
+        }
+        else 
+        {
         // If this device wasn't matched to an available device, it may be
         // a synthetic element such as a sample magazine slot (id starts with
         // 'mag-'). Restore a placeholder slot so saved positions are kept.
@@ -3144,7 +3223,7 @@ function applyLayout(layout) {
           }
       });
   }
-  
+
   // Restore Valve Icons (individual valve/switch icons) if present in layout
   if (layout.valveIcons && Array.isArray(layout.valveIcons)) {
     const select = document.getElementById('device-select');
@@ -3286,11 +3365,21 @@ function applyLayout(layout) {
         valveIcon.appendChild(label);
         valveIcon.appendChild(resizeHandle);
         valveIcon.appendChild(valueDisplay);
+         // Remove button
+        const removeBtn = document.createElement('div');
+        removeBtn.className = 'deco-remove';
+        removeBtn.style.cursor = 'pointer';
+        removeBtn.onclick = function(e) {
+        e.stopPropagation(); // Prevent bubbling
+        valveIcon.remove();
+      };
+        valveIcon.appendChild(removeBtn);
 
         const grid = document.getElementById('device-grid');
         if (grid) {
           grid.appendChild(valveIcon);
         }
+
         makeValveIconDraggable(valveIcon);
         makeValveIconResizable(valveIcon, imgContainer);
 
