@@ -77,7 +77,7 @@
       <div style="font-size: 13px; color: #0c5460; line-height: 1.6;">
         <strong>General Sample Environment User Interface Framework (GSE-UI)</strong><br>
         This interface provides user the ability to design specific system layout for different 
-        experiment control system using SECoP devices, Tango device, NICOS devcice etc, and also connect to existing 
+        experiment control system using SECoP devices, Tango device (in development), NICOS devcice (in devleopment) etc, and also connect to existing 
         GUI after their design. 
       </div>
     </div>
@@ -112,10 +112,16 @@
       
     </div>
     <!-- Action Buttons -->
-    <div style="display: flex; gap: 10px;">
+    <div style="display: flex; gap: 10px;margin-bottom: 5px">
        
-        <button class="conn-btn" style="background: #28a745; font-size: 14px; padding: 10px; flex: 1;" onclick="connectToGUI()">
-          Connect to GUI
+        <button class="conn-btn" style="background: #28a745; font-size: 14px; padding: 10px; flex: 1;" onclick="connectToGUI(true)">
+          Configure system layout
+        </button>
+    </div>
+    <div style="display: flex; gap: 15px;">
+       
+        <button class="conn-btn" style="background: #3128a7; font-size: 14px; padding: 10px; flex: 1;" onclick="connectToGUI(false)">
+          Connect to system layout
         </button>
     </div>
   </div>
@@ -221,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTop
   <select id="device-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; min-width: 150px;">
     <option value="">-- Select Module --</option>
   </select>
-  <button onclick="createDeviceDisplay()" style="padding: 4px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Create Display</button>
+  <button onclick="createDeviceDisplay(true)" style="padding: 4px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Create Display</button>
   </div>
 
   <div id="decoration-manager" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; gap: 10px; align-items: center;">
@@ -234,7 +240,7 @@ document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTop
     <option value="control-panel">Control Panel</option>
   </select>
   <input type="color" id="deco-color" value="#cccccc" style="width: 30px; height: 24px; padding: 0; border: none; cursor: pointer;" title="Choose Color">
-  <button onclick="createDecoration()" style="padding: 4px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Create customized display</button>
+  <button onclick="createDecoration(true)" style="padding: 4px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Create customized display</button>
   <div style="width:1px; height:20px; background:#ddd; margin:0 10px;"></div>
   <div style="display: flex; gap: 8px; align-items: center;">
     <button onclick="zoomCanvas(0.1)" style="padding: 4px 8px; font-weight:bold;" title="Zoom In">+</button>

@@ -165,7 +165,7 @@ function loadSavedBackground() {
 
       if (match) {
         select.value = match;
-        createDeviceDisplay(); // This creates it at default pos
+        dev_box = createDeviceDisplay(true); // This creates it at default pos
         // Find the newly created box (last one)
         const boxes = document.querySelectorAll('.device-box');
         const newBox = boxes[boxes.length - 1];
@@ -409,7 +409,7 @@ function displayNodesInfo(nodesList) {
   infoContent.innerHTML = html;
 }
 
-function connectToGUI() {
+function connectToGUI(is_configure) {
   // Check if Spin is ready before connecting
   if (!window.Spin || !window.Spin.current_socket || window.Spin.current_socket.readyState !== WebSocket.OPEN) {
     alert('Connection to server not ready. Please wait a moment and try again.');
@@ -428,8 +428,14 @@ function connectToGUI() {
     
     if (layouts[name]) 
       {
-      
-      applyLayout(layouts[name]);
+      if (is_configure)
+      {
+       applyLayout(layouts[name]);
+      }
+      else
+        {
+       connect_to_system(layouts[name]);
+        }
       sessionStorage.setItem('selectedLayout', name);
     }
     // If this decoration is editable text, focus it so the user can start typing
@@ -1130,11 +1136,11 @@ function populateDeviceList(data)
   });
 }
 
-function createDeviceDisplay(deviceNameOverride) 
+function createDeviceDisplay(isConfigurelayout) 
 
 {
   const select = document.getElementById('device-select');
-  const device = deviceNameOverride || select.value;
+  const device = select.value;
   
   if (!device)  
   
@@ -1223,7 +1229,14 @@ function createDeviceDisplay(deviceNameOverride)
     } 
   const sep1 = newBox.querySelector('.sep-1');
   const sep2 = newBox.querySelector('.sep-2');
-
+  
+  if (isConfigurelayout)
+  {
+   makeDraggable(newBox);
+   makeResizable(newBox);  
+  }
+  
+  
   let isReadable = false;
   if (WRITABLE_PARAMS && WRITABLE_PARAMS[device] && WRITABLE_PARAMS[device].interface_classes) {
       if (WRITABLE_PARAMS[device].interface_classes.includes('Readable')) {
@@ -1249,10 +1262,6 @@ function createDeviceDisplay(deviceNameOverride)
       if (gasSpan) gasSpan.style.display = 'none';
       if (sep2) sep2.style.display = 'none';
   }
-
-  // Initialize draggable & resizable
-  makeDraggable(newBox);
-  makeResizable(newBox);
   
   // Populate params/commands
   if (WRITABLE_PARAMS && WRITABLE_PARAMS[device]) {
@@ -1279,26 +1288,28 @@ function createDeviceDisplay(deviceNameOverride)
  
   // For valve_controller, setup valve displays after Spin connects
   if (isValveController) {
-      setTimeout(() => setupValveController(device, domId), 1000);
+      setTimeout(() => setupValveController(device, domId,isConfigurelayout), 1000);
   }
 
   // for sample magazine, create slots display for all samples
   if (isSample_magazine_device) {
    
-    setTimeout(() => setupSampleMagazine(device, domId), 1000);
+    setTimeout(() => setupSampleMagazine(device, domId,isConfigurelayout), 1000);
   }
 
   // create a slot block to indicate sample presence at measurement location
   if (isSample_position_device) {
    
-    setTimeout(() => setupSample_presence(device), 1000);
+    setTimeout(() => setupSample_presence(device,isConfigurelayout), 1000);
   }
+
+  return newBox;
 }
 
 
 // make sample magazine display: create independent slot elements appended
 // directly to #device-grid so each slot can be moved/resized independently.
-async function setupSample_presence(device) 
+async function setupSample_presence(device,isConfigurelayout) 
 {
   // Be tolerant: ensure data exists
   const data = latestValues[device];
@@ -1331,8 +1342,13 @@ async function setupSample_presence(device)
         // ignore localStorage errors
       }
       // Re-apply draggable/resizable in case handlers are missing
+      if (isConfigurelayout)
+      {
+
       try { makeDraggable(prev); } catch (e) {}
       try { makeResizable(prev); } catch (e) {}
+      }
+    
       // Existing slot preserved — skip creating a new one
     return;
 
@@ -1368,8 +1384,11 @@ async function setupSample_presence(device)
     grid.appendChild(slot);
 
     // Make each slot individually draggable/resizable
-    makeDraggable(slot);
-    makeResizable(slot); 
+     if (isConfigurelayout)
+     {
+       makeDraggable(slot);
+       makeResizable(slot); 
+     }
 
 }
 
@@ -1420,7 +1439,7 @@ function make_slot(slotId,idx,slot_label)
 }
 // make sample magazine display: create independent slot elements appended
 // directly to #device-grid so each slot can be moved/resized independently.
-async function setupSampleMagazine(device, domId) 
+async function setupSampleMagazine(device, domId,isConfigurelayout) 
 {
   // Be tolerant: ensure data exists
   const data = latestValues[device];
@@ -1460,8 +1479,12 @@ async function setupSampleMagazine(device, domId)
         // ignore localStorage errors
       }
       // Re-apply draggable/resizable in case handlers are missing
+      if (isConfigurelayout)
+      {
       try { makeDraggable(prev); } catch (e) {}
       try { makeResizable(prev); } catch (e) {}
+      }
+      
       // Existing slot preserved — skip creating a new one
       return;
     }
@@ -1517,8 +1540,11 @@ async function setupSampleMagazine(device, domId)
     grid.appendChild(slot);
 
     // Make each slot individually draggable/resizable
+     if (isConfigurelayout)
+    {
     makeDraggable(slot);
     makeResizable(slot);
+    }
   });
 }
 
@@ -1634,7 +1660,7 @@ function updateSampleSlotImages(device, arr) {
   }
 }
 
-async function setupValveController(device, domId) {
+async function setupValveController(device, domId,isConfigurelayout) {
    
   // Get the value parameter from latestValues (populated by Spin updates)
   // Wait a bit for Spin to populate the data
@@ -1798,7 +1824,10 @@ async function setupValveController(device, domId) {
       valveIcon.appendChild(label);
       valveIcon.appendChild(resizeHandle);
       valveIcon.appendChild(valueDisplay);
-          // Remove button
+      
+       if (isConfigurelayout)
+      {
+      // Remove button
       const removeBtn = document.createElement('div');
       removeBtn.className = 'deco-remove';
       removeBtn.style.cursor = 'pointer';
@@ -1807,6 +1836,7 @@ async function setupValveController(device, domId) {
        valveIcon.remove();
       };
       valveIcon.appendChild(removeBtn);    
+      }
       // Add to grid
       const grid = document.getElementById('device-grid');
      
@@ -1821,9 +1851,14 @@ async function setupValveController(device, domId) {
   
   
       // Make it draggable (simple drag without device-box features)
-      makeValveIconDraggable(valveIcon);
-      makeValveIconResizable(valveIcon, imgContainer);
-
+      if (isConfigurelayout)
+      {
+       makeValveIconDraggable(valveIcon);
+       makeValveIconResizable(valveIcon, imgContainer);
+      }
+      
+      
+      
       // double-click to remove valve icon
       valveIcon.addEventListener('dblclick', (e) => {
         e.stopPropagation();
@@ -1887,19 +1922,6 @@ function updateValveImage(valveDomId, isOpen) {
     } catch (e) { /* ignore */ }
     }
   }
-
-function getValveIconState(valveIcon, device, fieldName) {
-  // Prefer DOM dataset state if present (optimistic), otherwise read latestValues
-  if (valveIcon && valveIcon.dataset && valveIcon.dataset.open !== undefined) {
-    return parseInt(valveIcon.dataset.open, 10) || 0;
-  }
-  const data = latestValues[device];
-  if (!data) return 0;
-  // Prefer the live `value` struct (actual states) over `target` when available
-  if (data.value && data.value.value && data.value.value[fieldName] !== undefined) return toNumeric(data.value.value[fieldName]);
-  if (data.target && data.target.value && data.target.value[fieldName] !== undefined) return toNumeric(data.target.value[fieldName]);
-  return 0;
-}
 }
 
 function setupValveImageListeners(device, domId) {
@@ -2038,6 +2060,7 @@ function makeValveIconResizable(valveIcon, imgContainer) {
     imgContainer.style.height = `${newSize}px`;
     valveIcon.style.width = `${newSize}px`;
     valveIcon.style.height = `${newSize + 20}px`; // +20 for label
+
   });
   
   window.addEventListener('mouseup', () => {
@@ -2336,7 +2359,8 @@ function makeResizable(el) {
   window.addEventListener('mouseup', onMouseUp);
 }
 
-function createDecoration() {
+function createDecoration(isConfigurelayout) 
+{
   const select = document.getElementById('deco-select');
   const colorInput = document.getElementById('deco-color');
   const type = select.value;
@@ -2422,6 +2446,8 @@ function createDecoration() {
  
 
   // Remove button
+  if ( isConfigurelayout)
+  {
   const removeBtn = document.createElement('div');
   removeBtn.className = 'deco-remove';
   removeBtn.innerHTML = '&times;';
@@ -2430,6 +2456,11 @@ function createDecoration() {
     wrapper.remove();
   };
   wrapper.appendChild(removeBtn);
+  
+  makeDraggable(wrapper);
+  makeResizable(wrapper);
+  }
+  
   
   // Position randomly or in a default location
   wrapper.style.left = '100px';
@@ -2444,9 +2475,7 @@ function createDecoration() {
     return;
   }
   
-  // Make it draggable and resizable
-  makeDraggable(wrapper);
-  makeResizable(wrapper);
+  return wrapper;
 
 }
 
@@ -3000,7 +3029,12 @@ function getCurrentLayoutData() {
 }
 
 
-function applyLayout(layout) {
+// function to show the system GUI with chosen layout configs, all elements are fixed, not draggable or resizeable or removable
+
+function connect_to_system(layout)
+{
+
+  const isconfigure_layout = false; 
   // Clear current
   document.getElementById('device-grid').innerHTML = '';
   
@@ -3024,7 +3058,8 @@ function applyLayout(layout) {
       if (match) 
         {
         select.value = match;
-        createDeviceDisplay(); 
+        dev_box = createDeviceDisplay(false);
+         
         // This creates it at default pos
         // Find the newly created box (last one)
         const boxes = document.querySelectorAll('.device-box');
@@ -3047,6 +3082,203 @@ function applyLayout(layout) {
           if (isMag) {
             const grid = document.getElementById('device-grid');
             if (grid) {
+              
+              slot = create_sample_block(d,isconfigure_layout);
+              grid.appendChild(slot);
+            
+            }
+          }
+        }
+        catch (err) 
+        {
+          console.error('applyLayout: failed to restore synthetic device', err);
+        }
+      }
+    });
+  }
+  
+  // Restore Plots (if any) so saved plot panels reappear in the workspace
+  if (layout.plots && Array.isArray(layout.plots)) {
+    try 
+    {
+    create_plot(layout,isconfigure_layout); 
+    } 
+    catch (err) 
+    { 
+      console.debug('applyLayout: plots restore skipped', err); 
+    }
+  }
+
+  // Restore Decorations
+  if (layout.decorations) {
+      layout.decorations.forEach(d => {
+          create_decoration(d,isconfigure_layout);
+      });
+  }
+
+  // Restore Valve Icons (individual valve/switch icons) if present in layout
+  if (layout.valveIcons && Array.isArray(layout.valveIcons)) {
+    const select = document.getElementById('device-select');
+    const availableDevices = select ? Array.from(select.options).map(opt => opt.value) : [];
+
+    layout.valveIcons.forEach(iconDef => {
+      try {
+        const isconfigure_layout = false;
+        
+        valve_element = create_valve_icon(availableDevices,iconDef,isconfigure_layout);
+        const grid = document.getElementById('device-grid');
+        if (grid) {
+          grid.appendChild(valve_element[0]);
+        }
+       
+
+        // Ensure we have image listeners for this device (safe to call multiple times)
+        try 
+        {
+           setupValveImageListeners(realDevice, deviceDomId(realDevice)); 
+        } 
+        catch (e) 
+        {}
+      } 
+      catch (e) 
+      {}
+    });
+   
+  }
+
+  // After restoring valve icons, reload Spin to bind new data-spin attributes
+  if (window.Spin && window.Spin.reload) {
+    window.Spin.reload();
+  }
+}
+
+
+function applyLayout(layout) {
+  // Clear current
+  document.getElementById('device-grid').innerHTML = '';
+  const isConfigurelayout = true; 
+  // Restore Devices with robust matching to current SEC node configuration
+  if (layout.devices) 
+    {
+    const select = document.getElementById('device-select');
+    const availableDevices = Array.from(select.options).map(opt => opt.value);
+    layout.devices.forEach(d => {
+      // Try to match by logicalName first
+      let match = availableDevices.find(dev => dev === d.logicalName);
+      // If not found, try by device title
+      if (!match) match = availableDevices.find(dev => dev === d.device);
+      // If still not found, try by original_name in WRITABLE_PARAMS
+      if (!match && window.WRITABLE_PARAMS) {
+        match = availableDevices.find(dev => {
+          const info = window.WRITABLE_PARAMS[dev];
+          return info && info.original_name === d.device;
+        });
+      }
+      if (match) 
+        {
+        select.value = match;
+        
+        dev_block = createDeviceDisplay(isConfigurelayout);
+          // Initialize draggable & resizable
+        makeDraggable(dev_block);
+        makeResizable(dev_block); 
+        // This creates it at default pos
+        // Find the newly created box (last one)
+        const boxes = document.querySelectorAll('.device-box');
+        const newBox = boxes[boxes.length - 1];
+        if (newBox) {
+          newBox.style.left = d.left;
+          newBox.style.top = d.top;
+          if(d.width) newBox.style.width = d.width;
+          if(d.height) newBox.style.height = d.height;
+        }
+        }
+        else 
+        {
+        // If this device wasn't matched to an available device, it may be
+        // a synthetic element such as a sample magazine slot (id starts with
+        // 'mag-'). Restore a placeholder slot so saved positions are kept.
+        try {
+          const isMag = (d.logicalName && d.logicalName.startsWith && d.logicalName.startsWith('mag-')) || (d.id && d.id.startsWith && d.id.startsWith('mag-') || d.logicalName == "sample_presence");
+        
+          if (isMag) {
+            const grid = document.getElementById('device-grid');
+            if (grid) {
+              
+              slot = create_sample_block(d,isConfigurelayout);
+              grid.appendChild(slot);
+              makeDraggable(slot);
+              makeResizable(slot);
+            }
+          }
+        }
+        catch (err) 
+        {
+          console.error('applyLayout: failed to restore synthetic device', err);
+        }
+      }
+    });
+  }
+  
+  // Restore Plots (if any) so saved plot panels reappear in the workspace
+  if (layout.plots && Array.isArray(layout.plots)) {
+    try 
+    {
+    create_plot(layout,isConfigurelayout); 
+    } 
+    catch (err) 
+    { 
+      console.debug('applyLayout: plots restore skipped', err); 
+    }
+  }
+
+  // Restore Decorations
+  if (layout.decorations) {
+      layout.decorations.forEach(d => {
+          create_decoration(d,isConfigurelayout);
+      });
+  }
+
+  // Restore Valve Icons (individual valve/switch icons) if present in layout
+  if (layout.valveIcons && Array.isArray(layout.valveIcons)) {
+    const select = document.getElementById('device-select');
+    const availableDevices = select ? Array.from(select.options).map(opt => opt.value) : [];
+
+    layout.valveIcons.forEach(iconDef => {
+      try {
+        const isconfigure_layout = true;
+        
+        valve_element = create_valve_icon(availableDevices,iconDef,isconfigure_layout);
+        const grid = document.getElementById('device-grid');
+        if (grid) {
+          grid.appendChild(valve_element[0]);
+        }
+        makeValveIconDraggable(valve_element[0]);
+        makeValveIconResizable(valve_element[0], valve_element[1]);
+
+        // Ensure we have image listeners for this device (safe to call multiple times)
+        try 
+        {
+           setupValveImageListeners(realDevice, deviceDomId(realDevice)); 
+        } 
+        catch (e) 
+        {}
+      } 
+      catch (e) 
+      {}
+    });
+   
+  }
+
+  // After restoring valve icons, reload Spin to bind new data-spin attributes
+  if (window.Spin && window.Spin.reload) {
+    window.Spin.reload();
+  }
+}
+
+function create_sample_block(d,isconfigure_layout)
+{
+
               const slot = document.createElement('div');
               slot.className = 'sample-slot device-box';
               slot.id = d.id || ('mag-' + Date.now());
@@ -3074,13 +3306,16 @@ function applyLayout(layout) {
               title.style.fontSize = '12px';
               title.style.paddingRight = '6px';
               header.appendChild(title);
-
+              
+              if (isconfigure_layout) 
+              {
               const removeBtn = document.createElement('div');
               removeBtn.className = 'deco-remove';
               removeBtn.innerHTML = '&times;';
               removeBtn.style.cursor = 'pointer';
               removeBtn.onclick = (e) => { e.stopPropagation(); slot.remove(); };
               header.appendChild(removeBtn);
+              }
               slot.appendChild(header);
 
               // image placeholder
@@ -3106,26 +3341,18 @@ function applyLayout(layout) {
               resizeHandle.className = 'resize-handle';
               slot.appendChild(resizeHandle);
 
-              grid.appendChild(slot);
-              makeDraggable(slot);
-              makeResizable(slot);
-            }
-          }
-        } catch (err) {
-          console.error('applyLayout: failed to restore synthetic device', err);
-        }
-      }
-    });
-  }
-  
-  // Restore Plots (if any) so saved plot panels reappear in the workspace
-  if (layout.plots && Array.isArray(layout.plots)) {
-    try {
-      // ensure window._plots exists
+              return slot;
+}
+
+function create_plot(layout,isconfigure_layout)
+
+{
+
+        // ensure window._plots exists
       window._plots = window._plots || { plotsMap: {}, staged: {} };
       window._plots._restoreCounter = window._plots._restoreCounter || 0;
       layout.plots.forEach(p => {
-        try {
+      try {
           const grid = document.getElementById('device-grid');
           if (!grid) return;
           const container = document.createElement('div');
@@ -3161,8 +3388,12 @@ function applyLayout(layout) {
           container.appendChild(plotDiv);
 
           grid.appendChild(container);
+          if (isconfigure_layout)
+          {
           try { makeDraggable(container); } catch (e) {}
           try { makeResizable(container); } catch (e) {}
+          }
+          
           // clear any residual transform/data so saved left/top/width take effect
           try { container.style.transform = ''; container.removeAttribute('data-x'); container.removeAttribute('data-y'); } catch(e){}
 
@@ -3178,28 +3409,41 @@ function applyLayout(layout) {
           window._plots.plotsMap[newKey] = plotEntry;
 
           // initialize plotly with empty traces
-          try {
+          try 
+          {
             const data = Object.values(plotEntry.traces).map(t => t.traceObj);
             Plotly.newPlot(plotDiv, data).then(() => {
               Object.values(plotEntry.traces).forEach((t, i) => { t._traceIndex = i; t._lastSent = t.traceObj.x.length; });
             }).catch(()=>{});
-          } catch(e) {}
+          } 
+          catch(e) 
+          {}
 
-        } catch (err) { console.debug('applyLayout: failed to restore plot', err); }
+        } 
+        catch (err) 
+        { 
+          console.debug('applyLayout: failed to restore plot', err); 
+        }
       });
-    } catch (err) { console.debug('applyLayout: plots restore skipped', err); }
-  }
+}
 
-  // Restore Decorations
-  if (layout.decorations) {
-      layout.decorations.forEach(d => {
+
+function create_decoration(d,isConfigurelayout)
+{
+
           const select = document.getElementById('deco-select');
           const colorInput = document.getElementById('deco-color');
           
           select.value = d.type;
           if (d.color) colorInput.value = rgbToHex(d.color) || d.color;
           
-          createDecoration();
+          wrapper = createDecoration(isConfigurelayout);
+          // Make it draggable and resizable
+          if (isConfigurelayout)
+             {
+             makeDraggable(wrapper);
+             makeResizable(wrapper);
+             }
           
           const boxes = document.querySelectorAll('.deco-box');
           const newBox = boxes[boxes.length - 1];
@@ -3221,17 +3465,15 @@ function applyLayout(layout) {
                   });
               }
           }
-      });
-  }
 
-  // Restore Valve Icons (individual valve/switch icons) if present in layout
-  if (layout.valveIcons && Array.isArray(layout.valveIcons)) {
-    const select = document.getElementById('device-select');
-    const availableDevices = select ? Array.from(select.options).map(opt => opt.value) : [];
+}
 
-    layout.valveIcons.forEach(iconDef => {
-      try {
-        // Saved values may use older/short device names or long field names.
+
+function create_valve_icon(availableDevices,iconDef,isconfigure_layout)
+
+{
+
+  // Saved values may use older/short device names or long field names.
         let realDevice = iconDef.device;
         let fieldName = iconDef.field;
 
@@ -3264,7 +3506,7 @@ function applyLayout(layout) {
         // If an element with same id already exists, skip
         if (document.getElementById(`icon-${valveDomId}`)) return;
 
-        const valveIcon = document.createElement('div');
+        const valveIcon = document.createElement('div'); 
         valveIcon.className = 'valve-icon';
         valveIcon.id = `icon-${valveDomId}`;
         valveIcon.dataset.device = realDevice; // Store device name
@@ -3276,11 +3518,14 @@ function applyLayout(layout) {
         if (iconDef.height) valveIcon.style.height = iconDef.height;
         valveIcon.style.cursor = 'pointer';
         valveIcon.style.userSelect = 'none';
-
+       
+        
         // Image container
         const imgContainer = document.createElement('div');
         imgContainer.id = `img-${valveDomId}`;
-        imgContainer.style.cssText = 'width: 80px; height: 80px; position: relative;';
+        
+        imgContainer.style.width = iconDef.width;
+        imgContainer.style.height = iconDef.height;
 
         const lowerField = (fieldName || '').toLowerCase();
         const isSwitch = lowerField.includes('switch');
@@ -3338,7 +3583,8 @@ function applyLayout(layout) {
         valueDisplay.setAttribute('data-spin', `@${realDevice}.value.${fieldName}`);
 
         // Initialize visual from latestValues if available (normalize with toNumeric)
-        try {
+        try 
+        {
           const d = latestValues[realDevice];
           const liveRaw = d && d.value && d.value.value && typeof d.value.value[fieldName] !== 'undefined' ? d.value.value[fieldName] : undefined;
           if (typeof liveRaw !== 'undefined') {
@@ -3359,47 +3605,31 @@ function applyLayout(layout) {
               if (valveEl) valveEl.title = `init ${fieldName}: ${String(liveRaw)} -> ${lv}`;
             } catch (e) { /* ignore */ }
           }
-        } catch (e) { /* ignore init errors */ }
+        } 
+        catch (e) 
+        { 
+          /* ignore init errors */ 
+        }
 
         valveIcon.appendChild(imgContainer);
         valveIcon.appendChild(label);
         valveIcon.appendChild(resizeHandle);
         valveIcon.appendChild(valueDisplay);
-         // Remove button
+        
+        if (isconfigure_layout) 
+          {
+        // Remove button
         const removeBtn = document.createElement('div');
         removeBtn.className = 'deco-remove';
         removeBtn.style.cursor = 'pointer';
-        removeBtn.onclick = function(e) {
+        removeBtn.onclick = function(e) 
+        {
         e.stopPropagation(); // Prevent bubbling
         valveIcon.remove();
-      };
+        };
+        
         valveIcon.appendChild(removeBtn);
-
-        const grid = document.getElementById('device-grid');
-        if (grid) {
-          grid.appendChild(valveIcon);
-        }
-
-        makeValveIconDraggable(valveIcon);
-        makeValveIconResizable(valveIcon, imgContainer);
-
-        // Ensure we have image listeners for this device (safe to call multiple times)
-        try 
-        {
-           setupValveImageListeners(realDevice, deviceDomId(realDevice)); 
-        } 
-        catch (e) 
-        {}
-      } 
-      catch (e) 
-      {}
-    });
-  }
-
-  // After restoring valve icons, reload Spin to bind new data-spin attributes
-  if (window.Spin && window.Spin.reload) {
-    window.Spin.reload();
-  }
-}
-
-
+          }
+      
+        return [valveIcon, imgContainer];
+}     

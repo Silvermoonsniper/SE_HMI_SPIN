@@ -633,14 +633,14 @@ input.control-input {
   position: absolute;
   top: -8px;
   right: -8px;
-  width: 16px;
-  height: 16px;
+  width: 8px;
+  height: 8px;
   background: red;
   color: rgb(31, 29, 29);
   border-radius: 50%;
   text-align: center;
-  line-height: 14px;
-  font-size: 12px;
+  line-height: 7px;
+  font-size: 6px;
   cursor: pointer;
   display: inline;
   z-index: 20;

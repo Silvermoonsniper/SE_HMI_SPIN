@@ -384,7 +384,6 @@ if not nodes:
     nodes = asyncio.get_event_loop().run_until_complete(manager.discover_and_save_nodes(timeout=1.0))
 
 
-
 config = manager.spin_server_start(nodes)
 
 time.sleep(5)

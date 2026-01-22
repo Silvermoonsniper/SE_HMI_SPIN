@@ -10,16 +10,16 @@
       "height": "auto",
       "info": {
         "params": [
-          "target",
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_forward_calibration_coefficients",
+          "_inverse_calibration_coefficients",
+          "_looptime",
+          "_tolerance",
           "pollinterval",
           "ramp",
-          "_inverse_calibration_coefficients",
-          "_forward_calibration_coefficients",
-          "_tolerance",
-          "_P_value",
-          "_I_value",
-          "_D_value",
-          "_looptime"
+          "target"
         ],
         "all_params": [
           "_D_value",
@@ -36,8 +36,8 @@
           "target"
         ],
         "commands": [
-          "stop",
-          "_factory_reset"
+          "_factory_reset",
+          "stop"
         ],
         "original_name": "backpress_contr1",
         "interface_classes": [
@@ -291,16 +291,16 @@
       "height": "122px",
       "info": {
         "params": [
-          "target",
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_forward_calibration_coefficients",
+          "_inverse_calibration_coefficients",
+          "_looptime",
+          "_tolerance",
           "pollinterval",
           "ramp",
-          "_inverse_calibration_coefficients",
-          "_forward_calibration_coefficients",
-          "_tolerance",
-          "_P_value",
-          "_I_value",
-          "_D_value",
-          "_looptime"
+          "target"
         ],
         "all_params": [
           "_D_value",
@@ -317,8 +317,8 @@
           "target"
         ],
         "commands": [
-          "stop",
-          "_factory_reset"
+          "_factory_reset",
+          "stop"
         ],
         "original_name": "backpress_contr2",
         "interface_classes": [
@@ -566,24 +566,24 @@
       "id": "box-gas_dosing_massflow_contr3",
       "device": "massflow_contr3",
       "logicalName": "gas_dosing_massflow_contr3",
-      "left": "32px",
-      "top": "275px",
+      "left": "105px",
+      "top": "303px",
       "width": "208px",
       "height": "auto",
       "info": {
         "params": [
-          "target",
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_control_mode",
+          "_forward_calibration_coefficients",
+          "_gastype_select",
+          "_inverse_calibration_coefficients",
+          "_tolerance",
+          "_valveposition",
           "pollinterval",
           "ramp",
-          "_inverse_calibration_coefficients",
-          "_forward_calibration_coefficients",
-          "_tolerance",
-          "_P_value",
-          "_I_value",
-          "_D_value",
-          "_gastype_select",
-          "_valveposition",
-          "_control_mode"
+          "target"
         ],
         "all_params": [
           "_D_value",
@@ -603,9 +603,9 @@
           "target"
         ],
         "commands": [
-          "stop",
           "_factory_reset",
-          "_test_cmd"
+          "_test_cmd",
+          "stop"
         ],
         "original_name": "massflow_contr3",
         "interface_classes": [
@@ -931,14 +931,14 @@
       "height": "auto",
       "info": {
         "params": [
-          "target",
-          "ramp",
-          "_inverse_calibration_coefficients",
-          "_forward_calibration_coefficients",
-          "_tolerance",
-          "_P_value",
+          "_D_value",
           "_I_value",
-          "_D_value"
+          "_P_value",
+          "_forward_calibration_coefficients",
+          "_inverse_calibration_coefficients",
+          "_tolerance",
+          "ramp",
+          "target"
         ],
         "all_params": [
           "_D_value",
@@ -953,8 +953,8 @@
           "target"
         ],
         "commands": [
-          "stop",
-          "_factory_reset"
+          "_factory_reset",
+          "stop"
         ],
         "original_name": "temperature_reg",
         "interface_classes": [
@@ -1157,24 +1157,24 @@
       "id": "box-gas_dosing_massflow_contr1",
       "device": "massflow_contr1",
       "logicalName": "gas_dosing_massflow_contr1",
-      "left": "30px",
-      "top": "21px",
+      "left": "108px",
+      "top": "38px",
       "width": "205px",
       "height": "auto",
       "info": {
         "params": [
-          "target",
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_control_mode",
+          "_forward_calibration_coefficients",
+          "_gastype_select",
+          "_inverse_calibration_coefficients",
+          "_tolerance",
+          "_valveposition",
           "pollinterval",
           "ramp",
-          "_inverse_calibration_coefficients",
-          "_forward_calibration_coefficients",
-          "_tolerance",
-          "_P_value",
-          "_I_value",
-          "_D_value",
-          "_gastype_select",
-          "_valveposition",
-          "_control_mode"
+          "target"
         ],
         "all_params": [
           "_D_value",
@@ -1194,9 +1194,9 @@
           "target"
         ],
         "commands": [
-          "stop",
           "_factory_reset",
-          "_test_cmd"
+          "_test_cmd",
+          "stop"
         ],
         "original_name": "massflow_contr1",
         "interface_classes": [
@@ -1516,24 +1516,24 @@
       "id": "box-gas_dosing_massflow_contr2",
       "device": "massflow_contr2",
       "logicalName": "gas_dosing_massflow_contr2",
-      "left": "33px",
-      "top": "151px",
+      "left": "106px",
+      "top": "170px",
       "width": "203px",
       "height": "auto",
       "info": {
         "params": [
-          "target",
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_control_mode",
+          "_forward_calibration_coefficients",
+          "_gastype_select",
+          "_inverse_calibration_coefficients",
+          "_tolerance",
+          "_valveposition",
           "pollinterval",
           "ramp",
-          "_inverse_calibration_coefficients",
-          "_forward_calibration_coefficients",
-          "_tolerance",
-          "_P_value",
-          "_I_value",
-          "_D_value",
-          "_gastype_select",
-          "_valveposition",
-          "_control_mode"
+          "target"
         ],
         "all_params": [
           "_D_value",
@@ -1553,9 +1553,9 @@
           "target"
         ],
         "commands": [
-          "stop",
           "_factory_reset",
-          "_test_cmd"
+          "_test_cmd",
+          "stop"
         ],
         "original_name": "massflow_contr2",
         "interface_classes": [
@@ -1875,24 +1875,24 @@
       "id": "box-gas_dosing_massflow_contr4",
       "device": "massflow_contr4",
       "logicalName": "gas_dosing_massflow_contr4",
-      "left": "33px",
-      "top": "406px",
+      "left": "104px",
+      "top": "441px",
       "width": "207px",
       "height": "120px",
       "info": {
         "params": [
-          "target",
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_control_mode",
+          "_forward_calibration_coefficients",
+          "_gastype_select",
+          "_inverse_calibration_coefficients",
+          "_tolerance",
+          "_valveposition",
           "pollinterval",
           "ramp",
-          "_inverse_calibration_coefficients",
-          "_forward_calibration_coefficients",
-          "_tolerance",
-          "_P_value",
-          "_I_value",
-          "_D_value",
-          "_gastype_select",
-          "_valveposition",
-          "_control_mode"
+          "target"
         ],
         "all_params": [
           "_D_value",
@@ -1912,9 +1912,9 @@
           "target"
         ],
         "commands": [
-          "stop",
           "_factory_reset",
-          "_test_cmd"
+          "_test_cmd",
+          "stop"
         ],
         "original_name": "massflow_contr4",
         "interface_classes": [
@@ -2234,24 +2234,24 @@
       "id": "box-gas_dosing_massflow_contr5",
       "device": "massflow_contr5",
       "logicalName": "gas_dosing_massflow_contr5",
-      "left": "36px",
-      "top": "634px",
+      "left": "105px",
+      "top": "683px",
       "width": "197px",
       "height": "122px",
       "info": {
         "params": [
-          "target",
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_control_mode",
+          "_forward_calibration_coefficients",
+          "_gastype_select",
+          "_inverse_calibration_coefficients",
+          "_tolerance",
+          "_valveposition",
           "pollinterval",
           "ramp",
-          "_inverse_calibration_coefficients",
-          "_forward_calibration_coefficients",
-          "_tolerance",
-          "_P_value",
-          "_I_value",
-          "_D_value",
-          "_gastype_select",
-          "_valveposition",
-          "_control_mode"
+          "target"
         ],
         "all_params": [
           "_D_value",
@@ -2271,9 +2271,9 @@
           "target"
         ],
         "commands": [
-          "stop",
           "_factory_reset",
-          "_test_cmd"
+          "_test_cmd",
+          "stop"
         ],
         "original_name": "massflow_contr5",
         "interface_classes": [
@@ -2593,24 +2593,24 @@
       "id": "box-gas_dosing_massflow_contr6",
       "device": "massflow_contr6",
       "logicalName": "gas_dosing_massflow_contr6",
-      "left": "35px",
-      "top": "767px",
+      "left": "104px",
+      "top": "828px",
       "width": "197px",
       "height": "122px",
       "info": {
         "params": [
-          "target",
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_control_mode",
+          "_forward_calibration_coefficients",
+          "_gastype_select",
+          "_inverse_calibration_coefficients",
+          "_tolerance",
+          "_valveposition",
           "pollinterval",
           "ramp",
-          "_inverse_calibration_coefficients",
-          "_forward_calibration_coefficients",
-          "_tolerance",
-          "_P_value",
-          "_I_value",
-          "_D_value",
-          "_gastype_select",
-          "_valveposition",
-          "_control_mode"
+          "target"
         ],
         "all_params": [
           "_D_value",
@@ -2630,9 +2630,9 @@
           "target"
         ],
         "commands": [
-          "stop",
           "_factory_reset",
-          "_test_cmd"
+          "_test_cmd",
+          "stop"
         ],
         "original_name": "massflow_contr6",
         "interface_classes": [
@@ -2952,24 +2952,24 @@
       "id": "box-gas_dosing_massflow_contr7",
       "device": "massflow_contr7",
       "logicalName": "gas_dosing_massflow_contr7",
-      "left": "35px",
-      "top": "898px",
+      "left": "103px",
+      "top": "975px",
       "width": "197px",
       "height": "122px",
       "info": {
         "params": [
-          "target",
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_control_mode",
+          "_forward_calibration_coefficients",
+          "_gastype_select",
+          "_inverse_calibration_coefficients",
+          "_tolerance",
+          "_valveposition",
           "pollinterval",
           "ramp",
-          "_inverse_calibration_coefficients",
-          "_forward_calibration_coefficients",
-          "_tolerance",
-          "_P_value",
-          "_I_value",
-          "_D_value",
-          "_gastype_select",
-          "_valveposition",
-          "_control_mode"
+          "target"
         ],
         "all_params": [
           "_D_value",
@@ -2989,9 +2989,9 @@
           "target"
         ],
         "commands": [
-          "stop",
           "_factory_reset",
-          "_test_cmd"
+          "_test_cmd",
+          "stop"
         ],
         "original_name": "massflow_contr7",
         "interface_classes": [
@@ -3311,24 +3311,24 @@
       "id": "box-gas_dosing_massflow_contr8",
       "device": "massflow_contr8",
       "logicalName": "gas_dosing_massflow_contr8",
-      "left": "36px",
-      "top": "1030px",
+      "left": "102px",
+      "top": "1120px",
       "width": "197px",
       "height": "122px",
       "info": {
         "params": [
-          "target",
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_control_mode",
+          "_forward_calibration_coefficients",
+          "_gastype_select",
+          "_inverse_calibration_coefficients",
+          "_tolerance",
+          "_valveposition",
           "pollinterval",
           "ramp",
-          "_inverse_calibration_coefficients",
-          "_forward_calibration_coefficients",
-          "_tolerance",
-          "_P_value",
-          "_I_value",
-          "_D_value",
-          "_gastype_select",
-          "_valveposition",
-          "_control_mode"
+          "target"
         ],
         "all_params": [
           "_D_value",
@@ -3348,9 +3348,9 @@
           "target"
         ],
         "commands": [
-          "stop",
           "_factory_reset",
-          "_test_cmd"
+          "_test_cmd",
+          "stop"
         ],
         "original_name": "massflow_contr8",
         "interface_classes": [
@@ -3670,8 +3670,8 @@
       "id": "box-gas_dosing_massflow_contr9",
       "device": "massflow_contr9",
       "logicalName": "gas_dosing_massflow_contr9",
-      "left": "35px",
-      "top": "1221px",
+      "left": "54px",
+      "top": "1395px",
       "width": "197px",
       "height": "122px",
       "info": {
@@ -4029,8 +4029,8 @@
       "id": "box-gas_dosing_massflow_contr10",
       "device": "massflow_contr10",
       "logicalName": "gas_dosing_massflow_contr10",
-      "left": "34px",
-      "top": "1350px",
+      "left": "56px",
+      "top": "1512px",
       "width": "205px",
       "height": "122px",
       "info": {
@@ -4387,38 +4387,245 @@
   ],
   "valveIcons": [
     {
-      "id": "icon-gas_dosing_valve_controller_V1_1",
-      "device": "gas_dosing_valve_controller",
-      "field": "V1_1",
-      "left": "452px",
-      "top": "43px",
-      "width": "74px",
-      "height": "94px"
-    },
-    {
-      "id": "icon-gas_dosing_valve_controller_V2_1",
-      "device": "gas_dosing_valve_controller",
-      "field": "V2_1",
-      "left": "449px",
-      "top": "177px",
-      "width": "56px",
-      "height": "76px"
-    },
-    {
-      "id": "icon-gas_dosing_valve_controller_V3_1",
-      "device": "gas_dosing_valve_controller",
-      "field": "V3_1",
-      "left": "447px",
-      "top": "302px",
-      "width": "57px",
-      "height": "77px"
-    },
-    {
       "id": "icon-gas_dosing_valve_controller_Switch1",
       "device": "gas_dosing_valve_controller",
       "field": "Switch1",
       "left": "729px",
       "top": "168px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_Switch2",
+      "device": "gas_dosing_valve_controller",
+      "field": "Switch2",
+      "left": "1543px",
+      "top": "1134px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_Switch3",
+      "device": "gas_dosing_valve_controller",
+      "field": "Switch3",
+      "left": "1468px",
+      "top": "983px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_Switch4",
+      "device": "gas_dosing_valve_controller",
+      "field": "Switch4",
+      "left": "1469px",
+      "top": "767px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_Switch5",
+      "device": "gas_dosing_valve_controller",
+      "field": "Switch5",
+      "left": "772px",
+      "top": "480px",
+      "width": "65px",
+      "height": "85px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_Switch6",
+      "device": "gas_dosing_valve_controller",
+      "field": "Switch6",
+      "left": "812px",
+      "top": "654px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V0_1",
+      "device": "gas_dosing_valve_controller",
+      "field": "V0_1",
+      "left": "1100px",
+      "top": "538px",
+      "width": "59px",
+      "height": "79px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V0_2",
+      "device": "gas_dosing_valve_controller",
+      "field": "V0_2",
+      "left": "931px",
+      "top": "867px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V0_3",
+      "device": "gas_dosing_valve_controller",
+      "field": "V0_3",
+      "left": "1241px",
+      "top": "704px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V0_4",
+      "device": "gas_dosing_valve_controller",
+      "field": "V0_4",
+      "left": "1211px",
+      "top": "890px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V10_1",
+      "device": "gas_dosing_valve_controller",
+      "field": "V10_1",
+      "left": "1232px",
+      "top": "1082px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V10_2",
+      "device": "gas_dosing_valve_controller",
+      "field": "V10_2",
+      "left": "897px",
+      "top": "1049px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V1_1",
+      "device": "gas_dosing_valve_controller",
+      "field": "V1_1",
+      "left": "467px",
+      "top": "50px",
+      "width": "56px",
+      "height": "76px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V2_1",
+      "device": "gas_dosing_valve_controller",
+      "field": "V2_1",
+      "left": "463px",
+      "top": "182px",
+      "width": "60px",
+      "height": "80px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V3_1",
+      "device": "gas_dosing_valve_controller",
+      "field": "V3_1",
+      "left": "17px",
+      "top": "316px",
+      "width": "64px",
+      "height": "84px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V3_2",
+      "device": "gas_dosing_valve_controller",
+      "field": "V3_2",
+      "left": "458px",
+      "top": "306px",
+      "width": "65px",
+      "height": "85px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V4_1",
+      "device": "gas_dosing_valve_controller",
+      "field": "V4_1",
+      "left": "669px",
+      "top": "1423px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V4_2",
+      "device": "gas_dosing_valve_controller",
+      "field": "V4_2",
+      "left": "954px",
+      "top": "1254px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V5_1",
+      "device": "gas_dosing_valve_controller",
+      "field": "V5_1",
+      "left": "1136px",
+      "top": "1372px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V6_1",
+      "device": "gas_dosing_valve_controller",
+      "field": "V6_1",
+      "left": "894px",
+      "top": "1450px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V7_1",
+      "device": "gas_dosing_valve_controller",
+      "field": "V7_1",
+      "left": "1096px",
+      "top": "1647px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V7_2",
+      "device": "gas_dosing_valve_controller",
+      "field": "V7_2",
+      "left": "1152px",
+      "top": "1533px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V8_1",
+      "device": "gas_dosing_valve_controller",
+      "field": "V8_1",
+      "left": "1357px",
+      "top": "1704px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V8_2",
+      "device": "gas_dosing_valve_controller",
+      "field": "V8_2",
+      "left": "440px",
+      "top": "1782px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V9_1",
+      "device": "gas_dosing_valve_controller",
+      "field": "V9_1",
+      "left": "894px",
+      "top": "1798px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V9_2",
+      "device": "gas_dosing_valve_controller",
+      "field": "V9_2",
+      "left": "631px",
+      "top": "1740px",
+      "width": "80px",
+      "height": "100px"
+    },
+    {
+      "id": "icon-gas_dosing_valve_controller_V9_3",
+      "device": "gas_dosing_valve_controller",
+      "field": "V9_3",
+      "left": "870px",
+      "top": "1560px",
       "width": "80px",
       "height": "100px"
     }
@@ -4609,10 +4816,10 @@
     {
       "id": "plot_1_panel",
       "title": "backpressure graph\u00a0",
-      "left": "200px",
-      "top": "80px",
-      "width": "700px",
-      "height": "424px",
+      "left": "1669px",
+      "top": "95px",
+      "width": "739px",
+      "height": "437px",
       "traces": [
         "gas_dosing_backpress_contr1.value",
         "gas_dosing_backpress_contr1.target",
@@ -4623,10 +4830,10 @@
     {
       "id": "plot_2_panel",
       "title": "massflow graph",
-      "left": "200px",
-      "top": "80px",
-      "width": "700px",
-      "height": "424px",
+      "left": "1674px",
+      "top": "597px",
+      "width": "732px",
+      "height": "445px",
       "traces": [
         "gas_dosing_massflow_contr1.value",
         "gas_dosing_massflow_contr1.target",
