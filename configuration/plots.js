@@ -755,4 +755,304 @@ startPollingLatestValues();
   // Periodically trim old points only. Avoid forcing full redraws here because
   // they can replace the Plotly state and clear trace indices used for extendTraces.
   setInterval(()=>{ trimTraces(); flushBufferedPoints(); }, 2000);
+
+  // --- Auto-plot creation from data-spin-plot attributes / SVG inkscape:label ---
+  function parseDataSpinPlot(spec){
+    // returns { title, globals: {}, curves: [{name,param,label,mods}] }
+    const res = { title: '', globals: {}, curves: [] };
+    
+    if(!spec || !spec.trim()) return res;
+    
+    container = hostEl; 
+    
+    container.classList.add('plot-panel');
+    
+    plotDiv = document.createElement('div'); 
+    
+    plotDiv.style.width='100%'; 
+    
+    plotDiv.style.height='360px';
+    
+    container.appendChild(plotDiv);
+    
+    while((m = re.exec(spec))){
+    
+      if(m[1]) tokens.push({type:'string', val:m[1]});
+    
+      else if(m[2]) tokens.push({type:'string', val:m[2]});
+    
+      else if(m[3]) tokens.push({type:'at', val:m[3].substr(1)});
+    
+      else if(m[4]) tokens.push({type:'kv', val:m[4]});
+    
+      else if(m[5]) tokens.push({type:'token', val:m[5]});
+    
+    }
+    
+    let i = 0;
+    
+    if(tokens[i] && tokens[i].type === 'string'){ res.title = tokens[i].val; i++; }
+    
+    while(tokens[i] && tokens[i].type !== 'at'){
+    
+      if(tokens[i].type === 'kv'){
+    
+        const kv = tokens[i].val.split('='); res.globals[kv[0]] = kv[1];
+    
+      }
+    
+      i++;
+    
+    }
+    
+    while(i < tokens.length){
+    
+      if(tokens[i].type === 'at'){
+    
+        const nameParam = tokens[i].val;
+    
+        let name = nameParam; let param = null;
+    
+        if(nameParam.indexOf('.') !== -1){ const parts = nameParam.split('.'); name = parts.slice(0,-1).join('.'); param = parts.slice(-1)[0]; }
+    
+        i++;
+    
+        let label = null;
+    
+        if(tokens[i] && tokens[i].type === 'string'){ label = tokens[i].val; i++; }
+    
+        const mods = {};
+        // Parse mods for this curve
+    
+        while(tokens[i] && (tokens[i].type === 'kv' || tokens[i].type === 'token')) {
+    
+          if(tokens[i].type === 'kv'){ const kv = tokens[i].val.split('='); mods[kv[0]] = kv[1]; }
+    
+          else if(tokens[i].type === 'token'){ mods[tokens[i].val] = true; }
+    
+          i++;
+    
+        }
+    
+        res.curves.push({ name, param, label, mods });
+    
+      } else { i++; }
+    
+    }
+   
+    return res;
+  
+  }
+  // create plot 
+  function createPlotFromSpec(spec, hostEl){
+    
+    const parsed = parseDataSpinPlot(spec);
+    
+    const id = 'plot_auto_' + (++plotCounter);
+    
+    let container, plotDiv;
+    
+    if(hostEl && hostEl.tagName === 'DIV'){
+    
+      container = hostEl; container.classList.add('plot-panel');
+    
+      plotDiv = document.createElement('div'); plotDiv.style.width='100%'; plotDiv.style.height='360px';
+    
+      container.appendChild(plotDiv);
+    
+    } 
+    
+    else 
+      
+    {
+      container = document.createElement('div'); container.className = 'plot-panel';
+    
+      const header = document.createElement('div'); header.className = 'plot-header';
+    
+      header.innerHTML = `<div><strong>${parsed.title || 'Plot'}</strong></div>`;
+    
+      plotDiv = document.createElement('div'); plotDiv.style.width='100%'; plotDiv.style.height='360px';
+    
+      container.appendChild(header); container.appendChild(plotDiv);
+  // place auto-created plot into the main device grid workspace
+      const grid2 = document.getElementById('device-grid');
+      container.style.position = 'absolute';
+      container.style.left = '220px';
+      container.style.top = '120px';
+  // make auto-created plots wider by default
+      container.style.width = '700px';
+      container.style.maxWidth = 'none';
+      container.style.zIndex = '5';
+      container.classList.add('device-box', 'plot-panel');
+      grid2.appendChild(container);
+      try { makeDraggable(container); } catch (e) {}
+      try { makeResizable(container); } catch (e) {}
+  
+    }
+
+    const plotEntry = { id, containerDiv: container, plotDiv: plotDiv, traces: {} };
+    
+    const layout = { title: parsed.title || '', xaxis:{type:'date'}, margin:{t:30} };
+    
+    if(parsed.globals.fontsize) layout.font = { size: parseInt(parsed.globals.fontsize,10) };
+    
+    if(parsed.globals.legend === 'right'){ layout.legend = { orientation:'v', x:1.02, y:1 }; }
+    
+    else if(parsed.globals.legend === 'none'){ layout.showlegend = false; }
+              meta.traceObj.x.push(now); meta.traceObj.y.push(JSON.stringify(val));
+    
+            
+    if(parsed.curves.some(c=> c.mods && c.mods.y2)){ layout.yaxis2 = { overlaying: 'y', side: 'right' }; }
+
+    parsed.curves.forEach((c, idx)=>{
+              meta.traceObj.x.push(now); meta.traceObj.y.push(y);
+      
+              const fullKey = (c.name && c.param) ? (c.name + '.' + c.param) : (c.name || param);
+      
+              const trace = { x: [], y: [], mode: 'lines+markers', name: c.label || fullKey };
+      
+      if(c.mods && c.mods.color){ trace.marker = trace.marker || {}; trace.marker.color = c.mods.color; }
+      
+      if(c.mods && c.mods.symbol){ trace.marker = trace.marker || {}; trace.marker.symbol = c.mods.symbol; }
+      
+      if(c.mods && c.mods.line){ trace.line = { width: parseFloat(c.mods.line) || 0 }; if(c.mods.line === '0') trace.mode = 'markers'; }
+      
+      if(c.mods && c.mods.y2) trace.yaxis = 'y2';
+     
+      plotEntry.traces[fullKey] = { traceObj: trace, suffix: fullKey, _traceIndex: undefined };
+    
+    });
+
+    plotsMap[id] = plotEntry;
+    
+    Plotly.newPlot(plotDiv, Object.values(plotEntry.traces).map(t=>t.traceObj), layout).then(()=>{
+      Object.values(plotEntry.traces).forEach((t,i)=> t._traceIndex = i);
+      try { enablePlotPanelDragResize(container, plotDiv); } catch(e) {}
+    }).catch(e=>{ console.warn('Plotly.newPlot auto plot failed', e); });
+  
+  }
+
+  function scanDataSpinPlots(){
+    try
+    {
+      document.querySelectorAll('div[data-spin-plot]').forEach(d => 
+      {
+        const spec = d.getAttribute('data-spin-plot'); if(spec) createPlotFromSpec(spec, d);
+      });
+      document.querySelectorAll('rect').forEach(r => 
+      {
+        const lbl = r.getAttribute('inkscape:label') || r.getAttribute('data-inkscape-label');
+        if(lbl && lbl.trim().startsWith('!plot '))
+            {
+          const spec = lbl.trim().substr(6); createPlotFromSpec(spec, null);
+            }
+      });
+    }
+    catch(e)
+    {
+         console.error('scanDataSpinPlots failed', e);
+    }
+  }
+
+  setTimeout(scanDataSpinPlots, 500);
+
+  // expose minimal API for debugging
+  window._plots = { plotsMap: plotsMap, staged: staged };
+
+
+}
+
+)();
+
+/**
+ * Parse a data-spin-plot attribute string into a config object.
+ * Supports: title, global modifiers, and curve definitions with @name.param and label/modifiers.
+ */
+// function parseSpinPlotAttribute(attr) {
+//   // Simple parser for demonstration; extend as needed for full syntax
+
+//   const config = { title: '', modifiers: {}, curves: [] };
+
+//   if (!attr) return config;
+//   // Split by @ for curves
+
+//   const parts = attr.split('@');
+//   // First part: title and global modifiers
+
+//   const global = parts.shift();
+
+//   const globalTokens = global.match(/"([^"]+)"|\S+/g) || [];
+
+//   globalTokens.forEach(token => {
+
+//     if (token.startsWith('"') && token.endsWith('"')) config.title = token.replace(/"/g, '');
+
+//     else if (token.includes('=')) {
+
+//       const [k, v] = token.split('=');
+
+//       config.modifiers[k] = v;
+
+//     } 
+    
+//     else if (token === 'logscale') 
+      
+//       config.modifiers.logscale = true;
+    
+//     else if (token === 'legend=right' || token === 'legend=bottom' || token === 'legend=none') 
+      
+//       config.modifiers.legend = token.split('=')[1];
+
+//     else if (token.startsWith('fontsize=')) 
+      
+//       config.modifiers.fontsize = token.split('=')[1];
+    
+//       else if (token.startsWith('interval=')) 
+      
+//       config.modifiers.interval = token.split('=')[1];
+//   });
+//   // Remaining parts: curves
+//   parts.forEach(curveStr => {
+      
+//       const curve = { label: '', key: '', modifiers: {} };
+//       const tokens = curveStr.match(/"([^"]+)"|\S+/g) || [];
+//       tokens.forEach(token => {
+//       if (token.startsWith('"') && token.endsWith('"')) curve.label = token.replace(/"/g, '');
+//       else if (token.startsWith('color=')) curve.modifiers.color = token.split('=')[1];
+//       else if (token.startsWith('symbol=')) curve.modifiers.symbol = token.split('=')[1];
+//       else if (token.startsWith('line=')) curve.modifiers.line = token.split('=')[1];
+//       else if (token === 'y2') curve.modifiers.y2 = true;
+//       else if (token.includes('.')) curve.key = token;
+    
+//     });
+//     config.curves.push(curve);
+//   });
+//   return config;
+// }
+
+// // Example usage in plot creation:
+// function createPlotFromSpinPlot(div) 
+
+// {
+
+//   const attr = div.getAttribute('data-spin-plot');
+
+//   const config = parseSpinPlotAttribute(attr);
+// } 
+
+// Make sure interact.js is loaded
+(function ensureInteractLoaded(){
+
+  if (!window.interact) {
+
+    const script = document.createElement('script');
+
+    script.src = 'https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js';
+
+    script.onload = function(){};
+
+    document.head.appendChild(script);
+
+  }
+
 })();
