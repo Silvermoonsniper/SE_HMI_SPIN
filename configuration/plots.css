@@ -17,7 +17,7 @@ body {
 .plots-top {
   /* Single configuration box (green) for all plot settings - smaller and left-aligned */
   width: 100%;
-  max-width: 380px;
+  max-width: 720px;
   background: #2ecc40; /* green */
   color: #042d07;
   border-radius: 10px;
@@ -46,8 +46,8 @@ body {
 .ctrl-inline .ctrl{ margin:0 }
 .ctrl input, .ctrl select{ padding:4px 6px; border-radius:4px; border:1px solid #ccc; min-width:0 }
 .ctrl select {
-  min-width: 120px;
-  max-width: 260px;
+  min-width: 140px;
+  max-width: 320px;
   background: #f8f8ff;
   font-size: 11px; /* as small as readable */
 }
@@ -59,6 +59,19 @@ body {
 .spacer{ flex:1 }
 
 .small-list{ min-width:180px; max-width:220px; max-height:40px; overflow:auto; padding:6px }
+
+/* Step labels inside the plot configuration should be slightly smaller */
+.plot-step label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(4,45,7,0.9);
+}
+
+/* Make the main plot-type select wider so its contents are fully visible */
+#plot-type {
+  min-width: 220px;
+  max-width: 360px;
+}
 
 .plots-main{ display:block; width:100%; max-width:1100px }
 

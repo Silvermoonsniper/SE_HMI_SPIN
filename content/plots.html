@@ -9,29 +9,41 @@
 </head>
 <body>
   <div class="plots-container">
-    <div class="plots-top">
-      <div class="control-row">
-        <button id="create-plot" class="ctrl">Create Plot</button>
-        <select id="plot-type" class="ctrl">
-          <option value="line">Time series</option>
-          <option value="xy">XY scatter</option>
-          <option value="array">Array</option>
-        </select>
+      <div class="plots-top">
+        <div class="plots-steps" style="display:flex; gap:12px; align-items:flex-start;">
+          <!-- Step 1: choose plot type -->
+          <div class="plot-step" id="plot-step-1" style="display:flex; flex-direction:column; gap:6px;">
+            <label for="plot-type" style="font-weight:600;">Plot type</label>
+            <select id="plot-type" class="ctrl">
+              <option value="line">Time series</option>
+              <option value="xy">XY scatter</option>
+              <option value="array">Array</option>
+            </select>
+          </div>
 
-        <select id="curve-key" class="ctrl">
-          <option value="">-- select device.param --</option>
-        </select>
+          <!-- Step 2: select device param and manage staged lines -->
+          <div class="plot-step" id="plot-step-2" style="display:flex; flex-direction:column; gap:6px;">
+            <label for="curve-key" style="font-weight:600;">Device parameter</label>
+            <select id="curve-key" class="ctrl">
+              <option value="">-- select device.param --</option>
+            </select>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button id="add-curve" class="ctrl">Add Line</button>
+              <button id="delete-line" class="ctrl">Delete Line</button>
+            </div>
+            <label for="added-lines" style="font-weight:600;">Staged lines</label>
+            <select id="added-lines" class="ctrl">
+              <option value="">-- added lines --</option>
+            </select>
+          </div>
 
-        <button id="add-curve" class="ctrl">Add Line</button>
-
-        <select id="added-lines" class="ctrl">
-          <option value="">-- added lines --</option>
-        </select>
-
-  <button id="delete-line" class="ctrl">Delete Line</button>
-
+          <!-- Step 3: create plot -->
+          <div class="plot-step" id="plot-step-3" style="display:flex; flex-direction:column; gap:6px; justify-content:flex-end;">
+            <label style="visibility:hidden; height:0;">&nbsp;</label>
+            <button id="create-plot" class="ctrl">Create Plot</button>
+          </div>
+        </div>
       </div>
-    </div>
 
     <div class="plots-main">
       <!-- Plot area removed: plots are inserted into the main device grid when available. -->
