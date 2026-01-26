@@ -194,16 +194,13 @@ startPollingLatestValues();
     // refresh all created plots
     Object.values(plotsMap).forEach(p => {
 
-      const traces = Object.values(p.traces);
-      
-      const data = traces.map(t => t.traceObj);
-      
-  // debug: refreshPlot calling Plotly.react for plot (removed console output)
-      
+      // Only include traces that have an actual Plotly trace object (skip placeholders)
+      const traceMetas = Object.values(p.traces).filter(t => t && t.traceObj);
+      const data = traceMetas.map(t => t.traceObj);
+
+      // update the whole plot with only the real traces
       Plotly.react(p.plotDiv, data, layoutForType(), {responsive:true}).then(()=>{
-      
-        traces.forEach((t,i)=> t._traceIndex = i);
-        
+        traceMetas.forEach((t,i)=> t._traceIndex = i);
       }).catch(e=>{ });
   
     });
@@ -290,13 +287,12 @@ startPollingLatestValues();
   function trimTraces(){
   
     Object.values(plotsMap).forEach(p=>{
-  
+
       Object.values(p.traces).forEach(t=>{
-  
+        // skip placeholder/parent entries that don't have a traceObj
+        if(!t || !t.traceObj) return;
         let removed = 0;
-  
         while(t.traceObj.x.length > 1000){ t.traceObj.x.shift(); t.traceObj.y.shift(); removed++; }
-  
         if(removed && typeof t._lastSent === 'number'){
   
           t._lastSent = Math.max(0, t._lastSent - removed);
@@ -319,8 +315,8 @@ startPollingLatestValues();
       let needFullReact = false;
   
       traces.forEach((t, idx) => {
-        // Only append new points since last flush
-  
+        // Only append new points since last flush. Skip parents without traceObj.
+        if (!t || !t.traceObj) return;
         const last = t._lastSent || 0;
   
         const newX = t.traceObj.x.slice(last);
@@ -350,21 +346,58 @@ startPollingLatestValues();
       if(needFullReact){
   
         try{
-  
-          const data = traces.map(tt=>tt.traceObj);
-  
+
+          // Only include real trace objects in full react
+          const traceMetas = traces.filter(tt => tt && tt.traceObj);
+          const data = traceMetas.map(tt=>tt.traceObj);
           Plotly.react(p.plotDiv, data, layoutForType(), {responsive:true}).then(()=>{
-  
-            traces.forEach((tt,i)=> tt._traceIndex = i);
-  
-            traces.forEach(tt=> tt._lastSent = tt.traceObj.x.length);
-  
+            traceMetas.forEach((tt,i)=> tt._traceIndex = i);
+            traceMetas.forEach(tt=> tt._lastSent = tt.traceObj.x.length);
           }).catch(e=>{ console.error('Plotly.react failed during flush', e); });
-  
+
         }catch(e){ console.error('Full react failed during flush', e); }
       }
     });
 }
+
+  // Ensure child traces exist for an array-valued parent. Creates traces and legend inputs
+  function ensureArrayChildTraces(plotEntry, parentKey, length)
+  {
+  
+
+    if (!plotEntry || !parentKey || length <= 0) return;
+      const toAdd = [];
+    for (let i = 0; i < length; i++) 
+    {
+      const childKey = `${parentKey}::${i}`;
+      if (!plotEntry.traces[childKey]) 
+      {
+        const name = `${parentKey}[${i}]`;
+        const traceObj = { x: [], y: [], mode: 'lines+markers', name: name };
+        plotEntry.traces[childKey] = { traceObj: traceObj, suffix: childKey, _traceIndex: undefined, _lastSent: 0, parent: parentKey };
+        toAdd.push({ traceObj: traceObj, childKey: childKey });
+      }
+    }
+    if (toAdd.length && plotEntry.plotDiv) 
+      {
+      // add traces to plotly; this appends to the end
+      const traceObjs = toAdd.map(t => t.traceObj);
+      try {
+        Plotly.addTraces(plotEntry.plotDiv, traceObjs).then(() => {
+          // assign indices for newly added traces by matching names from the end
+          const dataLen = plotEntry.plotDiv.data.length;
+          for (let j = 0; j < toAdd.length; j++) {
+            const idx = dataLen - toAdd.length + j;
+            const childKey = toAdd[j].childKey;
+            if (plotEntry.traces[childKey]) plotEntry.traces[childKey]._traceIndex = idx;
+          }
+        }).catch(e => { console.warn('addTraces failed', e); });
+      } catch (e) { console.warn('Plotly.addTraces failed', e); }
+    } else {
+      // nothing else to do for traces not yet added
+      toAdd.forEach(t => {});
+    }
+  }
 
   // Add a visible indicator for last spinupdate event
   let lastSpinupdateTime = null;
@@ -440,36 +473,61 @@ startPollingLatestValues();
             if(emittedKey === k || (meta && meta.suffix && emittedKey.endsWith(meta.suffix))){
    
               matched = true;
-              // Always append a new point, even if value is unchanged
-   
-              let yval;
-   
-              if(Array.isArray(val)){
-   
-                yval = JSON.stringify(val);
-   
+    
+              // Array-typed parent: create child traces & route each element
+              if (meta && meta.isArrayParent && Array.isArray(val)) 
+                {
+                
+                const parentKey = k;
+                ensureArrayChildTraces(p, parentKey, val.length);
+                val.forEach((elem, idx) => {
+                  const childKey = `${parentKey}::${idx}`;
+                  const childMeta = p.traces[childKey];
+                  if (!childMeta) return;
+                  const yval = (typeof elem === 'number') ? elem : (parseFloat(elem) || null);
+                  childMeta.traceObj.x.push(now);
+                  childMeta.traceObj.y.push(yval);
+                  if (typeof childMeta._traceIndex === 'number') {
+                    try { Plotly.extendTraces(p.plotDiv, { x: [[now]], y: [[yval]] }, [childMeta._traceIndex]); } catch(e) { }
+                  }
+                });
+                updatedPlots.add(p.id);
               } else {
-   
-                yval = (typeof val === 'number') ? val : (parseFloat(val) || null);
-   
+                // scalar handling
+                let yval;
+                if(Array.isArray(val))
+                {
+                  yval = JSON.stringify(val);
+                } else {
+                  yval = (typeof val === 'number') ? val : (parseFloat(val) || null);
+                }
+                if (meta && meta.traceObj) 
+                {
+                  meta.traceObj.x.push(now);
+                  meta.traceObj.y.push(yval);
+                  // skip parent placeholders during per-trace restyle/extend; they don't have traceObj
+                  if (meta && meta.isArrayParent) return;
+                  if(typeof meta._traceIndex === 'number')
+                  {
+                    try 
+                    {
+                       Plotly.extendTraces(p.plotDiv, { x: [[now]], y: [[yval]] }, [meta._traceIndex]); 
+                    }
+                    catch(e) 
+                    {
+
+                    }
+                  }
+                  updatedPlots.add(p.id);
+                }
               }
-   
-              meta.traceObj.x.push(now);
-   
-              meta.traceObj.y.push(yval);
-              // Always extend trace with the new point
-   
-              if(typeof meta._traceIndex === 'number'){
-   
-                Plotly.extendTraces(p.plotDiv, { x: [[now]], y: [[yval]] }, [meta._traceIndex]);
-   
-              }
-   
-              updatedPlots.add(p.id);
-   
             }
    
-          }catch(_e){ console.error(_e); }
+          } 
+          catch(_e)
+          { 
+            console.error(_e); 
+          }
    
         });
    
@@ -514,24 +572,20 @@ startPollingLatestValues();
                   }catch(e){
    
                    
-                    // fallback: full redraw
-                    const traces = Object.values(p.traces);
-              
-                    const data = traces.map(tt => tt.traceObj);
-              
-                    Plotly.react(p.plotDiv, data, layoutForType(), {responsive:true});
-              
-                    traces.forEach((tt,i)=> tt._traceIndex = i);
+                    // fallback: full redraw (only include real traces)
+                    const traceMetas = Object.values(p.traces).filter(tt => tt && tt.traceObj);
+                    const data = traceMetas.map(tt => tt.traceObj);
+                    Plotly.react(p.plotDiv, data, layoutForType(), {responsive:true}).then(()=>{
+                      traceMetas.forEach((tt,i)=> tt._traceIndex = i);
+                    }).catch(()=>{});
                   }
                 } else {
                   // fallback: full redraw
-                  const traces = Object.values(p.traces);
-              
-                  const data = traces.map(tt => tt.traceObj);
-              
-                  Plotly.react(p.plotDiv, data, layoutForType(), {responsive:true});
-              
-                  traces.forEach((tt,i)=> tt._traceIndex = i);
+                  const traceMetas = Object.values(p.traces).filter(tt => tt && tt.traceObj);
+                  const data = traceMetas.map(tt => tt.traceObj);
+                  Plotly.react(p.plotDiv, data, layoutForType(), {responsive:true}).then(()=>{
+                    traceMetas.forEach((tt,i)=> tt._traceIndex = i);
+                  }).catch(()=>{});
                 }
               }
             });
@@ -630,28 +684,49 @@ startPollingLatestValues();
     container.classList.add('device-box', 'plot-panel');
     grid.appendChild(container);
   
-    try { makeDraggable(container); } catch (e) {console.debug("plot is not draggable")}
-    try { makeResizable(container); } catch (e) {console.debug("plot is not moveable")}
+    try
+     {
+       makeDraggable(container); 
+     } 
+    catch 
+    (e) 
+    {
+      console.debug("plot is not draggable")
+    }
+    try 
+    {
+       makeResizable(container); 
+    }
+    catch 
+    (e) 
+    {
+      console.debug("plot is not moveable")
+    }
 
-    const plotEntry = { id, containerDiv: container, plotDiv: plotDiv, traces: {} };
+    const plotEntry = { id, containerDiv: container, plotDiv: plotDiv, traces: {}, plotType: (plotTypeSelect ? plotTypeSelect.value : 'line') };
     // transfer staged lines into this new plot
     keys.forEach(k => {
-    const s = staged[k];
-  // Use a more descriptive name for the trace (device.param)
+      const s = staged[k];
     
-    const traceLabel = k || s.suffix || 'trace';
-  
-    const trace = { x: [], y: [], mode: 'lines+markers', name: traceLabel };
-  
-    plotEntry.traces[k] = { x: trace.x, y: trace.y, traceObj: trace, name: traceLabel, suffix: s.suffix, _traceIndex: undefined, _lastSent: 0 };
-  
-  
+      // If the selected plot type is 'array' we defer creating child traces until data arrives
+      if (plotEntry.plotType === 'array') 
+      {
+        plotEntry.traces[k] = { isArrayParent: true, suffix: s.suffix, children: {}, name: k };
+      } 
+      else
+     {
+        // Use a more descriptive name for the trace (device.param)
+        const traceLabel = k || s.suffix || 'trace';
+        const trace = { x: [], y: [], mode: 'lines+markers', name: traceLabel };
+        plotEntry.traces[k] = { x: trace.x, y: trace.y, traceObj: trace, name: traceLabel, suffix: s.suffix, _traceIndex: undefined, _lastSent: 0 };
+      }
     });
 
     plotsMap[id] = plotEntry;
     // initialize plotly and capture trace indices so we can extend traces incrementally
-    Plotly.newPlot(plotDiv, Object.values(plotEntry.traces).map(t=>t.traceObj), layoutForType()).then(()=>{
-    Object.values(plotEntry.traces).forEach((t,i)=>{ t._traceIndex = i; t._lastSent = t.x.length; });
+  const initTraceMetas = Object.values(plotEntry.traces).filter(t => t && t.traceObj);
+  Plotly.newPlot(plotDiv, initTraceMetas.map(t=>t.traceObj), layoutForType()).then(()=>{
+  initTraceMetas.forEach((t,i)=>{ t._traceIndex = i; if (Array.isArray(t.x)) t._lastSent = t.x.length; });
       // Remove Plotly layout title so only the editable title above is visible
     Plotly.relayout(plotDiv, { title: '' });
       // Ensure titleDiv is always visible after plotly redraws
@@ -670,6 +745,8 @@ startPollingLatestValues();
       }
    
     }).catch(e=>{ console.warn('Plotly.newPlot failed', e); });
+
+    // (legend editor removed) 
 
     // Make plot panel resizable and draggable using interact.js
     function makePanelDraggableResizable(container, plotDiv) {
@@ -736,8 +813,22 @@ startPollingLatestValues();
       }
     }
   // enable interact-based dragging/resizing
-  try { makePanelDraggableResizable(container, plotDiv); } catch(e) {}
-  try { enablePlotPanelDragResize(container, plotDiv); } catch(e) {}
+  try 
+  { 
+    makePanelDraggableResizable(container, plotDiv); 
+  } 
+  catch(e) 
+  {
+    console.debug("plot is not draggable/resizable");
+  }
+  try 
+  {
+     enablePlotPanelDragResize(container, plotDiv); 
+  } 
+  catch(e) 
+  {
+      console.debug("plot is not draggable/resizable");
+  }
 
     // clear staged and UI staged list
     Object.keys(staged).forEach(k=> delete staged[k]);
@@ -757,179 +848,149 @@ startPollingLatestValues();
   setInterval(()=>{ trimTraces(); flushBufferedPoints(); }, 2000);
 
   // --- Auto-plot creation from data-spin-plot attributes / SVG inkscape:label ---
+  // Lightweight parser for `data-spin-plot` specs. Syntax supported:
+  //   Title @device.param 'Label' key=val token
+  // Returns { title, globals: {}, curves: [{ name, param, label, mods }] }
   function parseDataSpinPlot(spec){
-    // returns { title, globals: {}, curves: [{name,param,label,mods}] }
     const res = { title: '', globals: {}, curves: [] };
-    
     if(!spec || !spec.trim()) return res;
-    
-    container = hostEl; 
-    
-    container.classList.add('plot-panel');
-    
-    plotDiv = document.createElement('div'); 
-    
-    plotDiv.style.width='100%'; 
-    
-    plotDiv.style.height='360px';
-    
-    container.appendChild(plotDiv);
-    
-    while((m = re.exec(spec))){
-    
-      if(m[1]) tokens.push({type:'string', val:m[1]});
-    
-      else if(m[2]) tokens.push({type:'string', val:m[2]});
-    
-      else if(m[3]) tokens.push({type:'at', val:m[3].substr(1)});
-    
-      else if(m[4]) tokens.push({type:'kv', val:m[4]});
-    
-      else if(m[5]) tokens.push({type:'token', val:m[5]});
-    
-    }
-    
-    let i = 0;
-    
-    if(tokens[i] && tokens[i].type === 'string'){ res.title = tokens[i].val; i++; }
-    
-    while(tokens[i] && tokens[i].type !== 'at'){
-    
-      if(tokens[i].type === 'kv'){
-    
-        const kv = tokens[i].val.split('='); res.globals[kv[0]] = kv[1];
-    
-      }
-    
-      i++;
-    
-    }
-    
-    while(i < tokens.length){
-    
-      if(tokens[i].type === 'at'){
-    
-        const nameParam = tokens[i].val;
-    
-        let name = nameParam; let param = null;
-    
-        if(nameParam.indexOf('.') !== -1){ const parts = nameParam.split('.'); name = parts.slice(0,-1).join('.'); param = parts.slice(-1)[0]; }
-    
-        i++;
-    
-        let label = null;
-    
-        if(tokens[i] && tokens[i].type === 'string'){ label = tokens[i].val; i++; }
-    
-        const mods = {};
-        // Parse mods for this curve
-    
-        while(tokens[i] && (tokens[i].type === 'kv' || tokens[i].type === 'token')) {
-    
-          if(tokens[i].type === 'kv'){ const kv = tokens[i].val.split('='); mods[kv[0]] = kv[1]; }
-    
-          else if(tokens[i].type === 'token'){ mods[tokens[i].val] = true; }
-    
-          i++;
-    
+
+    // Title is the prefix before the first '@'
+    const parts = spec.split('@');
+    res.title = parts[0].trim();
+
+    for(let i = 1; i < parts.length; i++){
+      let seg = parts[i].trim();
+      if(!seg) continue;
+
+      // First token is the device[.param]
+      const mName = seg.match(/^([^\s'\"]+)/);
+      if(!mName) continue;
+      const nameParam = mName[1];
+      seg = seg.slice(nameParam.length).trim();
+
+      // Optional label in single or double quotes
+      let label = null;
+      const mLabel = seg.match(/^(['"])(.*?)\1/);
+      if(mLabel){ label = mLabel[2]; seg = seg.slice(mLabel[0].length).trim(); }
+
+      // Mods: key=val pairs and standalone tokens
+      const mods = {};
+      const modRegex = /(\w+)=('.*?'|".*?"|[^\s]+)/g;
+      let mm;
+      while((mm = modRegex.exec(seg)) !== null){
+        let val = mm[2];
+        if((val.startsWith("'") && val.endsWith("'")) || (val.startsWith('"') && val.endsWith('"'))){
+          val = val.slice(1,-1);
         }
-    
-        res.curves.push({ name, param, label, mods });
-    
-      } else { i++; }
-    
+        mods[mm[1]] = val;
+      }
+      // standalone tokens (e.g., flags)
+      seg.replace(/(^|\s)([a-zA-Z_][\w-]*)/g, (all, sp, tok) => { if(!(tok in mods)) mods[tok] = true; return ''; });
+
+      let name = nameParam; let param = null;
+      if(nameParam.indexOf('.') !== -1){ const ps = nameParam.split('.'); name = ps.slice(0,-1).join('.'); param = ps[ps.length-1]; }
+
+      res.curves.push({ name, param, label, mods });
     }
-   
+
     return res;
-  
   }
-  // create plot 
-  function createPlotFromSpec(spec, hostEl){
-    
+
+  // create plot from spec
+  function createPlotFromSpec(spec, hostEl)
+  {
     const parsed = parseDataSpinPlot(spec);
-    
     const id = 'plot_auto_' + (++plotCounter);
-    
     let container, plotDiv;
-    
+
     if(hostEl && hostEl.tagName === 'DIV'){
-    
       container = hostEl; container.classList.add('plot-panel');
-    
       plotDiv = document.createElement('div'); plotDiv.style.width='100%'; plotDiv.style.height='360px';
-    
       container.appendChild(plotDiv);
-    
     } 
-    
     else 
-      
     {
       container = document.createElement('div'); container.className = 'plot-panel';
-    
-      const header = document.createElement('div'); header.className = 'plot-header';
-    
-      header.innerHTML = `<div><strong>${parsed.title || 'Plot'}</strong></div>`;
-    
-      plotDiv = document.createElement('div'); plotDiv.style.width='100%'; plotDiv.style.height='360px';
-    
-      container.appendChild(header); container.appendChild(plotDiv);
-  // place auto-created plot into the main device grid workspace
-      const grid2 = document.getElementById('device-grid');
-      container.style.position = 'absolute';
-      container.style.left = '220px';
-      container.style.top = '120px';
-  // make auto-created plots wider by default
-      container.style.width = '700px';
-      container.style.maxWidth = 'none';
-      container.style.zIndex = '5';
-      container.classList.add('device-box', 'plot-panel');
-      grid2.appendChild(container);
-      try { makeDraggable(container); } catch (e) {}
-      try { makeResizable(container); } catch (e) {}
   
+      const header = document.createElement('div'); header.className = 'plot-header';
+  
+      header.innerHTML = `<div><strong>${parsed.title || 'Plot'}</strong></div>`;
+  
+      plotDiv = document.createElement('div'); plotDiv.style.width='100%'; plotDiv.style.height='360px';
+  
+      container.appendChild(header); container.appendChild(plotDiv);
+  
+      const grid2 = document.getElementById('device-grid');
+  
+      container.style.position = 'absolute'; container.style.left = '220px'; container.style.top = '120px';
+  
+      container.style.width = '700px'; container.style.maxWidth = 'none'; container.style.zIndex = '5';
+  
+      container.classList.add('device-box', 'plot-panel');
+  
+      grid2.appendChild(container);
+  
+      try 
+      {
+         makeDraggable(container); 
+      } 
+      catch 
+      (e) 
+      {
+          console.debug("plot is not draggable"); 
+      }
+  
+      try 
+      {
+         makeResizable(container);
+      } 
+      catch 
+      (e) 
+      {
+          console.debug("plot is not resizable"); 
+      }
     }
 
     const plotEntry = { id, containerDiv: container, plotDiv: plotDiv, traces: {} };
-    
+   
     const layout = { title: parsed.title || '', xaxis:{type:'date'}, margin:{t:30} };
+   
+    if(parsed.globals && parsed.globals.fontsize) 
     
-    if(parsed.globals.fontsize) layout.font = { size: parseInt(parsed.globals.fontsize,10) };
+      layout.font = { size: parseInt(parsed.globals.fontsize,10) };
     
-    if(parsed.globals.legend === 'right'){ layout.legend = { orientation:'v', x:1.02, y:1 }; }
+    if(parsed.globals && parsed.globals.legend === 'right')
+      
+    {
+       layout.legend = { orientation:'v', x:1.02, y:1 };
+    }
     
-    else if(parsed.globals.legend === 'none'){ layout.showlegend = false; }
-              meta.traceObj.x.push(now); meta.traceObj.y.push(JSON.stringify(val));
+    else if(parsed.globals && parsed.globals.legend === 'none')
+      
+    { 
+        layout.showlegend = false; 
+    }
     
-            
     if(parsed.curves.some(c=> c.mods && c.mods.y2)){ layout.yaxis2 = { overlaying: 'y', side: 'right' }; }
 
-    parsed.curves.forEach((c, idx)=>{
-              meta.traceObj.x.push(now); meta.traceObj.y.push(y);
-      
-              const fullKey = (c.name && c.param) ? (c.name + '.' + c.param) : (c.name || param);
-      
-              const trace = { x: [], y: [], mode: 'lines+markers', name: c.label || fullKey };
-      
+    parsed.curves.forEach((c)=>{
+      const fullKey = (c.name && c.param) ? (c.name + '.' + c.param) : (c.name || '');
+      const trace = { x: [], y: [], mode: 'lines+markers', name: c.label || fullKey };
       if(c.mods && c.mods.color){ trace.marker = trace.marker || {}; trace.marker.color = c.mods.color; }
-      
       if(c.mods && c.mods.symbol){ trace.marker = trace.marker || {}; trace.marker.symbol = c.mods.symbol; }
-      
       if(c.mods && c.mods.line){ trace.line = { width: parseFloat(c.mods.line) || 0 }; if(c.mods.line === '0') trace.mode = 'markers'; }
-      
       if(c.mods && c.mods.y2) trace.yaxis = 'y2';
-     
-      plotEntry.traces[fullKey] = { traceObj: trace, suffix: fullKey, _traceIndex: undefined };
-    
+      plotEntry.traces[fullKey] = { traceObj: trace, suffix: fullKey, _traceIndex: undefined, _lastSent: 0 };
     });
 
     plotsMap[id] = plotEntry;
-    
-    Plotly.newPlot(plotDiv, Object.values(plotEntry.traces).map(t=>t.traceObj), layout).then(()=>{
-      Object.values(plotEntry.traces).forEach((t,i)=> t._traceIndex = i);
+    const initTraceMetasAuto = Object.values(plotEntry.traces).filter(t => t && t.traceObj);
+    Plotly.newPlot(plotDiv, initTraceMetasAuto.map(t=>t.traceObj), layout).then(()=>{
+      initTraceMetasAuto.forEach((t,i)=> t._traceIndex = i);
       try { enablePlotPanelDragResize(container, plotDiv); } catch(e) {}
+      // (legend editor removed)
     }).catch(e=>{ console.warn('Plotly.newPlot auto plot failed', e); });
-  
   }
 
   function scanDataSpinPlots(){
@@ -944,9 +1005,11 @@ startPollingLatestValues();
         const lbl = r.getAttribute('inkscape:label') || r.getAttribute('data-inkscape-label');
         if(lbl && lbl.trim().startsWith('!plot '))
             {
-          const spec = lbl.trim().substr(6); createPlotFromSpec(spec, null);
+    // remove the leading '!plot ' prefix in a safe, modern way
+        const spec = lbl.trim().replace(/^!plot\s+/i, '').trim();
+        if (spec) createPlotFromSpec(spec, null);
             }
-      });
+     });
     }
     catch(e)
     {
@@ -960,86 +1023,7 @@ startPollingLatestValues();
   window._plots = { plotsMap: plotsMap, staged: staged };
 
 
-}
-
-)();
-
-/**
- * Parse a data-spin-plot attribute string into a config object.
- * Supports: title, global modifiers, and curve definitions with @name.param and label/modifiers.
- */
-// function parseSpinPlotAttribute(attr) {
-//   // Simple parser for demonstration; extend as needed for full syntax
-
-//   const config = { title: '', modifiers: {}, curves: [] };
-
-//   if (!attr) return config;
-//   // Split by @ for curves
-
-//   const parts = attr.split('@');
-//   // First part: title and global modifiers
-
-//   const global = parts.shift();
-
-//   const globalTokens = global.match(/"([^"]+)"|\S+/g) || [];
-
-//   globalTokens.forEach(token => {
-
-//     if (token.startsWith('"') && token.endsWith('"')) config.title = token.replace(/"/g, '');
-
-//     else if (token.includes('=')) {
-
-//       const [k, v] = token.split('=');
-
-//       config.modifiers[k] = v;
-
-//     } 
-    
-//     else if (token === 'logscale') 
-      
-//       config.modifiers.logscale = true;
-    
-//     else if (token === 'legend=right' || token === 'legend=bottom' || token === 'legend=none') 
-      
-//       config.modifiers.legend = token.split('=')[1];
-
-//     else if (token.startsWith('fontsize=')) 
-      
-//       config.modifiers.fontsize = token.split('=')[1];
-    
-//       else if (token.startsWith('interval=')) 
-      
-//       config.modifiers.interval = token.split('=')[1];
-//   });
-//   // Remaining parts: curves
-//   parts.forEach(curveStr => {
-      
-//       const curve = { label: '', key: '', modifiers: {} };
-//       const tokens = curveStr.match(/"([^"]+)"|\S+/g) || [];
-//       tokens.forEach(token => {
-//       if (token.startsWith('"') && token.endsWith('"')) curve.label = token.replace(/"/g, '');
-//       else if (token.startsWith('color=')) curve.modifiers.color = token.split('=')[1];
-//       else if (token.startsWith('symbol=')) curve.modifiers.symbol = token.split('=')[1];
-//       else if (token.startsWith('line=')) curve.modifiers.line = token.split('=')[1];
-//       else if (token === 'y2') curve.modifiers.y2 = true;
-//       else if (token.includes('.')) curve.key = token;
-    
-//     });
-//     config.curves.push(curve);
-//   });
-//   return config;
-// }
-
-// // Example usage in plot creation:
-// function createPlotFromSpinPlot(div) 
-
-// {
-
-//   const attr = div.getAttribute('data-spin-plot');
-
-//   const config = parseSpinPlotAttribute(attr);
-// } 
-
+})();
 // Make sure interact.js is loaded
 (function ensureInteractLoaded(){
 
