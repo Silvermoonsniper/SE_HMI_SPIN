@@ -127,6 +127,28 @@ const API_BASE = (function(){
   try { return `${location.protocol}//${location.hostname}:8001`; } catch (e) { return 'http://127.0.0.1:8001'; }
 })();
 
+// Optionally request backend restart when the page loads. This is controlled
+// by a localStorage flag 'restart_on_refresh'. To enable, run in browser console:
+//   localStorage.setItem('restart_on_refresh', 'true')
+try {
+
+  if (localStorage.getItem('restart_on_refresh') === 'true') 
+    {
+    // avoid spamming restarts: if a restart was requested very recently, skip
+    const last = parseInt(localStorage.getItem('restart_last_requested') || '0', 10);
+    const now = Date.now();
+    if (!last || (now - last) > 15000) { // 15s cooldown
+      localStorage.setItem('restart_last_requested', String(now));
+      fetch(API_BASE + '/api/restart', { method: 'POST', mode: 'cors' })
+        .catch(e => console.warn('Restart request failed', e));
+    }
+  }
+} 
+catch (e) 
+{ 
+  console.debug('restart on refresh check failed', e); 
+}
+
 // Helper to coerce different incoming shapes into numeric 0/1
 function toNumeric(v) {
   if (v && typeof v.value !== 'undefined') v = v.value;
@@ -688,12 +710,13 @@ window.addEventListener('spinupdate', function(event)
       
       //try to merge from backend once then bail; the
       // fetch will call updateSampleSlotImages again after merging.
-        try { fetchAndMergeLatestValuesOnce(); } catch (e) {}
+        fetchAndMergeLatestValuesOnce(); 
       
-        updateSamplepresence(device, presence_val)
+        updateSamplepresence(device, presence_val); 
     
     }
-  } catch(e) { 
+  } catch(e) 
+  { 
     console.error('status update error', e);
   }
 });
@@ -2529,95 +2552,104 @@ function getModuleName(device) {
 function sendCommand(device, cmd) {
   if (!confirm(`Execute command '${cmd}' on ${device}?`)) return;
 
-  const spinSocket =
-    window.Spin &&
-    window.Spin.current_socket &&
-    window.Spin.current_socket.readyState === WebSocket.OPEN
-      ? window.Spin.current_socket
-      : null;
+  // Run the send logic as an async task so callers don't need to await
+  (async () => {
+    try {
+      // Resolve module name (if available) so we can build full SECoP line.
+      // If moduleName cannot be resolved immediately, retry a few times
+      // because device metadata may be populated asynchronously.
+      let moduleName = null;
+      // Keep trying until we have a moduleName. This will wait (with a short
+      // backoff) until device metadata is available and getModuleName resolves.
+      while (!moduleName) {
+        try {
+          moduleName = await getModuleName(device);
+        } catch (e) {
+          moduleName = null;
+        }
+        if (moduleName) break;
+        // small backoff before retrying
+        await new Promise(r => setTimeout(r, 500));
+      }
 
-  try 
-  {
-    let commandToSend = cmd;
+      const commandToSend = moduleName ? `do ${moduleName}:${cmd}` : cmd;
 
-   
-      // device is '<node>_<module>' → extract module
-    getModuleName(device).then(moduleName => {
-      // Build full SECoP command line
-    commandToSend = `do ${moduleName}:${cmd}`;   
-    });
-    
-
- 
-    // Fallback: POST to backend HTTP proxy which will open a StreamConnection.
-    // First try to resolve node addr automatically for this device.
-    //TODO command send is not robust, if send failure resend it,
-
-    (async () => {
-      try 
-      
-      { 
-
-        // Ask server which node handles this device
-          const ndResp = await fetch(API_BASE + '/api/node_for_device', {
+      // Resolve node address for the device via backend API
+      let addr = null;
+      try {
+        const ndResp = await fetch(API_BASE + '/api/node_for_device', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ device: device })
         });
-        let addr = null;
         if (ndResp.ok) {
           const j = await ndResp.json();
           if (j && j.status === 'ok' && j.addr) addr = j.addr;
         }
+      } catch (e) { /* ignore, we'll prompt */ }
 
-        // If we couldn't resolve, ask user for node address
-        if (!addr) {
-          const manual = prompt('Could not auto-resolve node for device "' + device + '". Enter host:port to send command:', '127.0.0.1:10803');
-          if (!manual) return;
-          addr = manual;
-        }
-        
-        let send_status = false;
-
-        while (!send_status) 
-          {
-          
-          sendResp = await fetch(API_BASE + '/api/send_request', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ addr: addr, command: commandToSend })
-          });
-         
-          send_status = sendResp.ok;
-        
-          }
-         
-
-        const sr = await sendResp.json();
-        
-        if (sr && sr.status && sr.status === 'sent') 
-        {
-          alert('Command sent via proxy. Response: ' + (sr.response || ''));
-        } else {
-          alert('Proxy response: ' + JSON.stringify(sr));
-        }
-      } 
-
-      catch (err) 
-      
-      {
-        console.error('HTTP fallback send failed', err);
-        alert('Failed to send command: ' + err);
+      if (!addr) {
+        const manual = prompt('Could not auto-resolve node for device "' + device + '". Enter host:port to send command:', '127.0.0.1:10803');
+        if (!manual) return;
+        addr = manual;
       }
-    })();
 
-  }
-  catch (e) 
-  {
-    console.error('sendCommand failed', e);
-  }
+      // Try sending via proxy with retry logic when backend returns an error.
+      const maxRetries = 5;
+      let attempt = 0;
+      let lastResp = null;
 
-  
+      while (attempt < maxRetries) {
+        attempt++;
+        try {
+          const sendResp = await fetch(API_BASE + '/api/send_request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ addr: addr, command: commandToSend })
+          });
+
+          if (!sendResp.ok) {
+            lastResp = `HTTP ${sendResp.status}`;
+            // backoff and retry
+            await new Promise(r => setTimeout(r, Math.min(2000 * attempt, 10000)));
+            continue;
+          }
+
+          const sr = await sendResp.json();
+          lastResp = sr;
+
+          // Successful send
+          if (sr && sr.status === 'sent') {
+            alert('Command sent via proxy. Response: ' + (sr.response || ''));
+            return;
+          }
+
+          // If backend reports an error (e.g., ProtocolError or error__scan), retry
+          const textBody = JSON.stringify(sr || '');
+          const isProtocolError = textBody.includes('ProtocolError') || textBody.includes('error__scan') || (sr && sr.status === 'error');
+          if (!isProtocolError) {
+            // Unknown non-retryable response — show it and stop
+            alert('Proxy response: ' + textBody);
+            return;
+          }
+
+          // retry after backoff
+          await new Promise(r => setTimeout(r, Math.min(2000 * attempt, 10000)));
+        } catch (e) {
+          lastResp = e;
+          // network or other error — retry after backoff
+          await new Promise(r => setTimeout(r, Math.min(2000 * attempt, 10000)));
+        }
+      }
+
+      // Exhausted retries
+      alert('Failed to send command after ' + maxRetries + ' attempts. Last response: ' + JSON.stringify(lastResp));
+
+    } catch (e) {
+      console.error('sendCommand failed', e);
+      alert('Failed to send command: ' + e);
+    }
+  })();
 }
 
 

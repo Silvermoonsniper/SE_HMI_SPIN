@@ -200,10 +200,10 @@ class SpinConfigManager:
                 def datagram_received(self, data, addr):
 
                     # get local ip 
-                    #local_ip = self.get_local_ip()  
+                    local_ip = self.get_local_ip()  
                     # Ignore responses from localhost (127.0.0.1)
-                    # if addr[0] != local_ip:
-                    #       return
+                    if addr[0] != local_ip:
+                           return
                     try:
    
                         response = data.decode('utf-8').strip()

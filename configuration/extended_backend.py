@@ -213,3 +213,41 @@ def start_api_server(backend=None):
         except Exception as e:
             app.logger.exception('api_send_request failed')
             return jsonify({'status': 'error', 'error': str(e)}), 500
+
+    @app.route('/api/restart', methods=['POST'])
+    def api_restart():
+        """Request the backend to restart. If a nodemanager device is present it
+        will schedule its _delayed_restart coroutine. Otherwise the process will
+        exit after a short delay to allow container restart policies to bring it up.
+        """
+        try:
+            # Prefer nodemanager-controlled restart if available
+            if backend and hasattr(backend, '_devices') and 'nodemanager' in backend._devices:
+                nm = backend._devices.get('nodemanager')
+                try:
+                    # Schedule the node manager's delayed restart task
+                    nm.run_task(nm._delayed_restart())
+                    return jsonify({'status': 'ok', 'method': 'nodemanager'}), 202
+                except Exception:
+                    app.logger.exception('Failed to schedule nodemanager restart')
+            # Fallback: exit process after short delay so external supervisor restarts it
+            def _delayed_exit():
+                try:
+                    import time
+                    time.sleep(1.0)
+                except Exception:
+                    pass
+                try:
+                    os._exit(0)
+                except Exception:
+                    pass
+
+            threading.Thread(target=_delayed_exit, daemon=True).start()
+            
+            return jsonify({'status': 'ok', 'method': 'process_exit'}), 202
+        
+        except Exception as e:
+        
+            app.logger.exception('api_restart failed')
+            
+            return jsonify({'status': 'error', 'error': str(e)}), 500
