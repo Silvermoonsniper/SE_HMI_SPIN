@@ -16,6 +16,7 @@ NODES_FILE = os.path.join(os.path.dirname(__file__), 'nodes.json')
 DEVICE_PARAMS_FILE = os.path.join(os.path.dirname(__file__), 'device_params.json')
 
 LAYOUT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'layout'))
+PLOT_CONFIG_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plot_config'))
 
 def ensure_layout_dir():
 
@@ -26,6 +27,16 @@ def ensure_layout_dir():
     except Exception as e:
 
         print(f"Failed to create layout dir {LAYOUT_DIR}: {e}")
+
+def ensure_plot_config_dir():
+
+    try:
+
+        os.makedirs(PLOT_CONFIG_DIR, exist_ok=True)
+
+    except Exception as e:
+
+        print(f"Failed to create plot config dir {PLOT_CONFIG_DIR}: {e}")
 
 def is_running_in_docker():
     """Check if the application is running inside a Docker container."""
@@ -420,11 +431,22 @@ class NodeManagerDevice(BaseDevice):
                     except Exception as e:
                         print(f"[add_node] Failed to write device_params.json: {e}")
 
-                    # self.update_device_params_param()
+                    self.update_device_params_param()
+
+                added_runtime_devices = []
+                try:
+                    backend = getattr(self, '_backend', None)
+                    if backend and hasattr(backend, 'add_runtime_secop_node'):
+                        added_runtime_devices = backend.add_runtime_secop_node(host, port, mod_list, para_map)
+                except Exception as e:
+                    print(f"[add_node] Failed to hot-add runtime devices: {e}")
                 
                 self.update_nodes_param()
                    
-                msg = "Node added successfully"
+                if mod_list and not added_runtime_devices:
+                    msg = "Node already present in runtime"
+                else:
+                    msg = "Node added successfully"
                 
                 self.run_task(self.send_param('status', msg, ''))
               
@@ -433,12 +455,9 @@ class NodeManagerDevice(BaseDevice):
             
             except Exception as e:
                
-                self.run_task(self.send_param('status', f"Error: {str(e)}", ''))
-            
+                
                 self.run_task(self._clear_status())
             
-                return Reply(request.connection, request.key, request.transform, 'error', str(e))
-
         elif cmd == 'list_nodes':
            
             self.update_nodes_param()
@@ -508,6 +527,61 @@ class NodeManagerDevice(BaseDevice):
                 return Reply(request.connection, request.key, request.transform, 'ack', layout)
             except Exception as e:
                 self.log.error(f"get_layout failed: {e}")
+                return Reply(request.connection, request.key, request.transform, 'error', str(e))
+
+        elif cmd == 'save_plot_config':
+            try:
+                data = request.data
+                if isinstance(data, str):
+                    data = json.loads(data)
+                name = data.get('name') if data else None
+                plot_config = data.get('config') if data else None
+                if not plot_config:
+                    return Reply(request.connection, request.key, request.transform, 'error', 'No plot config provided')
+                ensure_plot_config_dir()
+                if not name:
+                    name = f"plot_{int(time.time())}"
+                safe_name = ''.join(c for c in name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+                file_path = os.path.join(PLOT_CONFIG_DIR, safe_name + '.json')
+                try:
+                    self.log.info(f"Saving plot config '{safe_name}' to {file_path}")
+                except Exception:
+                    print(f"Saving plot config '{safe_name}' to {file_path}")
+                with open(file_path, 'w') as f:
+                    json.dump(plot_config, f, indent=2)
+                return Reply(request.connection, request.key, request.transform, 'ack', {'status': 'ok', 'name': safe_name, 'path': file_path})
+            except Exception as e:
+                self.log.error(f"save_plot_config failed: {e}")
+                return Reply(request.connection, request.key, request.transform, 'error', str(e))
+
+        elif cmd == 'list_plot_configs':
+            try:
+                ensure_plot_config_dir()
+                files = []
+                for fname in os.listdir(PLOT_CONFIG_DIR):
+                    if fname.endswith('.json'):
+                        files.append(fname[:-5])
+                return Reply(request.connection, request.key, request.transform, 'ack', files)
+            except Exception as e:
+                self.log.error(f"list_plot_configs failed: {e}")
+                return Reply(request.connection, request.key, request.transform, 'error', str(e))
+
+        elif cmd == 'get_plot_config':
+            try:
+                data = request.data
+                if isinstance(data, str):
+                    data = json.loads(data)
+                name = data.get('name') if data else None
+                if not name:
+                    return Reply(request.connection, request.key, request.transform, 'error', 'No name provided')
+                file_path = os.path.join(PLOT_CONFIG_DIR, name + '.json')
+                if not os.path.exists(file_path):
+                    return Reply(request.connection, request.key, request.transform, 'error', 'Not found')
+                with open(file_path, 'r') as f:
+                    plot_config = json.load(f)
+                return Reply(request.connection, request.key, request.transform, 'ack', plot_config)
+            except Exception as e:
+                self.log.error(f"get_plot_config failed: {e}")
                 return Reply(request.connection, request.key, request.transform, 'error', str(e))
 
         elif cmd == 'delete_layout':

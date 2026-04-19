@@ -1,9 +1,157 @@
-from spin.backend import Backend, Update, State, Reply
+from spin.backend import Backend, Update, State, Reply, fixup_params
+from spin.config import Device as ConfigDevice, Param
 import asyncio
 import os, json
 import threading
+import importlib
+from urllib.parse import urlparse
+import mlzlog
+from spin import secop as spin_secop
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+
+
+def is_running_in_docker():
+    return os.path.exists('/.dockerenv') or os.path.exists('/run/.containerenv')
+
+
+def resolve_host(host):
+    if not is_running_in_docker():
+        return host
+    if host not in ('localhost', '127.0.0.1'):
+        return host
+    return 'host.docker.internal'
+
+
+class RuntimeSECNode(spin_secop.SECNode):
+    def __init__(self, addr, log):
+        super().__init__(addr, log)
+        self._description = None
+
+    async def _synchronize(self):
+        self.log.info('connected to node')
+        await self._send(b'*IDN?')
+        proto = await self._receive()
+        if ',SECoP,' not in proto:
+            raise RuntimeError('not a SECoP node, IDN = {proto!r}')
+        await self._send(b'describe')
+        description_msg = await self._receive()
+        _, _, description = self._decode(description_msg)
+        self._description = description
+        await self._set_units(description)
+        self.log.info('waiting for initial updates')
+        await self._send(b'activate')
+        unseen = set(self.devices)
+        while True:
+            msg = self._decode(await self._receive())
+            if msg[0] == 'active':
+                break
+            await self._handle_message(msg)
+            unseen.discard(msg[1])
+        if unseen:
+            self.log.warning('not all initial updates from SEC node received (missing %s)', unseen)
+
+    async def _set_units_for_device(self, device):
+        if not self._description:
+            return
+        modules = self._description.get('modules', {})
+        module = modules.get(device.device, {})
+        accessibles = module.get('accessibles', {})
+        for param in ['value', *(device.extra_params or [])]:
+            if param == 'status':
+                continue
+            datainfo = accessibles.get(param, {}).get('datainfo')
+            if datainfo:
+                device.set_datainfo(param, datainfo)
+
+    async def _activate_device(self, device):
+        try:
+            await self._set_units_for_device(device)
+            await self._send(f'activate {device.device}'.encode())
+        except Exception as exc:
+            device.log.exception('failed to activate hot-added device: %r', exc)
+            await device.send(State.ERROR, f'Could not activate device: {exc}')
+
+    def add_device(self, device):
+        super().add_device(device)
+        if self.is_initialized:
+            device.run_task(self._activate_device(device))
+
+
+class Device(spin_secop.Device):
+    _connclass = RuntimeSECNode
+
+    async def update(self, action, ident, data):
+        await super().update(action, ident, data)
+
+        if action != 'update':
+            return
+
+        _, _, param = ident.partition(':')
+        if not param:
+            return
+
+        value = self.cache.get(param)
+        unit = getattr(self, '_units', {}).get(param, '') if hasattr(self, '_units') else ''
+        state, state_str = self.cache.get('status', (State.UNKNOWN, ''))
+        ExtendedBackend.latest_values[f'{self._name}.{param}'] = {
+            'value': value,
+            'unit': str(unit),
+            'state': str(state),
+            'state_str': str(state_str),
+        }
+
+
+def _build_device_aliases(device_name):
+    aliases = set()
+    if not device_name:
+        return aliases
+
+    aliases.add(device_name)
+
+    parts = [part for part in str(device_name).split('_') if part]
+    for index in range(len(parts)):
+        aliases.add('_'.join(parts[index:]))
+
+    try:
+        json_path = os.path.join(os.path.dirname(__file__), 'device_params.json')
+        with open(json_path, 'r') as handle:
+            device_params = json.load(handle)
+        info = device_params.get(device_name) or {}
+        for field in ('module_name', 'original_name'):
+            value = info.get(field)
+            if value:
+                aliases.add(value)
+    except Exception:
+        pass
+
+    return {alias for alias in aliases if alias}
+
+
+def _resolve_device_addr(backend, device_name):
+    if not backend or not hasattr(backend, '_devices'):
+        return None
+
+    aliases = _build_device_aliases(device_name)
+    devices = getattr(backend, '_devices', {})
+
+    for alias in aliases:
+        dev_obj = devices.get(alias)
+        if dev_obj and hasattr(dev_obj, '_conn') and getattr(dev_obj._conn, 'addr', None):
+            return dev_obj._conn.addr
+
+    for key, dev_obj in devices.items():
+        try:
+            module_name = getattr(dev_obj, 'device', None)
+            names_to_check = {key, module_name}
+            if any(name and (name in aliases or any(name.endswith(alias) for alias in aliases)) for name in names_to_check):
+                if hasattr(dev_obj, '_conn') and getattr(dev_obj._conn, 'addr', None):
+                    return dev_obj._conn.addr
+        except Exception:
+            continue
+
+    return None
+
 """
 an extended backend to poll all device parameters to port 8001 every poll_interval
 for frontend spin updates
@@ -11,11 +159,48 @@ for frontend spin updates
 class ExtendedBackend(Backend):
     # Store latest values for API
     latest_values = {}
+
+    def _create_runtime_device(self, name, device_conf):
+        parsed = urlparse(device_conf.device)
+        if parsed.scheme not in self.protos:
+            raise ValueError(f'{device_conf.device}: unknown protocol')
+
+        fixup_params(device_conf)
+        devcls = self.protos[parsed.scheme]
+        if isinstance(devcls, str):
+            devcls = importlib.import_module(devcls).Device
+
+        log = mlzlog.getLogger(parsed.scheme).getChild(name)
+        dev = devcls(name, device_conf, parsed, self, log)
+        self._devices[name] = dev
+        dev.init()
+        return dev
+
+    def add_runtime_secop_node(self, host, port, mod_list, para_map):
+        resolved_host = resolve_host(host)
+        url = f"{resolved_host}:{port}"
+        added = []
+
+        for original_name, unique_name in mod_list or []:
+            if unique_name in self._devices:
+                continue
+
+            params = [Param(para_name) for para_name in para_map.get(unique_name, [])]
+            device_conf = ConfigDevice(
+                f"secop://{url}/{original_name}",
+                pollinterval=1.0,
+                params=params,
+            )
+            dev = self._create_runtime_device(unique_name, device_conf)
+            dev.all_params = para_map.get(unique_name, [])
+            added.append(unique_name)
+
+        return added
     
     async def poll_all_parameters(self, poll_interval=2):
        
         while True:
-            for devname, dev in self._devices.items():
+            for devname, dev in list(self._devices.items()):
                
 
                 all_params = getattr(dev, 'all_params', None)
@@ -75,6 +260,7 @@ class ExtendedBackend(Backend):
 
     def start(self, conf, asset_list):
         # Add nodemanager protocol if missing, use correct module name
+        self.protos['secop'] = 'configuration.extended_backend'
         if 'nodemanager' not in self.protos:
             self.protos['nodemanager'] = 'configuration.node_manager'
         super().start(conf, asset_list)
@@ -137,23 +323,11 @@ def start_api_server(backend=None):
         if not device:
             return jsonify({'status': 'error', 'error': 'missing device'}), 400
 
-        # Try to find exact device in backend._devices
         try:
-            if backend and hasattr(backend, '_devices'):
-                dev_obj = backend._devices.get(device)
-                if dev_obj and hasattr(dev_obj, '_conn') and getattr(dev_obj._conn, 'addr', None):
-                    return jsonify({'status': 'ok', 'addr': dev_obj._conn.addr})
-
-                # fallback: search by device.device attribute or device name substring
-                for k, v in backend._devices.items():
-                    try:
-                        # v.device is the module name held in Device
-                        if getattr(v, 'device', None) == device or k == device or device in k:
-                            if hasattr(v, '_conn') and getattr(v._conn, 'addr', None):
-                                return jsonify({'status': 'ok', 'addr': v._conn.addr})
-                    except Exception:
-                        continue
-        except Exception as e:
+            addr = _resolve_device_addr(backend, device)
+            if addr:
+                return jsonify({'status': 'ok', 'addr': addr})
+        except Exception:
             app.logger.exception('api_node_for_device lookup failed')
 
         return jsonify({'status': 'not_found'}), 404

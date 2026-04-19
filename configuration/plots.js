@@ -49,6 +49,9 @@ startPollingLatestValues();
   const plotTypeSelect = document.getElementById('plot-type');
 
   const deviceParamsSelect = document.getElementById('curve-key');
+  const curveLineTypeSelect = document.getElementById('curve-line-type');
+  const curveLineWidthSelect = document.getElementById('curve-line-width');
+  const curveLineColorInput = document.getElementById('curve-line-color');
 
   const addBtn = document.getElementById('add-curve');
 
@@ -56,7 +59,12 @@ startPollingLatestValues();
 
   const deleteBtn = document.getElementById('delete-line');
 
+  const plotConfigSelect = document.getElementById('plot-config-select');
+
   const createBtn = document.getElementById('create-plot');
+
+  const PLOT_CONFIG_STORAGE_KEY = 'plot_configurations';
+  let activeSavedPlotName = '';
 
 
   // staged lines (added via Add Line before creating a plot)
@@ -65,6 +73,524 @@ startPollingLatestValues();
   // created plots: id -> { id, containerDiv, plotDiv, traces: { key -> {x,y,traceObj,suffix} } }
   const plotsMap = {};
   let plotCounter = 0;
+
+  function getStoredPlotConfigs(){
+    try 
+    {
+      const raw = localStorage.getItem(PLOT_CONFIG_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } 
+    catch (e) 
+    {
+      console.error('Error reading plot configs from localStorage', e);
+      return {};
+    }
+  }
+
+  function storePlotConfigLocally(name, config){
+    if(!name || !config) return;
+    const configs = getStoredPlotConfigs();
+    configs[name] = config;
+    localStorage.setItem(PLOT_CONFIG_STORAGE_KEY, JSON.stringify(configs));
+  }
+
+  function getDisplayLabelForLine(line){
+    if(!line || !line.key) return '';
+    const style = line.style || {};
+    const type = style.lineType || 'solid';
+    const width = style.lineWidth || 2;
+    return `${line.key} (${type}, ${width}px)`;
+  }
+
+  function clearStagedLines(){
+    Object.keys(staged).forEach(key => delete staged[key]);
+    if(!addedLinesSelect) return;
+    addedLinesSelect.innerHTML = '<option value="">-- added lines --</option>';
+    addedLinesSelect.size = 1;
+    addedLinesSelect.value = '';
+  }
+
+  function rebuildStagedLinesSelect(){
+    if(!addedLinesSelect) return;
+    const keys = Object.keys(staged);
+    addedLinesSelect.innerHTML = '';
+    if(keys.length === 0) {
+      addedLinesSelect.innerHTML = '<option value="">-- added lines --</option>';
+      addedLinesSelect.size = 1;
+      addedLinesSelect.value = '';
+      return;
+    }
+    addedLinesSelect.size = Math.min(Math.max(keys.length, 2), 6);
+    keys.forEach((key) => {
+      const meta = staged[key] || {};
+      const option = document.createElement('option');
+      option.value = key;
+      option.textContent = getDisplayLabelForLine({ key, style: meta.style });
+      addedLinesSelect.add(option);
+    });
+    addedLinesSelect.selectedIndex = 0;
+  }
+
+  function getPreparedStagedLine(key, style, suffix){
+    return {
+      suffix: suffix || key,
+      style: Object.assign({
+        lineType: 'solid',
+        lineWidth: 2,
+        lineColor: '#007bff'
+      }, style || {})
+    };
+  }
+
+  function getCurrentPlotConfig(nameOverride){
+    const preselected = deviceParamsSelect && deviceParamsSelect.value ? deviceParamsSelect.value.trim() : '';
+    const nextStaged = Object.keys(staged).length ? staged : (preselected ? { [preselected]: getPreparedStagedLine(preselected, getSelectedCurveStyle(), preselected) } : {});
+    const lines = Object.keys(nextStaged).map((key) => {
+      const meta = nextStaged[key] || {};
+      return {
+        key,
+        suffix: meta.suffix || key,
+        style: Object.assign({
+          lineType: 'solid',
+          lineWidth: 2,
+          lineColor: '#007bff'
+        }, meta.style || {})
+      };
+    });
+    return {
+      name: nameOverride || '',
+      plotType: plotTypeSelect && plotTypeSelect.value ? plotTypeSelect.value : 'line',
+      lines,
+      savedAt: new Date().toISOString()
+    };
+  }
+
+  function applyPlotConfig(config){
+    if(!config) return;
+    if(plotTypeSelect && config.plotType) plotTypeSelect.value = config.plotType;
+    clearStagedLines();
+    (config.lines || []).forEach((line) => {
+      if(!line || !line.key) return;
+      staged[line.key] = getPreparedStagedLine(line.key, line.style, line.suffix || line.key);
+    });
+    rebuildStagedLinesSelect();
+    const firstLine = (config.lines || [])[0];
+    if(firstLine){
+      if(deviceParamsSelect) deviceParamsSelect.value = firstLine.key;
+      if(curveLineTypeSelect && firstLine.style && firstLine.style.lineType) curveLineTypeSelect.value = firstLine.style.lineType;
+      if(curveLineWidthSelect && firstLine.style && firstLine.style.lineWidth) curveLineWidthSelect.value = String(firstLine.style.lineWidth);
+      if(curveLineColorInput && firstLine.style && firstLine.style.lineColor) curveLineColorInput.value = firstLine.style.lineColor;
+    }
+    refreshPlot();
+  }
+
+  function populatePlotConfigSelect(selectEl, selectedName){
+    if(!selectEl) return;
+    const names = Object.keys(getStoredPlotConfigs()).sort();
+    selectEl.innerHTML = '<option value="">Plot selection</option>';
+    names.forEach((name) => {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      selectEl.add(option);
+    });
+    if(selectedName && names.includes(selectedName)) {
+      selectEl.value = selectedName;
+    } else {
+      selectEl.value = '';
+    }
+  }
+
+  function refreshPlotConfigSelectors(){
+    if(plotConfigSelect) populatePlotConfigSelect(plotConfigSelect, activeSavedPlotName);
+    Object.values(plotsMap).forEach((entry) => {
+      if(entry && entry.plotConfigSelect) {
+        populatePlotConfigSelect(entry.plotConfigSelect, entry.configName || activeSavedPlotName);
+      }
+    });
+  }
+
+  function setPlotConfigSelection(name){
+    activeSavedPlotName = name || '';
+    refreshPlotConfigSelectors();
+  }
+
+  function updatePlotConfigList(selectedName){
+    if(typeof selectedName === 'string') activeSavedPlotName = selectedName;
+    refreshPlotConfigSelectors();
+    if(window.Spin && window.Spin.send_request){
+      try {
+        window.Spin.send_request('nodemanager.list_plot_configs', '', 'read', 'read', null, function(names){
+          if(!Array.isArray(names)) return;
+          const merged = getStoredPlotConfigs();
+          names.forEach((name) => {
+            if(!(name in merged)) merged[name] = { name: name };
+          });
+          localStorage.setItem(PLOT_CONFIG_STORAGE_KEY, JSON.stringify(merged));
+          refreshPlotConfigSelectors();
+        });
+      } catch (e) {
+        console.error('list_plot_configs request failed', e);
+      }
+    }
+  }
+
+  function findExistingPlotByName(name){
+    if(!name) return null;
+    return Object.values(plotsMap).find((entry) => entry && entry.containerDiv && entry.containerDiv.dataset && entry.containerDiv.dataset.plotName === name) || null;
+  }
+
+  function focusExistingPlot(entry){
+    if(!entry || !entry.containerDiv) return;
+    entry.containerDiv.style.display = 'block';
+    entry.containerDiv.style.zIndex = String((parseInt(entry.containerDiv.style.zIndex || '5', 10) || 5) + 1);
+    if(typeof entry.containerDiv.scrollIntoView === 'function') {
+      entry.containerDiv.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+  }
+
+  function removePlotEntryByName(name){
+    if(!name) return;
+    Object.keys(plotsMap).forEach((id) => {
+      const entry = plotsMap[id];
+      if(entry && entry.containerDiv && entry.containerDiv.dataset && entry.containerDiv.dataset.plotName === name){
+        try {
+          if(entry.plotDiv) Plotly.purge(entry.plotDiv);
+        } catch (e) {}
+        if(entry.containerDiv && entry.containerDiv.parentNode) entry.containerDiv.parentNode.removeChild(entry.containerDiv);
+        delete plotsMap[id];
+      }
+    });
+  }
+
+  function requestPlotConfigFromServer(name, callback){
+    if(!(window.Spin && window.Spin.send_request)) return false;
+    try {
+      window.Spin.send_request('nodemanager.get_plot_config', '', 'read', 'read', {name: name}, function(config){
+        if(config && typeof config === 'object') {
+          if(!config.name) config.name = name;
+          storePlotConfigLocally(name, config);
+          updatePlotConfigList(name);
+          if(typeof callback === 'function') callback(config);
+        }
+      });
+      return true;
+    } catch (e) {
+      console.error('get_plot_config request failed', e);
+      return false;
+    }
+  }
+
+  function removePlotEntryById(id){
+    const entry = plotsMap[id];
+    if(!entry) return;
+    try {
+      if(entry.plotDiv) Plotly.purge(entry.plotDiv);
+    } catch (e) {}
+    if(entry.containerDiv && entry.containerDiv.parentNode) entry.containerDiv.parentNode.removeChild(entry.containerDiv);
+    delete plotsMap[id];
+  }
+
+  function capturePlotPanelGeometry(entry){
+    if(!entry || !entry.containerDiv) return null;
+    return {
+      left: entry.containerDiv.style.left,
+      top: entry.containerDiv.style.top,
+      width: entry.containerDiv.style.width,
+      height: entry.containerDiv.style.height,
+      transform: entry.containerDiv.style.transform,
+      zIndex: entry.containerDiv.style.zIndex,
+      dataX: entry.containerDiv.getAttribute('data-x') || '',
+      dataY: entry.containerDiv.getAttribute('data-y') || ''
+    };
+  }
+
+  function applyPlotPanelGeometry(entry, geometry){
+    if(!entry || !entry.containerDiv || !geometry) return;
+    entry.containerDiv.style.left = geometry.left || entry.containerDiv.style.left;
+    entry.containerDiv.style.top = geometry.top || entry.containerDiv.style.top;
+    entry.containerDiv.style.width = geometry.width || entry.containerDiv.style.width;
+    entry.containerDiv.style.height = geometry.height || entry.containerDiv.style.height;
+    entry.containerDiv.style.transform = geometry.transform || '';
+    entry.containerDiv.style.zIndex = geometry.zIndex || entry.containerDiv.style.zIndex;
+    if(geometry.dataX) entry.containerDiv.setAttribute('data-x', geometry.dataX); else entry.containerDiv.removeAttribute('data-x');
+    if(geometry.dataY) entry.containerDiv.setAttribute('data-y', geometry.dataY); else entry.containerDiv.removeAttribute('data-y');
+    try { Plotly.Plots.resize(entry.plotDiv); } catch (e) {}
+  }
+
+  function loadPlotConfigByName(name, callback){
+    const configs = getStoredPlotConfigs();
+    const cachedConfig = configs[name];
+    if(cachedConfig && Array.isArray(cachedConfig.lines) && cachedConfig.lines.length) {
+      callback(cachedConfig);
+      return;
+    }
+    if(!requestPlotConfigFromServer(name, callback)) {
+      alert('Plot configuration not found.');
+    }
+  }
+
+  function switchPlotPanelToConfig(currentEntry, name){
+    if(!currentEntry || !name || currentEntry.configName === name) return;
+    const geometry = capturePlotPanelGeometry(currentEntry);
+    loadPlotConfigByName(name, (config) => {
+      if(!config) return;
+      removePlotEntryById(currentEntry.id);
+      const nextEntry = createPlotPanelFromConfig(config);
+      applyPlotPanelGeometry(nextEntry, geometry);
+      applyPlotConfig(config);
+      setPlotConfigSelection(name);
+      focusExistingPlot(nextEntry);
+    });
+  }
+
+  function restorePlotPanelFromLayout(savedPlot, isConfigureLayout){
+    if(!savedPlot) return null;
+    const layoutConfig = {
+      name: savedPlot.configName || savedPlot.title || `Plot ${plotCounter + 1}`,
+      plotType: savedPlot.plotType || 'line',
+      lines: Array.isArray(savedPlot.traces)
+        ? savedPlot.traces.map((key) => ({
+            key,
+            suffix: key,
+            style: {
+              lineType: 'solid',
+              lineWidth: 2,
+              lineColor: '#007bff'
+            }
+          }))
+        : []
+    };
+    const plotEntry = createPlotPanelFromConfig(layoutConfig);
+    if(!plotEntry) return null;
+    if(savedPlot.id) {
+      plotEntry.containerDiv.id = savedPlot.id;
+      plotEntry.plotDiv.id = savedPlot.id + '_plot';
+    }
+    plotEntry.configName = savedPlot.configName || layoutConfig.name;
+    if(savedPlot.title) {
+      const titleDiv = plotEntry.containerDiv.querySelector('.plot-title-label');
+      if(titleDiv) titleDiv.innerText = savedPlot.title;
+    }
+    if(savedPlot.left) plotEntry.containerDiv.style.left = savedPlot.left;
+    if(savedPlot.top) plotEntry.containerDiv.style.top = savedPlot.top;
+    if(savedPlot.width) plotEntry.containerDiv.style.width = savedPlot.width;
+    if(savedPlot.height) {
+      plotEntry.containerDiv.style.height = savedPlot.height;
+      plotEntry.plotDiv.style.height = savedPlot.height;
+    }
+    plotEntry.containerDiv.style.transform = '';
+    plotEntry.containerDiv.removeAttribute('data-x');
+    plotEntry.containerDiv.removeAttribute('data-y');
+    if(isConfigureLayout){
+      try { makeDraggable(plotEntry.containerDiv); } catch (e) {}
+      try { makeResizable(plotEntry.containerDiv); } catch (e) {}
+    }
+    try { Plotly.Plots.resize(plotEntry.plotDiv); } catch (e) {}
+    setPlotConfigSelection(plotEntry.configName || '');
+    return plotEntry;
+  }
+
+  function createPlotPanelFromConfig(config){
+    if(!config || !Array.isArray(config.lines) || config.lines.length === 0) {
+      alert('No lines staged. Use Add Line to stage parameters before creating a plot.');
+      return null;
+    }
+
+    const plotName = config.name && config.name.trim() ? config.name.trim() : `Plot ${plotCounter + 1}`;
+    removePlotEntryByName(plotName);
+
+    const id = 'plot_' + (++plotCounter);
+
+    const container = document.createElement('div'); container.className = 'plot-panel'; container.id = id + '_panel';
+    container.dataset.plotName = plotName;
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'plot-title-label';
+    titleDiv.contentEditable = true;
+    titleDiv.innerText = plotName;
+    titleDiv.title = 'Click to edit plot title';
+    titleDiv.style.fontWeight = 'bold';
+    titleDiv.style.fontSize = '18px';
+    titleDiv.style.textAlign = 'center';
+    titleDiv.style.margin = '8px 0 4px 0';
+    titleDiv.style.outline = 'none';
+    titleDiv.addEventListener('blur', function(){
+      Plotly.relayout(plotDiv, { title: '' });
+    });
+    titleDiv.addEventListener('keydown', function(e){
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        titleDiv.blur();
+      }
+    });
+    container.insertBefore(titleDiv, container.firstChild);
+
+    const plotDiv = document.createElement('div'); plotDiv.id = id + '_plot'; plotDiv.style.width = '100%'; plotDiv.style.height = '360px';
+
+    container.appendChild(plotDiv);
+    const grid = document.getElementById('device-grid');
+    container.style.position = 'absolute';
+    container.style.left = '200px';
+    container.style.top = '80px';
+    container.style.width = '700px';
+    container.style.maxWidth = 'none';
+    container.style.zIndex = '5';
+    container.classList.add('device-box', 'plot-panel');
+    grid.appendChild(container);
+
+    try {
+      makeDraggable(container);
+    } catch (e) {
+      console.debug('plot is not draggable');
+    }
+    try {
+      makeResizable(container);
+    } catch (e) {
+      console.debug('plot is not moveable');
+    }
+
+    const plotEntry = { id, containerDiv: container, plotDiv: plotDiv, traces: {}, plotType: config.plotType || 'line', configName: plotName };
+    const savedPlotControl = document.createElement('div');
+    savedPlotControl.className = 'plot-saved-control';
+    const savedPlotSelect = document.createElement('select');
+    savedPlotSelect.className = 'plot-saved-select';
+    ['pointerdown', 'mousedown', 'click', 'dblclick'].forEach((eventName) => {
+      savedPlotControl.addEventListener(eventName, (event) => {
+        event.stopPropagation();
+      });
+      savedPlotSelect.addEventListener(eventName, (event) => {
+        event.stopPropagation();
+      });
+    });
+    savedPlotControl.appendChild(savedPlotSelect);
+    container.appendChild(savedPlotControl);
+    plotEntry.plotConfigSelect = savedPlotSelect;
+    populatePlotConfigSelect(savedPlotSelect, plotName);
+    savedPlotSelect.addEventListener('change', () => {
+      const nextName = savedPlotSelect.value;
+      if(!nextName) return;
+      switchPlotPanelToConfig(plotEntry, nextName);
+    });
+    config.lines.forEach((line) => {
+      const key = line.key;
+      const prepared = getPreparedStagedLine(line.key, line.style, line.suffix || line.key);
+      if(plotEntry.plotType === 'array') {
+        plotEntry.traces[key] = { isArrayParent: true, suffix: prepared.suffix, children: {}, name: key, style: prepared.style };
+      } else {
+        const traceLabel = key || prepared.suffix || 'trace';
+        const trace = { x: [], y: [], mode: 'lines+markers', name: traceLabel };
+        applyTraceStyle(trace, prepared.style);
+        plotEntry.traces[key] = { x: trace.x, y: trace.y, traceObj: trace, name: traceLabel, suffix: prepared.suffix, _traceIndex: undefined, _lastSent: 0, style: prepared.style };
+      }
+    });
+
+    plotsMap[id] = plotEntry;
+    const initTraceMetas = Object.values(plotEntry.traces).filter(t => t && t.traceObj);
+    Plotly.newPlot(plotDiv, initTraceMetas.map(t=>t.traceObj), layoutForType(plotEntry.plotType)).then(()=>{
+      initTraceMetas.forEach((t,i)=>{ t._traceIndex = i; if (Array.isArray(t.x)) t._lastSent = t.x.length; });
+      Plotly.relayout(plotDiv, { title: '' });
+      if (titleDiv.parentNode !== container) {
+        container.insertBefore(titleDiv, container.firstChild);
+      }
+      const next = titleDiv.nextSibling;
+      if (next && next.className && (next.className.includes('plot-param-labels') || next.className.includes('plot-legend-labels'))) {
+        container.removeChild(next);
+      }
+    }).catch(e=>{ console.warn('Plotly.newPlot failed', e); });
+
+    function makePanelDraggableResizable(container, plotDiv) {
+      if (window.interact) {
+        interact(container)
+        .draggable({
+          inertia: true,
+          listeners: {
+            move (event) {
+              const x = (parseFloat(container.getAttribute('data-x')) || 0) + event.dx;
+              const y = (parseFloat(container.getAttribute('data-y')) || 0) + event.dy;
+              container.style.transform = `translate(${x}px, ${y}px)`;
+              container.setAttribute('data-x', x);
+              container.setAttribute('data-y', y);
+            }
+          }
+        })
+        .resizable({
+          edges: { left: true, right: true, bottom: true, top: true },
+          listeners: {
+            move (event) {
+              let { x, y } = event.target.dataset;
+              x = (parseFloat(x) || 0) + event.deltaRect.left;
+              y = (parseFloat(y) || 0) + event.deltaRect.top;
+              Object.assign(event.target.style, {
+                width: `${event.rect.width}px`,
+                height: `${event.rect.height}px`,
+                transform: `translate(${x}px, ${y}px)`
+              });
+              event.target.dataset.x = x;
+              event.target.dataset.y = y;
+              try { Plotly.Plots.resize(plotDiv); } catch(e) {}
+            }
+          },
+          inertia: true
+        });
+      } else {
+        setTimeout(()=>makePanelDraggableResizable(container, plotDiv), 500);
+      }
+    }
+
+    makePanelDraggableResizable(container, plotDiv);
+    return plotEntry;
+  }
+
+  function dashForLineType(lineType){
+    if(lineType === 'dashed') return 'dash';
+    if(lineType === 'dotted') return 'dot';
+    return 'solid';
+  }
+
+  function getSelectedCurveStyle(){
+    return {
+      lineType: curveLineTypeSelect && curveLineTypeSelect.value ? curveLineTypeSelect.value : 'solid',
+      lineWidth: curveLineWidthSelect && curveLineWidthSelect.value ? parseInt(curveLineWidthSelect.value, 10) : 2,
+      lineColor: curveLineColorInput && curveLineColorInput.value ? curveLineColorInput.value : '#007bff'
+    };
+  }
+
+  function applyTraceStyle(traceObj, style){
+    if(!traceObj) return;
+    const nextStyle = style || {};
+    traceObj.line = Object.assign({}, traceObj.line || {}, {
+      width: nextStyle.lineWidth || 2,
+      color: nextStyle.lineColor || '#007bff',
+      dash: dashForLineType(nextStyle.lineType || 'solid')
+    });
+    traceObj.marker = Object.assign({}, traceObj.marker || {}, {
+      color: nextStyle.lineColor || '#007bff'
+    });
+  }
+
+  function withTimeRangeControls(layout){
+    const nextLayout = Object.assign({}, layout || {});
+    const xaxis = Object.assign({}, nextLayout.xaxis || {});
+
+    if (xaxis.type && xaxis.type !== 'date') {
+      nextLayout.xaxis = xaxis;
+      return nextLayout;
+    }
+
+    xaxis.type = 'date';
+    xaxis.rangeselector = {
+      buttons: [
+        { count: 1, step: 'hour', stepmode: 'backward', label: '1h' },
+        { count: 3, step: 'hour', stepmode: 'backward', label: '3h' },
+        { count: 12, step: 'hour', stepmode: 'backward', label: '12h' },
+        { count: 1, step: 'day', stepmode: 'backward', label: '1d' },
+        { step: 'all', label: 'All' }
+      ]
+    };
+    xaxis.rangeslider = { visible: true };
+    nextLayout.xaxis = xaxis;
+    return nextLayout;
+  }
 
   function loadDeviceParams(){
     // try common static locations first, then absolute on localhost:8080 (user's server port)
@@ -178,15 +704,15 @@ startPollingLatestValues();
 
  
 
-  function layoutForType(){
+  function layoutForType(typeOverride){
 
-    const type = plotTypeSelect ? plotTypeSelect.value : 'line';
+    const type = typeOverride || (plotTypeSelect ? plotTypeSelect.value : 'line');
 
     const layout = { title: '', xaxis:{type:'date'}, margin:{t:30} };
 
     if(type === 'xy') layout.xaxis = { title: 'X' };
 
-    return layout;
+    return withTimeRangeControls(layout);
 
   }
 
@@ -199,7 +725,7 @@ startPollingLatestValues();
       const data = traceMetas.map(t => t.traceObj);
 
       // update the whole plot with only the real traces
-      Plotly.react(p.plotDiv, data, layoutForType(), {responsive:true}).then(()=>{
+      Plotly.react(p.plotDiv, data, layoutForType(p.plotType), {responsive:true}).then(()=>{
         traceMetas.forEach((t,i)=> t._traceIndex = i);
       }).catch(e=>{ });
   
@@ -261,12 +787,12 @@ startPollingLatestValues();
     // e.g. emitted key might be "host_123_sim_gas_dosing_massflow_contr1.target"
     // and endsWith('sim_gas_dosing_massflow_contr1.target') will match.
     const suffix = key;
+    const style = getSelectedCurveStyle();
+
+    staged[key] = getPreparedStagedLine(key, style, suffix);
   
-    staged[key] = { suffix };
-  
-    const opt = document.createElement('option'); opt.value = key; opt.text = key;
-  
-    addedLinesSelect.add(opt);
+    rebuildStagedLinesSelect();
+    if (addedLinesSelect) addedLinesSelect.value = key;
   }
 
   function deleteLine(){
@@ -278,8 +804,7 @@ startPollingLatestValues();
     if(!staged[key]) return alert('Selected staged line not found');
   
     delete staged[key];
-  
-    [...sel.options].forEach(o=>{ if(o.value===key) o.remove(); });
+    rebuildStagedLinesSelect();
   
   }
 
@@ -350,12 +875,16 @@ startPollingLatestValues();
           // Only include real trace objects in full react
           const traceMetas = traces.filter(tt => tt && tt.traceObj);
           const data = traceMetas.map(tt=>tt.traceObj);
-          Plotly.react(p.plotDiv, data, layoutForType(), {responsive:true}).then(()=>{
+          Plotly.react(p.plotDiv, data, layoutForType(p.plotType), {responsive:true}).then(()=>{
             traceMetas.forEach((tt,i)=> tt._traceIndex = i);
             traceMetas.forEach(tt=> tt._lastSent = tt.traceObj.x.length);
           }).catch(e=>{ console.error('Plotly.react failed during flush', e); });
 
-        }catch(e){ console.error('Full react failed during flush', e); }
+        }
+        catch(e)
+        { 
+          console.error('Full react failed during flush', e);
+        }
       }
     });
 }
@@ -374,7 +903,9 @@ startPollingLatestValues();
       {
         const name = `${parentKey}[${i}]`;
         const traceObj = { x: [], y: [], mode: 'lines+markers', name: name };
-        plotEntry.traces[childKey] = { traceObj: traceObj, suffix: childKey, _traceIndex: undefined, _lastSent: 0, parent: parentKey };
+        const parentMeta = plotEntry.traces[parentKey] || {};
+        applyTraceStyle(traceObj, parentMeta.style);
+        plotEntry.traces[childKey] = { traceObj: traceObj, suffix: childKey, _traceIndex: undefined, _lastSent: 0, parent: parentKey, style: parentMeta.style };
         toAdd.push({ traceObj: traceObj, childKey: childKey });
       }
     }
@@ -532,317 +1063,46 @@ startPollingLatestValues();
         });
    
       });
-     
-      // For each updated plot, append the latest value only to the matching trace (like test stream)
-      updatedPlots.forEach(id => {
-   
-        const p = plotsMap[id];
-   
-        if(p) {
-   
-          try{
-   
-            Object.keys(p.traces).forEach(k => {
-   
-              const meta = p.traces[k];
-   
-              if(emittedKey === k || (meta && meta.suffix && emittedKey.endsWith(meta.suffix))){
-   
-                if(typeof meta._traceIndex === 'number'){
-   
-                  try{
-                    // If this is the first point, use restyle to update the plot
-   
-                    if (meta.traceObj.x.length === 1) {
-   
-                      const update = { x: [meta.traceObj.x], y: [meta.traceObj.y] };
-   
-                      Plotly.restyle(p.plotDiv, update, [meta._traceIndex]);
-   
-                    
-   
-                    } else {
-   
-                      Plotly.extendTraces(p.plotDiv, { x: [[meta.traceObj.x[meta.traceObj.x.length-1]]], y: [[meta.traceObj.y[meta.traceObj.y.length-1]]] }, [meta._traceIndex]);
-   
-                     
-   
-                    }
-   
-                  }catch(e){
-   
-                   
-                    // fallback: full redraw (only include real traces)
-                    const traceMetas = Object.values(p.traces).filter(tt => tt && tt.traceObj);
-                    const data = traceMetas.map(tt => tt.traceObj);
-                    Plotly.react(p.plotDiv, data, layoutForType(), {responsive:true}).then(()=>{
-                      traceMetas.forEach((tt,i)=> tt._traceIndex = i);
-                    }).catch(()=>{});
-                  }
-                } else {
-                  // fallback: full redraw
-                  const traceMetas = Object.values(p.traces).filter(tt => tt && tt.traceObj);
-                  const data = traceMetas.map(tt => tt.traceObj);
-                  Plotly.react(p.plotDiv, data, layoutForType(), {responsive:true}).then(()=>{
-                    traceMetas.forEach((tt,i)=> tt._traceIndex = i);
-                  }).catch(()=>{});
-                }
-              }
-            });
-          }catch(e){ console.error('Plot redraw error for', id, e); }
+    }
+    catch(e)
+    {
+      console.error('plot update error', e);
+    }
+  });
+
+      addBtn && addBtn.addEventListener('click', addLine);
+
+      deleteBtn && deleteBtn.addEventListener('click', deleteLine);
+
+      plotTypeSelect && plotTypeSelect.addEventListener('change', refreshPlot);
+
+      createBtn && createBtn.addEventListener('click', ()=>{
+        const enteredName = prompt('Enter a name for this plot:', activeSavedPlotName || `Plot ${plotCounter + 1}`);
+        if(!enteredName) return;
+        const plotName = enteredName.trim();
+        if(!plotName) return;
+        const config = getCurrentPlotConfig(plotName);
+        if(!config.lines.length) return alert('No lines staged. Use Add Line to stage parameters before creating a plot.');
+        storePlotConfigLocally(plotName, config);
+        updatePlotConfigList(plotName);
+        setPlotConfigSelection(plotName);
+        createPlotPanelFromConfig(config);
+        if(window.Spin && window.Spin.send_request){
+          try {
+            window.Spin.send_request('nodemanager.save_plot_config', '', 'input', 'set', {name: plotName, config: config});
+            window.Spin.send_request('nodemanager.list_plot_configs', '', 'read', 'read', null);
+          } catch (e) {
+            console.error('save_plot_config request failed', e);
+          }
         }
       });
-    }catch(e){ console.error('plot update error', e); }
-  });
-
-  // wire UI
-  addBtn && addBtn.addEventListener('click', addLine);
-  
-  deleteBtn && deleteBtn.addEventListener('click', deleteLine);
-  
-  plotTypeSelect && plotTypeSelect.addEventListener('change', refreshPlot);
-  
-  createBtn && createBtn.addEventListener('click', ()=>{
-    // Create a new plot panel below using all currently staged lines.
-  
-  // plots will be inserted into the device grid (or document body) when created
-    // if there are no staged lines, but a device param is selected, stage it automatically
-  
-    const preselected = deviceParamsSelect && deviceParamsSelect.value ? deviceParamsSelect.value.trim() : '';
-  
-    if(Object.keys(staged).length === 0 && preselected){
-      // store full key as suffix (see addLine comments)
-  
-      staged[preselected] = { suffix: preselected };
-  
-    }
-
-  
-    const keys = Object.keys(staged);
-  
-    if(keys.length === 0) return alert('No lines staged. Use Add Line to stage parameters before creating a plot.');
-
-  
-    const id = 'plot_' + (++plotCounter);
-  
-    const container = document.createElement('div'); container.className = 'plot-panel'; container.id = id + '_panel';
-    // Editable plot title above the plot
-  
-    const titleDiv = document.createElement('div');
-  
-    titleDiv.className = 'plot-title-label';
-  
-    titleDiv.contentEditable = true;
-  
-    titleDiv.innerText = `Plot ${plotCounter}`;
-  
-    titleDiv.title = 'Click to edit plot title';
-  
-    titleDiv.style.fontWeight = 'bold';
-  
-    titleDiv.style.fontSize = '18px';
-  
-    titleDiv.style.textAlign = 'center';
-  
-    titleDiv.style.margin = '8px 0 4px 0';
-  
-    titleDiv.style.outline = 'none';
-  
-    // On blur or enter, update plot title (but keep Plotly layout title empty)
-    titleDiv.addEventListener('blur', function(){
-      // Always clear Plotly layout title so only the custom title is visible
-  
-      Plotly.relayout(plotDiv, { title: '' });
-    });
-  
-    titleDiv.addEventListener('keydown', function(e){
-  
-      if(e.key === 'Enter'){
-  
-        e.preventDefault();
-  
-        titleDiv.blur();
-      }
-    });
-  
-    container.insertBefore(titleDiv, container.firstChild);
-
-  // (Ensure no subtitle/label is inserted below the title)
-  
-    const plotDiv = document.createElement('div'); plotDiv.id = id + '_plot'; plotDiv.style.width = '100%'; plotDiv.style.height = '360px';
-    
-    container.appendChild(plotDiv);
-  // Insert plot panel into the main device grid so plots share the same workspace
-    const grid = document.getElementById('device-grid');
-    container.style.position = 'absolute';
-    container.style.left = '200px';
-    container.style.top = '80px';
-  // make plots wider by default and allow exceeding the device-box CSS max-width
-    container.style.width = '700px';
-    container.style.maxWidth = 'none';
-    container.style.zIndex = '5';
-    container.classList.add('device-box', 'plot-panel');
-    grid.appendChild(container);
-  
-    try
-     {
-       makeDraggable(container); 
-     } 
-    catch 
-    (e) 
-    {
-      console.debug("plot is not draggable")
-    }
-    try 
-    {
-       makeResizable(container); 
-    }
-    catch 
-    (e) 
-    {
-      console.debug("plot is not moveable")
-    }
-
-    const plotEntry = { id, containerDiv: container, plotDiv: plotDiv, traces: {}, plotType: (plotTypeSelect ? plotTypeSelect.value : 'line') };
-    // transfer staged lines into this new plot
-    keys.forEach(k => {
-      const s = staged[k];
-    
-      // If the selected plot type is 'array' we defer creating child traces until data arrives
-      if (plotEntry.plotType === 'array') 
-      {
-        plotEntry.traces[k] = { isArrayParent: true, suffix: s.suffix, children: {}, name: k };
-      } 
-      else
-     {
-        // Use a more descriptive name for the trace (device.param)
-        const traceLabel = k || s.suffix || 'trace';
-        const trace = { x: [], y: [], mode: 'lines+markers', name: traceLabel };
-        plotEntry.traces[k] = { x: trace.x, y: trace.y, traceObj: trace, name: traceLabel, suffix: s.suffix, _traceIndex: undefined, _lastSent: 0 };
-      }
-    });
-
-    plotsMap[id] = plotEntry;
-    // initialize plotly and capture trace indices so we can extend traces incrementally
-  const initTraceMetas = Object.values(plotEntry.traces).filter(t => t && t.traceObj);
-  Plotly.newPlot(plotDiv, initTraceMetas.map(t=>t.traceObj), layoutForType()).then(()=>{
-  initTraceMetas.forEach((t,i)=>{ t._traceIndex = i; if (Array.isArray(t.x)) t._lastSent = t.x.length; });
-      // Remove Plotly layout title so only the editable title above is visible
-    Plotly.relayout(plotDiv, { title: '' });
-      // Ensure titleDiv is always visible after plotly redraws
-    if (titleDiv.parentNode !== container) 
-    {
-        container.insertBefore(titleDiv, container.firstChild);
-    }
-      // (Ensure no subtitle/label is inserted below the title)
-      // Remove any subtitle/label below the title if it exists
-    const next = titleDiv.nextSibling;
-   
-    if (next && next.className && (next.className.includes('plot-param-labels') || next.className.includes('plot-legend-labels'))) {
-   
-        container.removeChild(next);
-   
-      }
-   
-    }).catch(e=>{ console.warn('Plotly.newPlot failed', e); });
-
-    // (legend editor removed) 
-
-    // Make plot panel resizable and draggable using interact.js
-    function makePanelDraggableResizable(container, plotDiv) {
-    
-      if (window.interact) {
-    
-        interact(container)
-    
-        .draggable({
-    
-          inertia: true,
-            // Removed restrictRect modifier so plot can move anywhere in window
-            listeners: {
-              move (event) {
-       
-                const x = (parseFloat(container.getAttribute('data-x')) || 0) + event.dx;
-       
-                const y = (parseFloat(container.getAttribute('data-y')) || 0) + event.dy;
-       
-                container.style.transform = `translate(${x}px, ${y}px)`;
-       
-                container.setAttribute('data-x', x);
-       
-                container.setAttribute('data-y', y);
-              }
-            }
-          })
-       
-          .resizable({
-       
-            edges: { left: true, right: true, bottom: true, top: true },
-       
-            listeners: {
-       
-              move (event) {
-       
-                let { x, y } = event.target.dataset;
-       
-                x = (parseFloat(x) || 0) + event.deltaRect.left;
-       
-                y = (parseFloat(y) || 0) + event.deltaRect.top;
-       
-                Object.assign(event.target.style, {
-       
-                  width: `${event.rect.width}px`,
-       
-                  height: `${event.rect.height}px`,
-       
-                  transform: `translate(${x}px, ${y}px)`
-                });
-       
-                event.target.dataset.x = x;
-       
-                event.target.dataset.y = y;
-                // Resize plotly plot
-                Plotly.Plots.resize(plotDiv);
-              }
-            },
-            inertia: true
-          });
-      } else {
-        // If interact.js is not loaded yet, try again later
-        setTimeout(()=>makePanelDraggableResizable(container, plotDiv), 500);
-      }
-    }
-  // enable interact-based dragging/resizing
-  try 
-  { 
-    makePanelDraggableResizable(container, plotDiv); 
-  } 
-  catch(e) 
-  {
-    console.debug("plot is not draggable/resizable");
-  }
-  try 
-  {
-     enablePlotPanelDragResize(container, plotDiv); 
-  } 
-  catch(e) 
-  {
-      console.debug("plot is not draggable/resizable");
-  }
-
-    // clear staged and UI staged list
-    Object.keys(staged).forEach(k=> delete staged[k]);
-    if(addedLinesSelect){
-      for(let i = addedLinesSelect.options.length - 1; i >= 1; i--){ addedLinesSelect.remove(i); }
-      addedLinesSelect.value = '';
-    }
-
-    // refresh to reflect any existing buffered data
-    refreshPlot();
-  });
 
   // start
   loadDeviceParams();
+  updatePlotConfigList();
+  if(typeof waitForSpin === 'function') {
+    waitForSpin(updatePlotConfigList);
+  }
   // Periodically trim old points only. Avoid forcing full redraws here because
   // they can replace the Plotly state and clear trace indices used for extendTraces.
   setInterval(()=>{ trimTraces(); flushBufferedPoints(); }, 2000);
@@ -954,7 +1214,7 @@ startPollingLatestValues();
 
     const plotEntry = { id, containerDiv: container, plotDiv: plotDiv, traces: {} };
    
-    const layout = { title: parsed.title || '', xaxis:{type:'date'}, margin:{t:30} };
+    const layout = withTimeRangeControls({ title: parsed.title || '', xaxis:{type:'date'}, margin:{t:30} });
    
     if(parsed.globals && parsed.globals.fontsize) 
     
@@ -1020,7 +1280,7 @@ startPollingLatestValues();
   setTimeout(scanDataSpinPlots, 500);
 
   // expose minimal API for debugging
-  window._plots = { plotsMap: plotsMap, staged: staged };
+  window._plots = { plotsMap: plotsMap, staged: staged, restorePlotPanelFromLayout: restorePlotPanelFromLayout };
 
 
 })();

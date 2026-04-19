@@ -158,6 +158,676 @@ function toNumeric(v) {
   return Number.isNaN(n) ? 0 : n;
 }
 
+let activeConnectionStart = null;
+let temporaryConnectionLine = null;
+let selectedConnectionLine = null;
+let guiModeActive = false;
+
+function showAppDialog(options = {}) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('app-dialog-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'app-dialog-overlay';
+    Object.assign(overlay.style, {
+      position: 'fixed',
+      inset: '0',
+      background: 'rgba(15, 23, 42, 0.38)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: '100000',
+      padding: '16px',
+      boxSizing: 'border-box'
+    });
+
+    const dialog = document.createElement('div');
+    Object.assign(dialog.style, {
+      width: 'min(460px, 100%)',
+      background: '#ffffff',
+      borderRadius: '10px',
+      boxShadow: '0 18px 40px rgba(15, 23, 42, 0.24)',
+      border: '1px solid rgba(148, 163, 184, 0.35)',
+      padding: '18px',
+      color: '#0f172a',
+      fontFamily: 'Arial, sans-serif'
+    });
+
+    const title = document.createElement('div');
+    title.textContent = options.title || 'Message';
+    Object.assign(title.style, {
+      fontSize: '16px',
+      fontWeight: '700',
+      marginBottom: '10px'
+    });
+
+    const message = document.createElement('div');
+    message.textContent = options.message || '';
+    Object.assign(message.style, {
+      fontSize: '13px',
+      lineHeight: '1.5',
+      whiteSpace: 'pre-wrap',
+      marginBottom: options.type === 'prompt' ? '10px' : '16px'
+    });
+
+    dialog.appendChild(title);
+    dialog.appendChild(message);
+
+    let input = null;
+    if (options.type === 'prompt') {
+      input = document.createElement('input');
+      input.type = 'text';
+      input.value = options.defaultValue || '';
+      Object.assign(input.style, {
+        width: '100%',
+        boxSizing: 'border-box',
+        padding: '8px 10px',
+        borderRadius: '6px',
+        border: '1px solid #cbd5e1',
+        marginBottom: '16px',
+        fontSize: '13px'
+      });
+      dialog.appendChild(input);
+    }
+
+    const buttonRow = document.createElement('div');
+    Object.assign(buttonRow.style, {
+      display: 'flex',
+      justifyContent: 'flex-end',
+      gap: '8px'
+    });
+
+    const finish = (value) => {
+      document.removeEventListener('keydown', handleKeydown, true);
+      overlay.remove();
+      resolve(value);
+    };
+
+    const handleKeydown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        finish(options.type === 'alert' ? true : null);
+      }
+      if (event.key === 'Enter' && options.type !== 'alert') {
+        event.preventDefault();
+        finish(options.type === 'prompt' ? input.value : true);
+      }
+    };
+
+    if (options.type !== 'alert') {
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.textContent = options.cancelText || 'Cancel';
+      Object.assign(cancelBtn.style, {
+        padding: '8px 12px',
+        borderRadius: '6px',
+        border: '1px solid #cbd5e1',
+        background: '#ffffff',
+        color: '#0f172a',
+        cursor: 'pointer'
+      });
+      cancelBtn.addEventListener('click', () => finish(options.type === 'confirm' ? false : null));
+      buttonRow.appendChild(cancelBtn);
+    }
+
+    const okBtn = document.createElement('button');
+    okBtn.type = 'button';
+    okBtn.textContent = options.okText || 'OK';
+    Object.assign(okBtn.style, {
+      padding: '8px 12px',
+      borderRadius: '6px',
+      border: '1px solid #2563eb',
+      background: '#2563eb',
+      color: '#ffffff',
+      cursor: 'pointer'
+    });
+    okBtn.addEventListener('click', () => finish(options.type === 'prompt' ? input.value : true));
+    buttonRow.appendChild(okBtn);
+
+    dialog.appendChild(buttonRow);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    document.addEventListener('keydown', handleKeydown, true);
+
+    if (input) {
+      requestAnimationFrame(() => {
+        input.focus();
+        input.select();
+      });
+    } else {
+      requestAnimationFrame(() => okBtn.focus());
+    }
+  });
+}
+
+function showAppAlert(message, title) {
+  return showAppDialog({ type: 'alert', message: message, title: title || 'Message' });
+}
+
+function showAppConfirm(message, title) {
+  return showAppDialog({ type: 'confirm', message: message, title: title || 'Confirm', okText: 'Continue' });
+}
+
+function showAppPrompt(message, defaultValue, title) {
+  return showAppDialog({ type: 'prompt', message: message, defaultValue: defaultValue || '', title: title || 'Input', okText: 'Submit' });
+}
+
+function getLineDashArray(lineType) {
+  if (lineType === 'dashed') return '8 4';
+  if (lineType === 'dotted') return '2 4';
+  return '';
+}
+
+function applyConnectionLineStyle(line, style = {}) {
+  if (!line) return;
+
+  const strokeColor = style.strokeColor || line.dataset.strokeColor || '#007bff';
+  const strokeWidth = String(style.strokeWidth || line.dataset.strokeWidth || '2');
+  const lineType = style.lineType || line.dataset.lineType || 'solid';
+  const dashArray = getLineDashArray(lineType);
+
+  line.dataset.strokeColor = strokeColor;
+  line.dataset.strokeWidth = strokeWidth;
+  line.dataset.lineType = lineType;
+
+  line.style.stroke = strokeColor;
+  line.style.strokeWidth = strokeWidth;
+  if (dashArray) {
+    line.style.strokeDasharray = dashArray;
+  } else {
+    line.style.strokeDasharray = '';
+  }
+}
+
+function hideLineSubmenus() {
+  document.querySelectorAll('.line-context-submenu').forEach(menu => {
+    menu.style.display = 'none';
+  });
+}
+
+function hideLineContextMenu() {
+  const menu = document.getElementById('context-menu');
+  if (!menu) return;
+
+  menu.style.display = 'none';
+  hideLineSubmenus();
+  selectedConnectionLine = null;
+}
+
+function showLineContextMenu(line, clientX, clientY) {
+  const menu = document.getElementById('context-menu');
+  const colorPicker = document.getElementById('line-color-picker');
+  if (!menu || !line) return;
+
+  selectedConnectionLine = line;
+  menu.style.display = 'block';
+  menu.style.left = `${clientX}px`;
+  menu.style.top = `${clientY}px`;
+  hideLineSubmenus();
+
+  if (colorPicker) {
+    colorPicker.value = line.dataset.strokeColor || '#007bff';
+  }
+}
+
+function setupLineContextMenu() {
+  const menu = document.getElementById('context-menu');
+  if (!menu || menu.dataset.lineMenuReady === 'true') return;
+
+  menu.dataset.lineMenuReady = 'true';
+
+  document.addEventListener('contextmenu', (event) => {
+    const line = event.target && event.target.closest ? event.target.closest('.device-connection-line:not(.is-temporary)') : null;
+    if (!line) {
+      hideLineContextMenu();
+      return;
+    }
+
+    event.preventDefault();
+    showLineContextMenu(line, event.clientX, event.clientY);
+  });
+
+  document.addEventListener('mousedown', (event) => {
+    if (menu.contains(event.target)) return;
+    hideLineContextMenu();
+  });
+
+  menu.querySelectorAll('.line-context-item').forEach(button => {
+    button.addEventListener('click', () => {
+      const submenuName = button.dataset.lineSubmenu;
+      const submenu = document.getElementById(`line-submenu-${submenuName}`);
+      if (!submenu) return;
+
+      const willOpen = submenu.style.display !== 'block';
+      hideLineSubmenus();
+      if (willOpen) {
+        submenu.style.display = 'block';
+        submenu.style.left = `${button.offsetWidth + 10}px`;
+        submenu.style.top = `${button.offsetTop}px`;
+      } else {
+        submenu.style.display = 'none';
+      }
+    });
+  });
+
+  menu.querySelectorAll('.line-width-option').forEach(button => {
+    button.addEventListener('click', () => {
+      if (!selectedConnectionLine) return;
+      applyConnectionLineStyle(selectedConnectionLine, { strokeWidth: button.dataset.lineWidth });
+      hideLineContextMenu();
+    });
+  });
+
+  menu.querySelectorAll('.line-type-option').forEach(button => {
+    button.addEventListener('click', () => {
+      if (!selectedConnectionLine) return;
+      applyConnectionLineStyle(selectedConnectionLine, { lineType: button.dataset.lineType });
+      hideLineContextMenu();
+    });
+  });
+
+  const colorPicker = document.getElementById('line-color-picker');
+  if (colorPicker) {
+    colorPicker.addEventListener('input', () => {
+      if (!selectedConnectionLine) return;
+      applyConnectionLineStyle(selectedConnectionLine, { strokeColor: colorPicker.value });
+    });
+    colorPicker.addEventListener('change', () => {
+      hideLineContextMenu();
+    });
+  }
+}
+
+function setConfigurationMode(enabled) {
+  const mainPanel = document.getElementById('main-panel');
+  if (mainPanel) {
+    mainPanel.classList.toggle('config-mode', !!enabled);
+  }
+}
+
+function getConnectionSvg() {
+  const grid = document.getElementById('device-grid');
+  if (!grid) return null;
+
+  let svg = document.getElementById('connection-svg');
+  if (!svg) {
+    svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'connection-svg';
+    svg.style.position = 'absolute';
+    svg.style.top = '0';
+    svg.style.left = '0';
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.style.pointerEvents = 'none';
+    grid.insertBefore(svg, grid.firstChild);
+  }
+
+  return svg;
+}
+
+function getSvgPointFromClient(clientX, clientY) {
+  const svg = getConnectionSvg();
+  if (!svg) return { x: 0, y: 0 };
+
+  const point = svg.createSVGPoint();
+  point.x = clientX;
+  point.y = clientY;
+
+  const matrix = svg.getScreenCTM();
+  if (!matrix) return { x: 0, y: 0 };
+
+  return point.matrixTransform(matrix.inverse());
+}
+
+function getContactDescriptor(point) {
+  if (!point) return null;
+
+  const box = point.closest('.device-box, .valve-icon, .deco-box');
+  if (!box) return null;
+
+  const side = ['top', 'bottom', 'left', 'right', 'center'].find(cls => point.classList.contains(cls));
+  if (!side) return null;
+
+  return {
+    boxId: box.id,
+    side: side,
+    element: point
+  };
+}
+
+function appendContactPoints(container) {
+  if (!container || container.querySelector('.contact-point')) return;
+
+  ['top', 'bottom', 'left', 'right'].forEach(side => {
+    const point = document.createElement('div');
+    point.className = `contact-point ${side}`;
+    container.appendChild(point);
+  });
+}
+
+function appendSingleContactPoint(container) {
+  if (!container || container.querySelector('.contact-point')) return;
+
+  const point = document.createElement('div');
+  point.className = 'contact-point center';
+  container.appendChild(point);
+}
+
+function getContactAnchor(point) {
+  if (!point) return null;
+
+  const rect = point.getBoundingClientRect();
+  return getSvgPointFromClient(rect.left + rect.width / 2, rect.top + rect.height / 2);
+}
+
+function setConnectionLinePosition(line, startPoint, endPoint) {
+  line.setAttribute('x1', startPoint.x);
+  line.setAttribute('y1', startPoint.y);
+  line.setAttribute('x2', endPoint.x);
+  line.setAttribute('y2', endPoint.y);
+}
+
+function getTimeRangePlotLayout(baseLayout) {
+  const nextLayout = Object.assign({}, baseLayout || {});
+  const xaxis = Object.assign({}, nextLayout.xaxis || {});
+
+  if (xaxis.type && xaxis.type !== 'date') {
+    nextLayout.xaxis = xaxis;
+    return nextLayout;
+  }
+
+  xaxis.type = 'date';
+  xaxis.rangeselector = {
+    buttons: [
+      { count: 1, step: 'hour', stepmode: 'backward', label: '1h' },
+      { count: 3, step: 'hour', stepmode: 'backward', label: '3h' },
+      { count: 12, step: 'hour', stepmode: 'backward', label: '12h' },
+      { count: 1, step: 'day', stepmode: 'backward', label: '1d' },
+      { step: 'all', label: 'All' }
+    ]
+  };
+  xaxis.rangeslider = { visible: true };
+  nextLayout.xaxis = xaxis;
+  return nextLayout;
+}
+
+function refreshConnectionLines() {
+  document.querySelectorAll('.device-connection-line:not(.is-temporary)').forEach(line => {
+    const startBox = document.getElementById(line.dataset.startBoxId);
+    const endBox = document.getElementById(line.dataset.endBoxId);
+    const startPoint = startBox && startBox.querySelector(`.contact-point.${line.dataset.startSide}`);
+    const endPoint = endBox && endBox.querySelector(`.contact-point.${line.dataset.endSide}`);
+
+    if (!startPoint || !endPoint) {
+      line.remove();
+      return;
+    }
+
+    setConnectionLinePosition(line, getContactAnchor(startPoint), getContactAnchor(endPoint));
+  });
+}
+
+function clearTemporaryConnection() {
+  if (temporaryConnectionLine) {
+    temporaryConnectionLine.remove();
+    temporaryConnectionLine = null;
+  }
+
+  activeConnectionStart = null;
+}
+
+function startTemporaryConnection(point, event) {
+  const startDescriptor = getContactDescriptor(point);
+  if (!startDescriptor) return;
+
+  clearTemporaryConnection();
+
+  activeConnectionStart = startDescriptor;
+  temporaryConnectionLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  temporaryConnectionLine.classList.add('device-connection-line', 'is-temporary');
+  getConnectionSvg().appendChild(temporaryConnectionLine);
+
+  setConnectionLinePosition(
+    temporaryConnectionLine,
+    getContactAnchor(point),
+    getSvgPointFromClient(event.clientX, event.clientY)
+  );
+}
+
+function finalizeConnection(point) {
+  const endDescriptor = getContactDescriptor(point);
+  if (!activeConnectionStart || !endDescriptor) {
+    clearTemporaryConnection();
+    return;
+  }
+
+  if (
+    activeConnectionStart.boxId === endDescriptor.boxId &&
+    activeConnectionStart.side === endDescriptor.side
+  ) {
+    clearTemporaryConnection();
+    return;
+  }
+
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.classList.add('device-connection-line');
+  line.dataset.startBoxId = activeConnectionStart.boxId;
+  line.dataset.startSide = activeConnectionStart.side;
+  line.dataset.endBoxId = endDescriptor.boxId;
+  line.dataset.endSide = endDescriptor.side;
+  getConnectionSvg().appendChild(line);
+  applyConnectionLineStyle(line);
+
+  setConnectionLinePosition(
+    line,
+    getContactAnchor(activeConnectionStart.element),
+    getContactAnchor(endDescriptor.element)
+  );
+
+  clearTemporaryConnection();
+}
+
+function getCurrentConnectionsData() {
+  return Array.from(document.querySelectorAll('.device-connection-line:not(.is-temporary)')).map(line => ({
+    startBoxId: line.dataset.startBoxId,
+    startSide: line.dataset.startSide,
+    endBoxId: line.dataset.endBoxId,
+    endSide: line.dataset.endSide,
+    strokeColor: line.dataset.strokeColor || '#007bff',
+    strokeWidth: line.dataset.strokeWidth || '2',
+    lineType: line.dataset.lineType || 'solid'
+  })).filter(line => line.startBoxId && line.startSide && line.endBoxId && line.endSide);
+}
+
+function restoreConnectionLines(connections) {
+  if (!Array.isArray(connections) || connections.length === 0) {
+    refreshConnectionLines();
+    return;
+  }
+
+  const svg = getConnectionSvg();
+  if (!svg) return;
+
+  connections.forEach(connection => {
+    const startBox = document.getElementById(connection.startBoxId);
+    const endBox = document.getElementById(connection.endBoxId);
+    const startPoint = startBox && startBox.querySelector(`.contact-point.${connection.startSide}`);
+    const endPoint = endBox && endBox.querySelector(`.contact-point.${connection.endSide}`);
+
+    if (!startPoint || !endPoint) return;
+
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.classList.add('device-connection-line');
+    line.dataset.startBoxId = connection.startBoxId;
+    line.dataset.startSide = connection.startSide;
+    line.dataset.endBoxId = connection.endBoxId;
+    line.dataset.endSide = connection.endSide;
+    svg.appendChild(line);
+    applyConnectionLineStyle(line, connection);
+    setConnectionLinePosition(line, getContactAnchor(startPoint), getContactAnchor(endPoint));
+  });
+
+  refreshConnectionLines();
+}
+
+function setupConnectionDrawing() {
+  const grid = document.getElementById('device-grid');
+  if (!grid || grid.dataset.connectionDrawingReady === 'true') return;
+
+  grid.dataset.connectionDrawingReady = 'true';
+  getConnectionSvg();
+
+  grid.addEventListener('mousedown', (event) => {
+    const point = event.target.closest('.contact-point');
+    if (!point || !grid.contains(point)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    startTemporaryConnection(point, event);
+  }, true);
+
+  document.addEventListener('mousemove', (event) => {
+    refreshConnectionLines();
+
+    if (!activeConnectionStart || !temporaryConnectionLine) return;
+
+    setConnectionLinePosition(
+      temporaryConnectionLine,
+      getContactAnchor(activeConnectionStart.element),
+      getSvgPointFromClient(event.clientX, event.clientY)
+    );
+  });
+
+  document.addEventListener('mouseup', (event) => {
+    if (!activeConnectionStart) {
+      refreshConnectionLines();
+      return;
+    }
+
+    const point = event.target && event.target.closest ? event.target.closest('.contact-point') : null;
+    if (point) {
+      finalizeConnection(point);
+    } else {
+      clearTemporaryConnection();
+    }
+
+    refreshConnectionLines();
+  });
+
+  window.addEventListener('resize', refreshConnectionLines);
+}
+
+async function setGuiFullscreen(enabled) {
+  try {
+    if (enabled) {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      }
+    } else if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    }
+  } catch (error) {
+    console.debug('Fullscreen toggle failed', error);
+  }
+}
+
+function setPlotsTopHeight() {
+  try {
+    const plotsTop = document.querySelector('.plots-top');
+    const deviceMgr = document.getElementById('device-manager');
+    const decoMgr = document.getElementById('decoration-manager');
+    if (!plotsTop || !deviceMgr || !decoMgr) return;
+    const style = window.getComputedStyle(deviceMgr);
+    const marginBottom = parseFloat(style.marginBottom || 0) || 0;
+    const total = deviceMgr.offsetHeight + decoMgr.offsetHeight + marginBottom + 8;
+    plotsTop.style.minHeight = total + 'px';
+  } catch (error) {
+    console.debug('setPlotsTopHeight error', error);
+  }
+}
+
+function toggleConfigView() {
+  const btn = document.getElementById('toggle-gui-btn');
+  const mainPanel = document.getElementById('main-panel');
+  const mainPanelHeader = document.getElementById('main-panel-header');
+  const mainPanelTitle = document.getElementById('main-panel-title');
+  const mainPanelTitleWrap = document.getElementById('main-panel-title-wrap');
+  const configParts = [
+    document.getElementById('device-manager'),
+    document.getElementById('decoration-manager')
+  ];
+  const plotsPanel = document.getElementById('plots-panel');
+  const editorTopRow = document.getElementById('editor-top-row');
+  const viewport = document.getElementById('viewport');
+  const btnRow = document.getElementById('main-config-btns');
+
+  if (guiModeActive) {
+    configParts.forEach(el => { if (el) el.style.display = ''; });
+    if (plotsPanel) plotsPanel.style.display = '';
+    if (editorTopRow) editorTopRow.style.display = 'flex';
+    if (viewport) viewport.style.height = '75vh';
+    if (btn) btn.textContent = 'Show GUI';
+    if (btnRow) btnRow.style.display = 'flex';
+    if (mainPanel) mainPanel.classList.remove('gui-fullscreen');
+    if (mainPanelHeader) mainPanelHeader.style.justifyContent = 'space-between';
+    if (mainPanelTitleWrap) mainPanelTitleWrap.style.display = 'flex';
+    if (mainPanelTitle) {
+      if (!mainPanelTitle.dataset.originalTitle) {
+        mainPanelTitle.dataset.originalTitle = 'Configure your system layout';
+      }
+      mainPanelTitle.textContent = mainPanelTitle.dataset.originalTitle;
+      mainPanelTitle.style.display = '';
+    }
+    guiModeActive = false;
+    setConfigurationMode(true);
+    setGuiFullscreen(false);
+    setPlotsTopHeight();
+  } else {
+    configParts.forEach(el => { if (el) el.style.display = 'none'; });
+    if (plotsPanel) plotsPanel.style.display = 'none';
+    if (editorTopRow) editorTopRow.style.display = 'none';
+    if (viewport) viewport.style.height = 'calc(100vh - 110px)';
+    if (btn) btn.textContent = 'Configure GUI';
+    if (btnRow) btnRow.style.display = 'flex';
+    if (mainPanel) mainPanel.classList.add('gui-fullscreen');
+    if (mainPanelHeader) mainPanelHeader.style.justifyContent = 'flex-end';
+    if (mainPanelTitleWrap) mainPanelTitleWrap.style.display = 'none';
+    if (mainPanelTitle) {
+      if (!mainPanelTitle.dataset.originalTitle) {
+        mainPanelTitle.dataset.originalTitle = mainPanelTitle.textContent || 'Configure your system layout';
+      }
+      mainPanelTitle.textContent = '';
+      mainPanelTitle.style.display = 'none';
+    }
+    guiModeActive = true;
+    setConfigurationMode(false);
+    setGuiFullscreen(true);
+  }
+}
+
+document.addEventListener('fullscreenchange', () => {
+  if (document.fullscreenElement) return;
+  if (!guiModeActive) return;
+  console.debug('Fullscreen exited while GUI mode remains active');
+});
+
+if (document.readyState === 'loading') 
+{
+  document.addEventListener('DOMContentLoaded', setupConnectionDrawing, { once: true });
+  document.addEventListener('DOMContentLoaded', setupLineContextMenu, { once: true });
+  document.addEventListener('DOMContentLoaded', () => { setTimeout(setPlotsTopHeight, 200); }, { once: true });
+} 
+else 
+{
+  setupConnectionDrawing();
+  setupLineContextMenu();
+  setTimeout(setPlotsTopHeight, 200);
+}
+
+window.addEventListener('load', setPlotsTopHeight);
+window.addEventListener('resize', setPlotsTopHeight);
+
 // function to set background image(s)
 function setBackgroundImage() {
   const input = document.getElementById('conn-bg-url');
@@ -284,14 +954,14 @@ function loadSavedBackground() {
 
 
 //function to add node connection
-function addNodeConnection() {
+async function addNodeConnection() {
   
   const ip = document.getElementById('conn-ip').value;
   
   const port = document.getElementById('conn-port').value;
   
   if (!ip || !port) {
-    alert('Please enter both IP and Port.');
+    await showAppAlert('Please enter both IP and Port.', 'Add Node');
     return;
   }
   
@@ -299,10 +969,11 @@ function addNodeConnection() {
       Spin.send_request('nodemanager.add_node', "", "input", "set", {host: ip, port: port});
       // Alert will be handled by nodemanager.status update
       document.getElementById('conn-ip').value = '';
+      document.getElementById('conn-port').value = '';
   } 
   else 
   {
-      alert('Not connected to Spin server.');
+      await showAppAlert('Not connected to Spin server.', 'Add Node');
   }
 }
 
@@ -489,6 +1160,7 @@ function enterSystem() {
   // The button is always visible.
   document.getElementById('connection-panel').style.display = 'none';
   document.getElementById('main-panel').style.display = 'block';
+  setConfigurationMode(true);
   
   // Fetch device params when entering the system to ensure dropdown is populated
   fetchDeviceParams();
@@ -527,7 +1199,7 @@ window.addEventListener('spinupdate', function(event)
     if (key === 'nodemanager.status') {
         var msg = event.detail.value;
         if (msg) {
-            alert(msg);
+        showAppAlert(msg, 'Node Manager');
         }
         return;
     }
@@ -964,7 +1636,10 @@ function renderExtra(device)
   if (!panel) return;
   
   const data = latestValues[device] || {};
-  const keys = Object.keys(data).sort();
+  const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
+  const liveKeys = Object.keys(data);
+  const metadataKeys = deviceInfo && Array.isArray(deviceInfo.all_params) ? deviceInfo.all_params : [];
+  const keys = Array.from(new Set([...liveKeys, ...metadataKeys])).sort();
   const filteredKeys = keys.filter(k => k !== 'value' && k !== 'target');
   
   if (filteredKeys.length === 0) {
@@ -1071,9 +1746,8 @@ function handleCollapse(box, originalHeight) {
 function toggleExtra(device) {
   const domId = deviceDomId(device);
   const panel = document.getElementById('extra-' + domId);
-  const btn = document.getElementById('toggle-' + domId);
   const box = document.getElementById('box-' + domId);
-  if (!panel || !btn || !box) return;
+  if (!panel || !box) return;
 
   const isOpening = !panel.classList.contains('open');
   const originalHeight = box.offsetHeight;
@@ -1084,7 +1758,6 @@ function toggleExtra(device) {
   
   panel.classList.toggle('open');
   panel.setAttribute('aria-hidden', isOpening ? 'false' : 'true');
-  btn.textContent = isOpening ? 'Close ▴' : 'More ▾';
   
   // Force reflow
   box.offsetHeight;
@@ -1105,6 +1778,8 @@ function toggleDeviceBody(domId) {
   const body = document.getElementById('body-' + domId);
   const btn = document.getElementById('expand-btn-' + domId);
   const box = document.getElementById('box-' + domId);
+  const extraPanel = document.getElementById('extra-' + domId);
+  const device = box ? box.dataset.device : null;
   
   if (!body || !btn || !box) return;
   
@@ -1115,12 +1790,23 @@ function toggleDeviceBody(domId) {
     body.style.display = 'block';
     btn.textContent = '▲';
     box.style.height = 'auto';
+
+    if (extraPanel && device) {
+      renderExtra(device);
+      extraPanel.classList.add('open');
+      extraPanel.setAttribute('aria-hidden', 'false');
+    }
     
     // Wait for DOM to update
     requestAnimationFrame(() => {
       handleExpansion(box, originalHeight);
     });
   } else {
+    if (extraPanel) {
+      extraPanel.classList.remove('open');
+      extraPanel.setAttribute('aria-hidden', 'true');
+    }
+
     body.style.display = 'none';
     btn.textContent = '▼';
     box.style.height = 'auto';
@@ -1212,6 +1898,13 @@ function createDeviceDisplay(isConfigurelayout)
   const wrapper = document.createElement('div');
   wrapper.innerHTML = html;
   const newBox = wrapper.firstElementChild;
+  newBox.dataset.device = device;
+
+  if (isConfigurelayout) {
+    newBox.classList.add('configure-layout');
+  } else {
+    newBox.classList.remove('configure-layout');
+  }
   
   // Position it intelligently
   const count = document.querySelectorAll('.device-box').length;
@@ -1751,12 +2444,16 @@ async function setupValveController(device, domId,isConfigurelayout) {
       valveIcon.id = `icon-${valveDomId}`;
       valveIcon.dataset.device = device; // Store device name
       valveIcon.dataset.field = fieldName; // Store field name
+      valveIcon.style.position = 'absolute';
       valveIcon.style.width = '80px';
       valveIcon.style.height = '100px';
       valveIcon.style.top = (20 + index * 120) + 'px';
       valveIcon.style.left = '20px';
       valveIcon.style.cursor = 'pointer';
       valveIcon.style.userSelect = 'none';
+      valveIcon.style.overflow = 'visible';
+      if (isConfigurelayout) valveIcon.classList.add('configure-layout');
+      appendContactPoints(valveIcon);
       
       // Image Container
       const imgContainer = document.createElement('div');
@@ -2129,6 +2826,7 @@ function setValveField(device, fieldName, value) {
 function removeDevice(domId) {
   const el = document.getElementById('box-' + domId);
   if (el) el.remove();
+  refreshConnectionLines();
 }
 
 // ===== Decoration Logic =====
@@ -2389,47 +3087,32 @@ function createDecoration(isConfigurelayout)
   const type = select.value;
   const color = colorInput ? colorInput.value : '#cccccc';
   
-  if (!type) {
-    alert('Please select a decoration type.');
-    return;
-  }
+ 
 
   const id = 'deco-' + Date.now();
   const wrapper = document.createElement('div');
   wrapper.className = 'deco-box';
   wrapper.id = id;
   wrapper.dataset.type = type;
+  if (isConfigurelayout) wrapper.classList.add('configure-layout');
   
   // Selection logic
   wrapper.addEventListener('mousedown', (e) => {
       e.stopPropagation();
       selectDeco(wrapper);
   });
-  
-  if (type === 'gas-line') 
-  
+
+  if (type === 'contact') 
   {
-    wrapper.classList.add('deco-type-line');
-    wrapper.style.width = '100px';
-    wrapper.style.height = '20px';
-    const visual = document.createElement('div');
-    visual.className = 'deco-visual';
-    visual.style.backgroundColor = color;
-    visual.style.border = '1px solid #999';
-    wrapper.appendChild(visual);
-  }
-   else if (type === 'gas-line-v') 
-    
-  {
-    wrapper.classList.add('deco-type-line-v');
+    wrapper.classList.add('deco-type-contact');
     wrapper.style.width = '20px';
-    wrapper.style.height = '100px';
-    const visual = document.createElement('div');
-    visual.className = 'deco-visual';
-    visual.style.backgroundColor = color;
-    visual.style.border = '1px solid #999';
-    wrapper.appendChild(visual);
-  } else if (type === 'label') 
+    wrapper.style.height = '20px';
+    wrapper.style.minWidth = '20px';
+    wrapper.style.minHeight = '20px';
+    appendSingleContactPoint(wrapper);
+  }
+  
+  else if (type === 'label') 
     
   {
     
@@ -2550,11 +3233,12 @@ function getModuleName(device) {
 }
 
 function sendCommand(device, cmd) {
-  if (!confirm(`Execute command '${cmd}' on ${device}?`)) return;
-
   // Run the send logic as an async task so callers don't need to await
   (async () => {
     try {
+      const confirmed = await showAppConfirm(`Execute command '${cmd}' on ${device}?`, 'Execute Command');
+      if (!confirmed) return;
+
       // Resolve module name (if available) so we can build full SECoP line.
       // If moduleName cannot be resolved immediately, retry a few times
       // because device metadata may be populated asynchronously.
@@ -2589,9 +3273,14 @@ function sendCommand(device, cmd) {
       } catch (e) { /* ignore, we'll prompt */ }
 
       if (!addr) {
-        const manual = prompt('Could not auto-resolve node for device "' + device + '". Enter host:port to send command:', '127.0.0.1:10803');
+        const manual = await showAppPrompt(
+          'Could not auto-resolve node for device "' + device + '". Enter host:port to send command:',
+          '127.0.0.1:10803',
+          'Manual Node Address'
+        );
         if (!manual) return;
-        addr = manual;
+        addr = manual.trim();
+        if (!addr) return;
       }
 
       // Try sending via proxy with retry logic when backend returns an error.
@@ -2620,7 +3309,7 @@ function sendCommand(device, cmd) {
 
           // Successful send
           if (sr && sr.status === 'sent') {
-            alert('Command sent via proxy. Response: ' + (sr.response || ''));
+            await showAppAlert('Command sent via proxy. Response: ' + (sr.response || ''), 'Command Sent');
             return;
           }
 
@@ -2629,7 +3318,7 @@ function sendCommand(device, cmd) {
           const isProtocolError = textBody.includes('ProtocolError') || textBody.includes('error__scan') || (sr && sr.status === 'error');
           if (!isProtocolError) {
             // Unknown non-retryable response — show it and stop
-            alert('Proxy response: ' + textBody);
+            await showAppAlert('Proxy response: ' + textBody, 'Command Response');
             return;
           }
 
@@ -2643,11 +3332,11 @@ function sendCommand(device, cmd) {
       }
 
       // Exhausted retries
-      alert('Failed to send command after ' + maxRetries + ' attempts. Last response: ' + JSON.stringify(lastResp));
+      await showAppAlert('Failed to send command after ' + maxRetries + ' attempts. Last response: ' + JSON.stringify(lastResp), 'Command Failed');
 
     } catch (e) {
       console.error('sendCommand failed', e);
-      alert('Failed to send command: ' + e);
+      await showAppAlert('Failed to send command: ' + e, 'Command Failed');
     }
   })();
 }
@@ -2726,6 +3415,7 @@ function zoomCanvas(delta) {
     grid.style.width = `${baseWidth}px`;
     grid.style.height = `${baseHeight}px`;
   }
+  refreshConnectionLines();
 }
 
 
@@ -2741,6 +3431,7 @@ function resetView() {
     viewport.scrollLeft = 0;
     viewport.scrollTop = 0;
   }
+  refreshConnectionLines();
 }
 
 // Pan Event Listeners
@@ -2904,6 +3595,11 @@ function create_newLayoutFile()
   document.querySelectorAll('.plot-panel').forEach(box => {
   box.remove();
   });
+
+  document.querySelectorAll('.device-connection-line').forEach(line => {
+  line.remove();
+  });
+  clearTemporaryConnection();
 }
 
 // function to get current layout description
@@ -2913,7 +3609,8 @@ function getCurrentLayoutData() {
     devices: [],
     valveIcons: [],
     decorations: [],
-    plots: []
+    plots: [],
+    connections: []
   };
   
   // Save Devices (regular device boxes) with full device info
@@ -2973,12 +3670,14 @@ function getCurrentLayoutData() {
       const title = titleEl ? titleEl.textContent : (box.querySelector('.plot-header strong') ? box.querySelector('.plot-header strong').textContent : '');
       // find traces from plotsMap if available
       let traces = [];
+      let configName = '';
       if (plotsMap) {
         Object.keys(plotsMap).forEach(pid => {
           const p = plotsMap[pid];
           try {
             if (p && p.containerDiv && p.containerDiv.id === plotId) {
               traces = Object.keys(p.traces || {}).map(k => k);
+              configName = p.configName || '';
             }
           } catch (e) { }
         });
@@ -2993,6 +3692,7 @@ function getCurrentLayoutData() {
       layout.plots.push({
         id: plotId,
         title: title,
+        configName: configName,
         left: leftVal,
         top: topVal,
         width: widthVal,
@@ -3048,6 +3748,7 @@ function getCurrentLayoutData() {
     }
     
     layout.decorations.push({
+      id: box.id,
       type: type,
       left: box.style.left,
       top: box.style.top,
@@ -3057,6 +3758,9 @@ function getCurrentLayoutData() {
       text: text
     });
   });
+
+  layout.connections = getCurrentConnectionsData();
+
   return layout;
 }
 
@@ -3069,6 +3773,8 @@ function connect_to_system(layout)
   const isconfigure_layout = false; 
   // Clear current
   document.getElementById('device-grid').innerHTML = '';
+  getConnectionSvg();
+  setConfigurationMode(false);
   
   // Restore Devices with robust matching to current SEC node configuration
   if (layout.devices) 
@@ -3182,12 +3888,16 @@ function connect_to_system(layout)
   if (window.Spin && window.Spin.reload) {
     window.Spin.reload();
   }
+
+  restoreConnectionLines(layout.connections);
 }
 
 
 function applyLayout(layout) {
   // Clear current
   document.getElementById('device-grid').innerHTML = '';
+  getConnectionSvg();
+  setConfigurationMode(true);
   const isConfigurelayout = true; 
   // Restore Devices with robust matching to current SEC node configuration
   if (layout.devices) 
@@ -3306,6 +4016,9 @@ function applyLayout(layout) {
   if (window.Spin && window.Spin.reload) {
     window.Spin.reload();
   }
+
+  restoreConnectionLines(layout.connections);
+  refreshConnectionLines();
 }
 
 function create_sample_block(d,isconfigure_layout)
@@ -3385,6 +4098,11 @@ function create_plot(layout,isconfigure_layout)
       window._plots._restoreCounter = window._plots._restoreCounter || 0;
       layout.plots.forEach(p => {
       try {
+          if (window._plots && typeof window._plots.restorePlotPanelFromLayout === 'function') {
+            window._plots.restorePlotPanelFromLayout(p, isconfigure_layout);
+            return;
+          }
+
           const grid = document.getElementById('device-grid');
           if (!grid) return;
           const container = document.createElement('div');
@@ -3395,12 +4113,10 @@ function create_plot(layout,isconfigure_layout)
           if (p.top) container.style.top = p.top;
           if (p.width) container.style.width = p.width;
           if (p.height) container.style.height = p.height;
-          // allow restored plots to exceed .device-box max-width
           container.style.maxWidth = 'none';
           container.style.boxSizing = 'border-box';
           container.style.zIndex = '5';
 
-          // Title
           const titleDiv = document.createElement('div');
           titleDiv.className = 'plot-title-label';
           titleDiv.contentEditable = true;
@@ -3412,7 +4128,6 @@ function create_plot(layout,isconfigure_layout)
           titleDiv.style.outline = 'none';
           container.appendChild(titleDiv);
 
-          // plot div
           const plotDiv = document.createElement('div');
           plotDiv.id = (container.id ? container.id + '_plot' : ('restored_plot_' + window._plots._restoreCounter + '_plot'));
           plotDiv.style.width = '100%';
@@ -3425,13 +4140,11 @@ function create_plot(layout,isconfigure_layout)
           try { makeDraggable(container); } catch (e) {}
           try { makeResizable(container); } catch (e) {}
           }
-          
-          // clear any residual transform/data so saved left/top/width take effect
+
           try { container.style.transform = ''; container.removeAttribute('data-x'); container.removeAttribute('data-y'); } catch(e){}
 
-          // Register a plotsMap entry so plots.js update logic will pick it up
           const newKey = 'restored_plot_' + (++window._plots._restoreCounter);
-          const plotEntry = { id: newKey, containerDiv: container, plotDiv: plotDiv, traces: {} };
+          const plotEntry = { id: newKey, containerDiv: container, plotDiv: plotDiv, traces: {}, configName: p.configName || p.title || '' };
           if (Array.isArray(p.traces)) {
             p.traces.forEach(tkey => {
               const trace = { x: [], y: [], mode: 'lines+markers', name: tkey };
@@ -3440,11 +4153,10 @@ function create_plot(layout,isconfigure_layout)
           }
           window._plots.plotsMap[newKey] = plotEntry;
 
-          // initialize plotly with empty traces
           try 
           {
             const data = Object.values(plotEntry.traces).map(t => t.traceObj);
-            Plotly.newPlot(plotDiv, data).then(() => {
+            Plotly.newPlot(plotDiv, data, getTimeRangePlotLayout({ margin: { t: 30 } })).then(() => {
               Object.values(plotEntry.traces).forEach((t, i) => { t._traceIndex = i; t._lastSent = t.traceObj.x.length; });
             }).catch(()=>{});
           } 
@@ -3467,7 +4179,7 @@ function create_decoration(d,isConfigurelayout)
           const colorInput = document.getElementById('deco-color');
           
           select.value = d.type;
-          if (d.color) colorInput.value = rgbToHex(d.color) || d.color;
+          if (d.color && colorInput) colorInput.value = rgbToHex(d.color) || d.color;
           
           wrapper = createDecoration(isConfigurelayout);
           // Make it draggable and resizable
@@ -3480,6 +4192,7 @@ function create_decoration(d,isConfigurelayout)
           const boxes = document.querySelectorAll('.deco-box');
           const newBox = boxes[boxes.length - 1];
           if (newBox) {
+              if (d.id) newBox.id = d.id;
               newBox.style.left = d.left;
               newBox.style.top = d.top;
               if(d.width) newBox.style.width = d.width;
@@ -3550,6 +4263,9 @@ function create_valve_icon(availableDevices,iconDef,isconfigure_layout)
         if (iconDef.height) valveIcon.style.height = iconDef.height;
         valveIcon.style.cursor = 'pointer';
         valveIcon.style.userSelect = 'none';
+        valveIcon.style.overflow = 'visible';
+        if (isconfigure_layout) valveIcon.classList.add('configure-layout');
+        appendContactPoints(valveIcon);
        
         
         // Image container

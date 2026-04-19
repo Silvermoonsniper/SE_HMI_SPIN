@@ -81,6 +81,7 @@ body {
   background: #ffffff;
   border-radius: 6px;
   padding: 8px;
+  padding-bottom: 42px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.04);
   margin-bottom: 20px;
   position: relative;
@@ -93,6 +94,58 @@ body {
 .ctrl select, .ctrl input, .ctrl button { font-size: 11px; color: #000 }
 .ctrl button { background:#fff; border:1px solid #ccc; padding:6px 8px; border-radius:6px }
 .ctrl select { padding:4px 6px }
+
+#plot-step-2 > div {
+  flex-wrap: wrap;
+}
+
+#curve-line-type,
+#curve-line-width {
+  min-width: 86px;
+  max-width: 96px;
+  padding: 4px 4px;
+}
+
+#curve-line-color {
+  width: 34px;
+  min-width: 34px;
+  max-width: 34px;
+  height: 28px;
+  padding: 1px;
+}
+
+#curve-key,
+#added-lines {
+  min-width: 180px;
+  max-width: 260px;
+}
+
+#added-lines {
+  min-height: 96px;
+}
+
+.plot-saved-control {
+  position: absolute;
+  right: 14px;
+  bottom: 10px;
+  z-index: 8;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+.plot-saved-select {
+  min-width: 116px;
+  max-width: 160px;
+  padding: 2px 6px;
+  border: 1px solid #cfd6df;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.94);
+  color: #1e293b;
+  font-size: 10px;
+  line-height: 1.2;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
 
 .plot-header {
   display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;

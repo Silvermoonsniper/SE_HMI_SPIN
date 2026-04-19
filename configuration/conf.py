@@ -371,11 +371,15 @@ manager = SpinConfigManager()
 
 # Prefer an existing nodes.json (useful when running in Docker where UDP discovery fails).
 # If nodes.json exists, load it and use those entries; otherwise run discovery.
-nodes = {}
+nodes = []
 if os.path.exists(NODES_FILE):
     try:
-        with open(NODES_FILE, 'w') as f:
-            nodes = json.dump(nodes,f,indent=2)
+        with open(NODES_FILE, 'r') as f:
+            loaded_nodes = json.load(f)
+        if isinstance(loaded_nodes, list):
+            nodes = loaded_nodes
+        else:
+            print(f"Ignoring invalid node list in {NODES_FILE}: expected list, got {type(loaded_nodes).__name__}")
         print(f"Using nodes from {NODES_FILE}: {nodes}")
     except Exception as e:
         print(f"Failed to read {NODES_FILE}, falling back to discovery: {e}")

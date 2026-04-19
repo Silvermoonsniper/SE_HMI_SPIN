@@ -6,50 +6,12 @@
 
 
 <div id="connection-panel">
-  <div class="bg-decoration">
-    <div class="bg-img tl">
-      <svg width="80%" height="80%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-        <!-- X-ray beam icon -->
-        <circle cx="50" cy="50" r="45" fill="none" stroke="white" stroke-width="2" opacity="0.3"/>
-        <line x1="20" y1="50" x2="80" y2="50" stroke="white" stroke-width="4" opacity="0.8"/>
-        <line x1="50" y1="20" x2="50" y2="80" stroke="white" stroke-width="4" opacity="0.8"/>
-        <circle cx="50" cy="50" r="15" fill="white" opacity="0.6"/>
-        <text x="50" y="95" text-anchor="middle" fill="white" font-size="8" opacity="0.9">X-Ray Source</text>
-      </svg>
+  <div class="conn-box">
+    <div class="conn-box-inner">
+    <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:20px;">
+      <h1 style="margin:0; color:#333; font-size:28px;">GSE-UI</h1>
+      <span style="color:#64748b; font-size:12px; font-weight:600;">V 1.0.3</span>
     </div>
-    <div class="bg-img tr">
-      <svg width="80%" height="80%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-        <!-- Sample chamber icon -->
-        <rect x="25" y="30" width="50" height="40" fill="none" stroke="white" stroke-width="3" rx="5"/>
-        <circle cx="50" cy="50" r="8" fill="white" opacity="0.7"/>
-        <line x1="50" y1="42" x2="50" y2="30" stroke="white" stroke-width="2"/>
-        <line x1="50" y1="58" x2="50" y2="70" stroke="white" stroke-width="2"/>
-        <text x="50" y="95" text-anchor="middle" fill="white" font-size="8" opacity="0.9">Sample Chamber</text>
-      </svg>
-    </div>
-    <div class="bg-img bl">
-      <svg width="80%" height="80%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-        <!-- Gas flow icon -->
-        <path d="M 20 50 Q 35 30, 50 50 T 80 50" fill="none" stroke="white" stroke-width="3"/>
-        <polygon points="80,50 75,45 75,55" fill="white"/>
-        <circle cx="30" cy="50" r="4" fill="white" opacity="0.6"/>
-        <circle cx="50" cy="50" r="4" fill="white" opacity="0.6"/>
-        <circle cx="70" cy="50" r="4" fill="white" opacity="0.6"/>
-        <text x="50" y="95" text-anchor="middle" fill="white" font-size="8" opacity="0.9">Gas Flow</text>
-      </svg>
-    </div>
-    <div class="bg-img br">
-      <svg width="80%" height="80%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-        <!-- Temperature/Pressure control icon -->
-        <rect x="35" y="20" width="30" height="50" fill="none" stroke="white" stroke-width="3" rx="3"/>
-        <rect x="40" y="35" width="20" height="25" fill="white" opacity="0.5"/>
-        <line x1="50" y1="25" x2="50" y2="32" stroke="white" stroke-width="2"/>
-        <text x="50" y="95" text-anchor="middle" fill="white" font-size="8" opacity="0.9">Environment</text>
-      </svg>
-    </div>
-  </div>
-  <div class="conn-box" style="width: 520px; min-width: 400px; max-width: 90vw;"> 
-    <h1 style="margin-top:0; margin-bottom:20px; color:#333; font-size:28px;">GSE-UI</h1>
     
     <!-- Connect to Node Button -->
     <div style="margin-bottom: 16px;">
@@ -124,68 +86,23 @@
           Connect to system layout
         </button>
     </div>
+    </div>
   </div>
 </div>
 
 <div id="main-panel">
-  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-    <h3 style="margin:0;">Configure your system layout</h3>
+  <div id="main-panel-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+    <div id="main-panel-title-wrap" style="display:flex; align-items:center; min-width:0;">
+      <h3 id="main-panel-title" style="margin:0;">Configure your system layout</h3>
+    </div>
     <div id="main-config-btns" style="display:flex; gap:8px; align-items:center;">
       <button onclick="disconnectNode()" style="padding:4px 8px; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer;">Back</button>
       <button id="toggle-gui-btn" onclick="toggleConfigView()" style="padding:4px 8px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">Show GUI</button>
     </div>
-<script>
-function toggleConfigView() {
-  const btn = document.getElementById('toggle-gui-btn');
-  const configParts = [
-    document.getElementById('device-manager'),
-    document.getElementById('decoration-manager'),
-    // add other config sections here if needed
-  ];
-  const plotsPanel = document.getElementById('plots-panel');
-  const btnRow = document.getElementById('main-config-btns');
-  const isHidden = configParts[0].style.display === 'none';
-  if (isHidden) {
-    configParts.forEach(el => { if (el) el.style.display = ''; });
-    if (plotsPanel) plotsPanel.style.display = '';
-    btn.textContent = 'Show GUI';
-    btnRow.style.display = 'flex';
-  } 
-  else 
-  {
-    configParts.forEach(el => { if (el) el.style.display = 'none'; });
-    if (plotsPanel) plotsPanel.style.display = 'none';
-    btn.textContent = 'Configure GUI';
-    btnRow.style.display = 'flex';
-  }
-}
-</script>
   </div>
 
-<!-- Adjust plots-top height to match right-side config boxes -->
-<script>
-function setPlotsTopHeight(){
-  try{
-    const plotsTop = document.querySelector('.plots-top');
-    const deviceMgr = document.getElementById('device-manager');
-    const decoMgr = document.getElementById('decoration-manager');
-    if(!plotsTop || !deviceMgr || !decoMgr) return;
-    // computed height: sum of both manager heights plus gaps/margins
-    const style = window.getComputedStyle(deviceMgr);
-    const marginBottom = parseFloat(style.marginBottom || 0) || 0;
-    const total = deviceMgr.offsetHeight + decoMgr.offsetHeight + marginBottom + 8;
-    plotsTop.style.minHeight = total + 'px';
-  }catch(e){ console.debug('setPlotsTopHeight error', e); }
-}
-
-window.addEventListener('load', setPlotsTopHeight);
-window.addEventListener('resize', setPlotsTopHeight);
-// ensure adjustments after toggles
-document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTopHeight, 200); });
-</script>
-
 <!-- Two-column area: left = plots, right = device/decoration/config -->
-<div style="display:flex; gap:12px; align-items:flex-start;">
+<div id="editor-top-row" style="display:flex; gap:12px; align-items:flex-start;">
 
   <!-- Left: Plots panel -->
   <div id="plots-panel" style="flex: 1 1 40%;">
@@ -204,18 +121,32 @@ document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTop
 
           <!-- Step 2: select device param and manage staged lines -->
           <div class="plot-step" id="plot-step-2" style="display:flex; flex-direction:column; gap:6px;">
-            <label for="curve-key" style="font-weight:600;">Device parameter</label>
+            <label for="curve-key" style="font-weight:600;">Configure Plot</label>
             <select id="curve-key" class="ctrl">
               <option value="">-- select device.param --</option>
             </select>
             <div style="display:flex; gap:6px; align-items:center;">
+              <select id="curve-line-type" class="ctrl" title="Line type">
+                <option value="solid">Solid</option>
+                <option value="dashed">Dashed</option>
+                <option value="dotted">Dotted</option>
+              </select>
+              <select id="curve-line-width" class="ctrl" title="Line width">
+                <option value="1">1 px</option>
+                <option value="2" selected>2 px</option>
+                <option value="4">4 px</option>
+                <option value="6">6 px</option>
+              </select>
+              <input id="curve-line-color" class="ctrl" type="color" value="#007bff" title="Line color">
               <button id="add-curve" class="ctrl">Add Line</button>
-              <button id="delete-line" class="ctrl">Delete Line</button>
             </div>
             <label for="added-lines" style="font-weight:600;">Staged lines</label>
-            <select id="added-lines" class="ctrl">
-              <option value="">-- added lines --</option>
-            </select>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <select id="added-lines" class="ctrl" size="4" multiple>
+                <option value="">-- added lines --</option>
+              </select>
+              <button id="delete-line" class="ctrl">Delete Line</button>
+            </div>
           </div>
 
           <!-- Step 3: create plot -->
@@ -247,12 +178,10 @@ document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTop
   <label for="deco-select" style="font-weight: bold; font-size: 12px;">Add customized display:</label>
   <select id="deco-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; min-width: 150px;">
     <option value="">-- Select Decoration --</option>
-    <option value="gas-line">Gas Line (Horizontal)</option>
-    <option value="gas-line-v">Gas Line (Vertical)</option>
+    <option value="contact">Single Contact</option>
     <option value="label">Text Label</option>
     <option value="control-panel">Control Panel</option>
   </select>
-  <input type="color" id="deco-color" value="#cccccc" style="width: 30px; height: 24px; padding: 0; border: none; cursor: pointer;" title="Choose Color">
   <button onclick="createDecoration(true)" style="padding: 4px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Create customized display</button>
   <div style="width:1px; height:20px; background:#ddd; margin:0 10px;"></div>
   <div style="display: flex; gap: 8px; align-items: center;">
@@ -273,6 +202,7 @@ document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTop
 <div style="width:100%; padding:8px 12px; box-sizing:border-box;">
   <div class="viewport" id="viewport" style="overflow: auto; position: relative;">
     <div id="device-grid" style="width: 3000px; height: 2000px; position: relative; background: #fdfdfd;">
+      <svg id="connection-svg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></svg>
       <!-- Devices will be added here -->
     </div>
   </div>
@@ -280,6 +210,10 @@ document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTop
 
 <template id="device-template">
   <div class="device-box" id="box-{{DOM_ID}}">
+    <div class="contact-point top"></div>
+    <div class="contact-point bottom"></div>
+    <div class="contact-point left"></div>
+    <div class="contact-point right"></div>
     <div class="device-header">
       <div class="device-title">{{TITLE}}</div>
       <div id="status-{{DOM_ID}}" class="status-badge state-warn"><span data-spin='@{{DEVICE}} status "%s"'></span></div>
@@ -303,7 +237,7 @@ document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTop
             <option value="">--</option>
           </select>
           <div id="param-input-container-{{DOM_ID}}" class="param-input-row">
-            <input type="text" id="param-value-{{DOM_ID}}" class="control-input flex-1" placeholder="val" />
+            <input type="text" id="param-value-{{DOM_ID}}" class="control-input auto-width-input" placeholder="val" />
           </div>
           <button class="control-button" onclick="sendSelectedParam('{{DEVICE}}', '{{DOM_ID}}')">Set</button>
         </div>
@@ -311,8 +245,6 @@ document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTop
       </div>
       
       <div id="commands-{{DOM_ID}}" class="commands-section"></div>
-
-  <div class="toggle-row"><button class="toggle-btn" id="toggle-{{DOM_ID}}" onclick="toggleExtra('{{DEVICE}}')">More ▾</button></div>
       <div id="extra-{{DOM_ID}}" class="extra-panel" aria-hidden="true"></div>
     </div>
     <div class="resize-handle"></div>
@@ -321,6 +253,10 @@ document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTop
 
 <template id="drivable_device-template">
   <div class="device-box" id="box-{{DOM_ID}}">
+    <div class="contact-point top"></div>
+    <div class="contact-point bottom"></div>
+    <div class="contact-point left"></div>
+    <div class="contact-point right"></div>
     <div class="device-header">
       <div class="device-title">{{TITLE}}</div>
       <div id="status-{{DOM_ID}}" class="status-badge state-warn"><span data-spin='@{{DEVICE}} status "%s"'></span></div>
@@ -344,7 +280,7 @@ document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTop
             <option value="">--</option>
           </select>
           <div id="param-input-container-{{DOM_ID}}" class="param-input-row">
-            <input type="text" id="param-value-{{DOM_ID}}" class="control-input flex-1" placeholder="val" />
+            <input type="text" id="param-value-{{DOM_ID}}" class="control-input auto-width-input" placeholder="val" />
           </div>
           <button class="control-button" onclick="sendSelectedParam('{{DEVICE}}', '{{DOM_ID}}')">Set</button>
         </div>
@@ -352,8 +288,6 @@ document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTop
       </div>
       
       <div id="commands-{{DOM_ID}}" class="commands-section"></div>
-
-  <div class="toggle-row"><button class="toggle-btn" id="toggle-{{DOM_ID}}" onclick="toggleExtra('{{DEVICE}}')">More ▾</button></div>
       <div id="extra-{{DOM_ID}}" class="extra-panel" aria-hidden="true"></div>
     </div>
     <div class="resize-handle"></div>
@@ -363,6 +297,10 @@ document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTop
 <!-- Valve Controller Template -->
 <template id="valve-controller-template">
   <div class="device-box" id="box-{{DOM_ID}}">
+    <div class="contact-point top"></div>
+    <div class="contact-point bottom"></div>
+    <div class="contact-point left"></div>
+    <div class="contact-point right"></div>
     <div class="device-header">
       <div class="device-title">{{TITLE}}</div>
       <div id="status-{{DOM_ID}}" class="status-badge state-warn"><span data-spin='@{{DEVICE}} status "%s"'></span></div>
@@ -377,7 +315,6 @@ document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTop
 
     <div id="body-{{DOM_ID}}" class="device-body">
       <div id="commands-{{DOM_ID}}" class="commands-section"></div>
-      <div class="toggle-row"><button class="toggle-btn" id="toggle-{{DOM_ID}}" onclick="toggleExtra('{{DEVICE}}')">More ▾</button></div>
       <div id="extra-{{DOM_ID}}" class="extra-panel" aria-hidden="true"></div>
     </div>
     <div class="resize-handle"></div>
@@ -387,14 +324,30 @@ document.addEventListener('DOMContentLoaded', function(){ setTimeout(setPlotsTop
 <!-- Log Info removed -->
 </div>
 
-<!-- Context Menu -->
-<div id="context-menu" style="display:none; position:absolute; z-index:2000; background:white; border:1px solid #ccc; box-shadow:2px 2px 5px rgba(0,0,0,0.2); padding:8px; border-radius:4px; min-width:120px;">
-  <div style="margin-bottom:8px; font-size:12px; font-weight:bold; border-bottom:1px solid #eee; padding-bottom:4px;">Edit Decoration</div>
-  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-      <label style="font-size:11px; color:#333;">Color:</label>
-      <input type="color" id="ctx-color-picker" style="width:40px; height:20px; border:none; padding:0; cursor:pointer;">
+<!-- Line Context Menu -->
+<div id="context-menu" class="line-context-menu" style="display:none;">
+  <div class="line-context-title">Edit Line</div>
+  <button type="button" class="line-context-item" data-line-submenu="width">Line Width</button>
+  <button type="button" class="line-context-item" data-line-submenu="color">Line Color</button>
+  <button type="button" class="line-context-item" data-line-submenu="type">Line Type</button>
+
+  <div id="line-submenu-width" class="line-context-submenu" style="display:none;">
+    <button type="button" class="line-width-option" data-line-width="1"><span class="line-width-preview line-width-preview-1"></span>1 px</button>
+    <button type="button" class="line-width-option" data-line-width="2"><span class="line-width-preview line-width-preview-2"></span>2 px</button>
+    <button type="button" class="line-width-option" data-line-width="4"><span class="line-width-preview line-width-preview-4"></span>4 px</button>
+    <button type="button" class="line-width-option" data-line-width="6"><span class="line-width-preview line-width-preview-6"></span>6 px</button>
   </div>
-  <button id="ctx-remove-btn" style="width:100%; background:#dc3545; color:white; border:none; padding:4px; border-radius:3px; cursor:pointer; font-size:11px;">Remove</button>
+
+  <div id="line-submenu-color" class="line-context-submenu" style="display:none;">
+    <label class="line-color-row" for="line-color-picker">Choose color</label>
+    <input type="color" id="line-color-picker" value="#007bff">
+  </div>
+
+  <div id="line-submenu-type" class="line-context-submenu" style="display:none;">
+    <button type="button" class="line-type-option" data-line-type="solid"><span class="line-type-preview line-type-solid"></span>Solid</button>
+    <button type="button" class="line-type-option" data-line-type="dashed"><span class="line-type-preview line-type-dashed"></span>Dashed</button>
+    <button type="button" class="line-type-option" data-line-type="dotted"><span class="line-type-preview line-type-dotted"></span>Dotted</button>
+  </div>
 </div>
 
 

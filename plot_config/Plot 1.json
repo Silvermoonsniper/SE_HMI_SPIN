@@ -1,0 +1,25 @@
+{
+  "name": "Plot 1",
+  "plotType": "line",
+  "lines": [
+    {
+      "key": "sim_gas_dosing_backpress_contr1.value",
+      "suffix": "sim_gas_dosing_backpress_contr1.value",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#007bff"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_backpress_contr1.target",
+      "suffix": "sim_gas_dosing_backpress_contr1.target",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#007bff"
+      }
+    }
+  ],
+  "savedAt": "2026-04-18T21:45:28.078Z"
+}
