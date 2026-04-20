@@ -434,14 +434,16 @@ class NodeManagerDevice(BaseDevice):
                     self.update_device_params_param()
 
                 added_runtime_devices = []
+                backend = getattr(self, '_backend', None)
+
                 try:
-                    backend = getattr(self, '_backend', None)
                     if backend and hasattr(backend, 'add_runtime_secop_node'):
-                        added_runtime_devices = backend.add_runtime_secop_node(host, port, mod_list, para_map)
+                        added_runtime_devices = backend.add_runtime_secop_node(host, port, mod_list, para_map, new_dev_data)
                 except Exception as e:
                     print(f"[add_node] Failed to hot-add runtime devices: {e}")
                 
                 self.update_nodes_param()
+                self.update_device_params_param()
                    
                 if mod_list and not added_runtime_devices:
                     msg = "Node already present in runtime"

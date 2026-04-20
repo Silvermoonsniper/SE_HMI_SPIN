@@ -19,16 +19,9 @@ document.addEventListener('DOMContentLoaded', function()
       document.getElementById('conn-port').value = '';
     };
     cancelBtn.onclick = () => { modal.style.display = 'none'; };
-    submitBtn.onclick = () => {
-      const ip = document.getElementById('conn-ip').value.trim();
-      const port = document.getElementById('conn-port').value.trim();
-      if (!ip || !port) { alert('Please enter IP and Port.'); return; }
-      if (window.Spin && typeof window.Spin.send_request === 'function') {
-        window.Spin.send_request('nodemanager.add_node', '', 'input', 'set', {host: ip, port: port});
-        modal.style.display = 'none';
-      } else {
-        alert('Not connected to Spin server.');
-      }
+    submitBtn.onclick = async () => {
+      await addNodeConnection();
+      modal.style.display = 'none';
     };
   } else {
     // Show a visible error if modal logic cannot attach
@@ -162,6 +155,126 @@ let activeConnectionStart = null;
 let temporaryConnectionLine = null;
 let selectedConnectionLine = null;
 let guiModeActive = false;
+const RUNTIME_NODE_ADDRS_KEY = 'runtime_node_addrs';
+let pendingAddedNodeAddr = null;
+const deviceHydrationRequests = new Map();
+
+function loadRuntimeDeviceNodeAddrs() {
+  try {
+    const raw = localStorage.getItem(RUNTIME_NODE_ADDRS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.debug('Failed to load runtime node addr map', e);
+    return {};
+  }
+}
+
+let runtimeDeviceNodeAddrs = loadRuntimeDeviceNodeAddrs();
+
+function saveRuntimeDeviceNodeAddrs() {
+  try {
+    localStorage.setItem(RUNTIME_NODE_ADDRS_KEY, JSON.stringify(runtimeDeviceNodeAddrs));
+  } catch (e) {
+    console.debug('Failed to save runtime node addr map', e);
+  }
+}
+
+function getKnownNodeAddrForDevice(device) {
+  return runtimeDeviceNodeAddrs[device] || null;
+}
+
+function secopStatusToUi(statusValue) {
+  if (!Array.isArray(statusValue) || statusValue.length < 2) {
+    return { state: 'State.UNKNOWN', state_str: '' };
+  }
+
+  const code = Number(statusValue[0]);
+  const stateStr = String(statusValue[1] || '');
+  let state = 'State.UNKNOWN';
+  if (code < 0) state = 'State.UNKNOWN';
+  else if (code < 100) state = 'State.DISABLED';
+  else if (code < 200) state = 'State.OK';
+  else if (code < 300) state = 'State.WARN';
+  else if (code < 400) state = 'State.BUSY';
+  else if (code < 500) state = 'State.ERROR';
+  return { state, state_str: stateStr };
+}
+
+function parseSecopReply(responseText) {
+  if (!responseText) return null;
+  const trimmed = String(responseText).trim();
+  const match = trimmed.match(/^reply\s+\S+\s+(.+)$/s);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[1]);
+  } catch (e) {
+    console.debug('Failed to parse SECoP reply', trimmed, e);
+    return null;
+  }
+}
+
+async function hydrateDeviceFromNode(device) {
+  if (deviceHydrationRequests.has(device)) {
+    return deviceHydrationRequests.get(device);
+  }
+
+  const requestPromise = (async () => {
+    const addr = getKnownNodeAddrForDevice(device);
+    const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
+    const moduleName = deviceInfo && deviceInfo.original_name ? deviceInfo.original_name : null;
+    if (!addr || !deviceInfo || !moduleName) return;
+
+    const commands = new Set(deviceInfo.commands || []);
+    const params = Array.from(new Set(['status', 'value', 'target', ...(deviceInfo.all_params || [])]))
+      .filter(param => !commands.has(param));
+
+    if (!latestValues[device]) latestValues[device] = {};
+
+    for (const param of params) {
+      try {
+        const resp = await fetch(API_BASE + '/api/send_request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ addr: addr, command: `read ${moduleName}:${param}` })
+        });
+        if (!resp.ok) continue;
+        const payload = await resp.json();
+        const parsed = parseSecopReply(payload.response);
+        if (!parsed || !Array.isArray(parsed) || parsed.length === 0) continue;
+
+        const value = parsed[0];
+        let state = 'State.OK';
+        let stateStr = '';
+        if (param === 'status') {
+          const statusInfo = secopStatusToUi(value);
+          state = statusInfo.state;
+          stateStr = statusInfo.state_str;
+        } else if (latestValues[device].status && Array.isArray(latestValues[device].status.value)) {
+          const statusInfo = secopStatusToUi(latestValues[device].status.value);
+          state = statusInfo.state;
+          stateStr = statusInfo.state_str;
+        }
+
+        const unit = ((deviceInfo.accessibles || {})[param] || {}).datainfo?.unit || '';
+        latestValues[device][param] = {
+          value: value,
+          unit: unit,
+          state: state,
+          state_str: stateStr
+        };
+      } catch (e) {
+        console.debug('Direct device hydration failed for', device, param, e);
+      }
+    }
+
+    applyCachedDeviceState(device, deviceDomId(device));
+  })().finally(() => {
+    deviceHydrationRequests.delete(device);
+  });
+
+  deviceHydrationRequests.set(device, requestPromise);
+  return requestPromise;
+}
 
 function showAppDialog(options = {}) {
   return new Promise((resolve) => {
@@ -966,6 +1079,7 @@ async function addNodeConnection() {
   }
   
   if (window.Spin) {
+      pendingAddedNodeAddr = `${ip.trim()}:${port.trim()}`;
       Spin.send_request('nodemanager.add_node', "", "input", "set", {host: ip, port: port});
       // Alert will be handled by nodemanager.status update
       document.getElementById('conn-ip').value = '';
@@ -1110,7 +1224,7 @@ function connectToGUI(is_configure) {
   }
   
   // Switch to main panel
-  enterSystem();
+  enterSystem(is_configure);
   // Then load selected layout
   const select = document.getElementById('layout-select');
   const name = select.value;
@@ -1155,12 +1269,18 @@ function connectToGUI(is_configure) {
 
 
 
-function enterSystem() {
+function enterSystem(isConfigure = true) {
   // This function is now only for switching views.
   // The button is always visible.
   document.getElementById('connection-panel').style.display = 'none';
   document.getElementById('main-panel').style.display = 'block';
-  setConfigurationMode(true);
+  setConfigurationMode(isConfigure);
+
+  if (isConfigure && guiModeActive) {
+    toggleConfigView();
+  } else if (!isConfigure && !guiModeActive) {
+    toggleConfigView();
+  }
   
   // Fetch device params when entering the system to ensure dropdown is populated
   fetchDeviceParams();
@@ -1185,8 +1305,8 @@ window.addEventListener('spinupdate', function(event)
     
        fetchNodesList(); 
        loadNodesInfo();
-
-  
+       
+     
 
     if (key === 'nodemanager.nodes') {
         var nodes = event.detail.value;
@@ -1199,6 +1319,14 @@ window.addEventListener('spinupdate', function(event)
     if (key === 'nodemanager.status') {
         var msg = event.detail.value;
         if (msg) {
+      if (msg === 'Node added successfully' || msg === 'Node already present in runtime') {
+        fetchNodesList();
+        loadNodesInfo();
+        fetchDeviceParams();
+        fetchAndMergeLatestValuesOnce()
+          .then(() => refreshVisibleDeviceBoxes())
+          .catch(() => {});
+      }
         showAppAlert(msg, 'Node Manager');
         }
         return;
@@ -1208,8 +1336,25 @@ window.addEventListener('spinupdate', function(event)
         var data = event.detail.value;
       
         if (data) {
+            const previousKeys = WRITABLE_PARAMS ? new Set(Object.keys(WRITABLE_PARAMS)) : new Set();
             WRITABLE_PARAMS = data;
             populateDeviceList(data);
+            if (pendingAddedNodeAddr) {
+              let mappedCount = 0;
+              Object.keys(data).forEach((deviceName) => {
+                if (!previousKeys.has(deviceName)) {
+                  runtimeDeviceNodeAddrs[deviceName] = pendingAddedNodeAddr;
+                  mappedCount += 1;
+                }
+              });
+              if (mappedCount > 0) {
+                saveRuntimeDeviceNodeAddrs();
+                pendingAddedNodeAddr = null;
+              }
+            }
+            fetchAndMergeLatestValuesOnce()
+              .then(() => refreshVisibleDeviceBoxes())
+              .catch(() => {});
         }
        
         return;
@@ -1562,6 +1707,82 @@ function updateParamDisplay(device, domId, param)
     }
     // don't overwrite existing.value here; leave user input intact
   }
+}
+
+function applyCachedDeviceState(device, domId) {
+  const data = latestValues[device];
+  if (!data) return;
+
+  const statusEntry = data.status;
+  const valueEntry = data.value;
+  const targetEntry = data.target;
+  const gasEntry = data._gastype;
+
+  const formatEntry = (entry) => {
+    if (!entry || entry.value === undefined || entry.value === null) return '--';
+    const value = entry.value;
+    const unit = entry.unit || '';
+    let displayValue;
+    if (Array.isArray(value)) {
+      displayValue = '[' + value.join(', ') + ']';
+    } else if (typeof value === 'object') {
+      displayValue = JSON.stringify(value);
+    } else {
+      displayValue = String(value);
+    }
+    return displayValue + (unit ? ' ' + unit : '');
+  };
+
+  if (statusEntry) {
+    const statusEl = document.getElementById('status-' + domId);
+    if (statusEl) {
+      const state = statusEntry.state || '';
+      const stateStr = statusEntry.state_str || '';
+      statusEl.textContent = stateStr || state || 'unknown';
+      statusEl.className = 'status-badge ' + (state ? ('state-' + state) : 'state-warn');
+    }
+  }
+
+  const valEl = document.getElementById('val-' + domId);
+  if (valEl && valueEntry) valEl.textContent = formatEntry(valueEntry);
+
+  const targetEl = document.getElementById('target-' + domId);
+  if (targetEl && targetEntry) targetEl.textContent = formatEntry(targetEntry);
+
+  const gasEl = document.getElementById('gas-' + domId);
+  if (gasEl && gasEntry) gasEl.textContent = formatEntry(gasEntry);
+
+  if (device.includes('storage') && valueEntry) {
+    const storageValue = valueEntry.value;
+    if (Array.isArray(storageValue)) {
+      updateSampleSlotImages(device, storageValue);
+    }
+  }
+
+  if (device.includes('sample_at_measurement') && targetEntry) {
+    updateSamplepresence(device, targetEntry.value);
+  }
+
+  const paramSelect = document.getElementById('param-select-' + domId);
+  if (paramSelect && paramSelect.value) {
+    updateParamDisplay(device, domId, paramSelect.value);
+  }
+
+  const panel = document.getElementById('extra-' + domId);
+  if (panel && panel.classList.contains('open')) {
+    renderExtra(device);
+  }
+}
+
+function refreshVisibleDeviceBoxes() {
+  document.querySelectorAll('.device-box[data-device]').forEach((box) => {
+    const device = box.dataset.device;
+    if (!device) return;
+    applyCachedDeviceState(device, deviceDomId(device));
+    if (!latestValues[device] || Object.keys(latestValues[device]).length === 0) {
+      hydrateDeviceFromNode(device).catch(() => {});
+    }
+  });
 }
 
 // ===== Extra Parameters Panel =====
@@ -2010,14 +2231,31 @@ function createDeviceDisplay(isConfigurelayout)
   // for sample magazine, create slots display for all samples
   if (isSample_magazine_device) {
    
-    setTimeout(() => setupSampleMagazine(device, domId,isConfigurelayout), 1000);
+    setTimeout(() => {
+      setupSampleMagazine(device, domId,isConfigurelayout);
+      applyCachedDeviceState(device, domId);
+    }, 1000);
   }
 
   // create a slot block to indicate sample presence at measurement location
   if (isSample_position_device) {
    
-    setTimeout(() => setupSample_presence(device,isConfigurelayout), 1000);
+    setTimeout(() => {
+      setupSample_presence(device,isConfigurelayout);
+      applyCachedDeviceState(device, domId);
+    }, 1000);
   }
+
+  applyCachedDeviceState(device, domId);
+  fetchAndMergeLatestValuesOnce()
+    .then(() => {
+      applyCachedDeviceState(device, domId);
+      if (!latestValues[device] || Object.keys(latestValues[device]).length === 0) {
+        return hydrateDeviceFromNode(device);
+      }
+    })
+    .then(() => applyCachedDeviceState(device, domId))
+    .catch(() => {});
 
   return newBox;
 }
@@ -3226,10 +3464,20 @@ function populateParamsForDevice(device, info, domId) {
 
 
 
-function getModuleName(device) {
-  return fetch('./c/device_params.json')
-    .then(res => res.json())
-    .then(data => data[device]["module_name"]);
+async function getModuleName(device) {
+  const runtimeInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
+  if (runtimeInfo) {
+    return runtimeInfo.module_name || runtimeInfo.original_name || null;
+  }
+
+  try {
+    const res = await fetch('./c/device_params.json');
+    const data = await res.json();
+    const info = data && data[device] ? data[device] : null;
+    return info ? (info.module_name || info.original_name || null) : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 function sendCommand(device, cmd) {
@@ -3243,9 +3491,10 @@ function sendCommand(device, cmd) {
       // If moduleName cannot be resolved immediately, retry a few times
       // because device metadata may be populated asynchronously.
       let moduleName = null;
-      // Keep trying until we have a moduleName. This will wait (with a short
-      // backoff) until device metadata is available and getModuleName resolves.
-      while (!moduleName) {
+      let resolveAttempts = 0;
+      const maxResolveAttempts = 6;
+      while (!moduleName && resolveAttempts < maxResolveAttempts) {
+        resolveAttempts++;
         try {
           moduleName = await getModuleName(device);
         } catch (e) {
@@ -3256,7 +3505,7 @@ function sendCommand(device, cmd) {
         await new Promise(r => setTimeout(r, 500));
       }
 
-      const commandToSend = moduleName ? `do ${moduleName}:${cmd}` : cmd;
+      const commandToSend = `do ${(moduleName || device)}:${cmd}`;
 
       // Resolve node address for the device via backend API
       let addr = null;

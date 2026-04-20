@@ -1,12 +1,15 @@
 from spin.backend import Backend, Update, State, Reply, fixup_params
 from spin.config import Device as ConfigDevice, Param
 import asyncio
+import enum
 import os, json
 import threading
 import importlib
 from urllib.parse import urlparse
 import mlzlog
 from spin import secop as spin_secop
+from frappy.client import SecopClient
+from frappy.lib.enum import EnumMember
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
@@ -95,11 +98,23 @@ class Device(spin_secop.Device):
         unit = getattr(self, '_units', {}).get(param, '') if hasattr(self, '_units') else ''
         state, state_str = self.cache.get('status', (State.UNKNOWN, ''))
         ExtendedBackend.latest_values[f'{self._name}.{param}'] = {
-            'value': value,
+            'value': _json_safe_value(value),
             'unit': str(unit),
             'state': str(state),
             'state_str': str(state_str),
         }
+
+
+def _json_safe_value(value):
+    if isinstance(value, enum.Enum):
+        return value.value
+    if isinstance(value, EnumMember):
+        return value.value
+    if isinstance(value, dict):
+        return {str(_json_safe_value(key)): _json_safe_value(val) for key, val in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe_value(item) for item in value]
+    return value
 
 
 def _build_device_aliases(device_name):
@@ -130,10 +145,20 @@ def _build_device_aliases(device_name):
 
 def _resolve_device_addr(backend, device_name):
     if not backend or not hasattr(backend, '_devices'):
-        return None
+        runtime_addrs = getattr(backend, '_runtime_device_addrs', {}) if backend else {}
+        return runtime_addrs.get(device_name)
+
+    runtime_addrs = getattr(backend, '_runtime_device_addrs', {})
+    if device_name in runtime_addrs:
+        return runtime_addrs[device_name]
 
     aliases = _build_device_aliases(device_name)
     devices = getattr(backend, '_devices', {})
+
+    for alias in aliases:
+        addr = runtime_addrs.get(alias)
+        if addr:
+            return addr
 
     for alias in aliases:
         dev_obj = devices.get(alias)
@@ -160,6 +185,69 @@ class ExtendedBackend(Backend):
     # Store latest values for API
     latest_values = {}
 
+    def _ensure_runtime_storage(self):
+        if not hasattr(self, '_runtime_node_configs'):
+            self._runtime_node_configs = {}
+        if not hasattr(self, '_runtime_node_tasks'):
+            self._runtime_node_tasks = {}
+        if not hasattr(self, '_runtime_device_addrs'):
+            self._runtime_device_addrs = {}
+
+    def _recover_runtime_nodes_from_files(self):
+        self._ensure_runtime_storage()
+
+        device_params_path = os.path.join(os.path.dirname(__file__), 'device_params.json')
+        nodes_path = os.path.join(os.path.dirname(__file__), 'nodes.json')
+
+        try:
+            with open(device_params_path, 'r') as handle:
+                device_params = json.load(handle)
+        except Exception:
+            return
+
+        candidate_devices = {
+            name for name in device_params.keys()
+            if name not in getattr(self, '_devices', {}) and name not in self._runtime_device_addrs
+        }
+        if not candidate_devices:
+            return
+
+        try:
+            with open(nodes_path, 'r') as handle:
+                nodes = json.load(handle)
+        except Exception:
+            return
+
+        try:
+            from configuration.node_manager import connect_and_fetch_params
+        except Exception as exc:
+            self.log.warning(f'Failed to import runtime node recovery helper: {exc}')
+            return
+
+        for node in nodes or []:
+            if not candidate_devices:
+                break
+
+            host = node.get('host')
+            port = node.get('port')
+            if not host or not port:
+                continue
+
+            try:
+                mod_list, para_map, dev_data = connect_and_fetch_params(host, port)
+            except Exception:
+                continue
+
+            filtered_mod_list = [(original_name, unique_name) for original_name, unique_name in mod_list or [] if unique_name in candidate_devices]
+            if not filtered_mod_list:
+                continue
+
+            filtered_dev_data = {name: (dev_data or {}).get(name, {}) for _, name in filtered_mod_list}
+            self.register_runtime_secop_node(host, port, filtered_mod_list, filtered_dev_data)
+
+            for _, unique_name in filtered_mod_list:
+                candidate_devices.discard(unique_name)
+
     def _create_runtime_device(self, name, device_conf):
         parsed = urlparse(device_conf.device)
         if parsed.scheme not in self.protos:
@@ -176,7 +264,23 @@ class ExtendedBackend(Backend):
         dev.init()
         return dev
 
-    def add_runtime_secop_node(self, host, port, mod_list, para_map):
+    def add_runtime_secop_node(self, host, port, mod_list, para_map, device_data=None):
+        if device_data:
+            self.register_runtime_secop_node(host, port, mod_list, device_data)
+
+            resolved_host = resolve_host(host)
+            addr = f"{resolved_host}:{port}"
+
+            async def _prime_once():
+                try:
+                    snapshot_updates = await asyncio.to_thread(self._collect_runtime_snapshot, addr)
+                    if snapshot_updates:
+                        await self._publish_runtime_snapshot(snapshot_updates)
+                except Exception as exc:
+                    self.log.warning(f'Failed to publish runtime snapshot for {addr}: {exc}')
+
+            self.run_task(_prime_once())
+
         resolved_host = resolve_host(host)
         url = f"{resolved_host}:{port}"
         added = []
@@ -196,6 +300,135 @@ class ExtendedBackend(Backend):
             added.append(unique_name)
 
         return added
+
+    def register_runtime_secop_node(self, host, port, mod_list, device_data, poll_interval=2.0):
+        self._ensure_runtime_storage()
+
+        resolved_host = resolve_host(host)
+        addr = f"{resolved_host}:{port}"
+        node_cfg = self._runtime_node_configs.setdefault(addr, {'devices': {}, 'poll_interval': poll_interval})
+        node_cfg['poll_interval'] = poll_interval
+
+        for original_name, unique_name in mod_list or []:
+            info = (device_data or {}).get(unique_name) or {}
+            node_cfg['devices'][unique_name] = {
+                'module': original_name,
+                'info': info,
+            }
+            self._runtime_device_addrs[unique_name] = addr
+
+        if addr not in self._runtime_node_tasks:
+            task = self._loop.create_task(self._poll_runtime_node(addr))
+            self._runtime_node_tasks[addr] = task
+            self._tasks.add(task)
+            task.add_done_callback(self._tasks.discard)
+
+    async def _publish_runtime_snapshot(self, snapshot_updates):
+        for key, unit, state, state_str, value, is_main in snapshot_updates:
+            safe_value = _json_safe_value(value)
+            ExtendedBackend.latest_values[key] = {
+                'value': safe_value,
+                'unit': unit,
+                'state': str(state),
+                'state_str': str(state_str),
+            }
+            await self.send_update(Update(key, unit, state, state_str, safe_value))
+            if is_main:
+                device_name = key.split('.', 1)[0]
+                await self.send_update(Update(device_name, unit, state, state_str, safe_value))
+
+    def refresh_runtime_latest_values(self):
+        self._recover_runtime_nodes_from_files()
+        runtime_nodes = list(getattr(self, '_runtime_node_configs', {}).keys())
+        for addr in runtime_nodes:
+            try:
+                snapshot_updates = self._collect_runtime_snapshot(addr)
+            except Exception as exc:
+                self.log.warning(f'Failed to refresh runtime node {addr}: {exc}')
+                continue
+
+            for key, unit, state, state_str, value, _ in snapshot_updates:
+                ExtendedBackend.latest_values[key] = {
+                    'value': _json_safe_value(value),
+                    'unit': unit,
+                    'state': str(state),
+                    'state_str': str(state_str),
+                }
+
+    def _collect_runtime_snapshot(self, addr):
+        node_cfg = getattr(self, '_runtime_node_configs', {}).get(addr)
+        if not node_cfg:
+            return []
+
+        client = SecopClient(addr)
+        client.connect()
+        updates = []
+
+        for unique_name, cfg in node_cfg['devices'].items():
+            module = cfg['module']
+            info = cfg['info'] or {}
+            accessibles = info.get('accessibles') or {}
+            commands = set(info.get('commands') or [])
+
+            status_value = None
+            status_state = State.OK
+            status_state_str = ''
+            if 'status' in (info.get('all_params') or []):
+                try:
+                    status_item = client.readParameter(module, 'status')
+                    status_value = getattr(status_item, 'value', status_item)
+                    status_state, status_state_str = spin_secop.to_state(status_value)
+                except Exception as exc:
+                    status_value = None
+                    status_state = State.ERROR
+                    status_state_str = str(exc)
+                updates.append((f'{unique_name}.status', '', status_state, status_state_str, status_value, False))
+
+            for param_name in info.get('all_params') or []:
+                if param_name in commands or param_name == 'status':
+                    continue
+
+                unit = str(accessibles.get(param_name, {}).get('datainfo', {}).get('unit', ''))
+                try:
+                    item = client.readParameter(module, param_name)
+                    value = getattr(item, 'value', item)
+                    state, state_str = status_state, status_state_str
+                except Exception as exc:
+                    value = None
+                    state = State.ERROR
+                    state_str = str(exc)
+
+                updates.append((f'{unique_name}.{param_name}', unit, state, state_str, value, param_name == 'value'))
+
+        return updates
+
+    async def _poll_runtime_node(self, addr):
+        while True:
+            try:
+                snapshot_updates = await asyncio.to_thread(self._collect_runtime_snapshot, addr)
+                if snapshot_updates:
+                    await self._publish_runtime_snapshot(snapshot_updates)
+            except Exception as exc:
+                self.log.warning(f'Failed to poll runtime node {addr}: {exc}')
+
+            node_cfg = getattr(self, '_runtime_node_configs', {}).get(addr) or {}
+            await asyncio.sleep(node_cfg.get('poll_interval', 2.0))
+
+    def prime_runtime_secop_node(self, host, port, mod_list, device_data):
+        self.register_runtime_secop_node(host, port, mod_list, device_data)
+
+        resolved_host = resolve_host(host)
+        addr = f"{resolved_host}:{port}"
+
+        async def _prime_once():
+            try:
+                snapshot_updates = await asyncio.to_thread(self._collect_runtime_snapshot, addr)
+                if snapshot_updates:
+                    await self._publish_runtime_snapshot(snapshot_updates)
+            except Exception as exc:
+                self.log.warning(f'Failed to prime runtime node {addr}: {exc}')
+
+        self.run_task(_prime_once())
     
     async def poll_all_parameters(self, poll_interval=2):
        
@@ -240,9 +473,10 @@ class ExtendedBackend(Backend):
                         
                         # Store for API
                         try:
+                            safe_val = _json_safe_value(val)
                           
-                                ExtendedBackend.latest_values[key] = {
-                                    "value": value,
+                            ExtendedBackend.latest_values[key] = {
+                                    "value": safe_val,
                                     "unit": str(unit),
                                     "state": str(state),
                                     "state_str": str(state_str)
@@ -250,7 +484,7 @@ class ExtendedBackend(Backend):
                         except Exception:
                             pass
                       
-                        await self.send_update(update)
+                        await self.send_update(Update(key, unit, state, state_str, safe_val))
                        
                     except Exception as e:
                         self.log.warning(f"Failed to poll {devname}.{param}: {e}")
@@ -304,8 +538,10 @@ def start_api_server(backend=None):
     @app.route('/api/latest_values')
    
     def get_latest_values():
-   
-        return jsonify(ExtendedBackend.latest_values)
+        if backend and hasattr(backend, 'refresh_runtime_latest_values'):
+            backend.refresh_runtime_latest_values()
+
+        return jsonify(_json_safe_value(ExtendedBackend.latest_values))
 
     @app.route('/api/node_for_device', methods=['GET', 'POST'])
     def api_node_for_device():
@@ -324,6 +560,8 @@ def start_api_server(backend=None):
             return jsonify({'status': 'error', 'error': 'missing device'}), 400
 
         try:
+            if backend and hasattr(backend, '_recover_runtime_nodes_from_files'):
+                backend._recover_runtime_nodes_from_files()
             addr = _resolve_device_addr(backend, device)
             if addr:
                 return jsonify({'status': 'ok', 'addr': addr})
