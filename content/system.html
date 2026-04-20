@@ -151,7 +151,11 @@
 
           <!-- Step 3: create plot -->
           <div class="plot-step" id="plot-step-3" style="display:flex; flex-direction:column; gap:6px; justify-content:flex-end;">
-            <label style="visibility:hidden; height:0;">&nbsp;</label>
+            <label for="plot-config-select" style="font-weight:600;">Saved plot</label>
+            <select id="plot-config-select" class="ctrl">
+              <option value="">Plot selection</option>
+            </select>
+            <button id="delete-plot-config" class="ctrl">Delete Plot</button>
             <button id="create-plot" class="ctrl">Create Plot</button>
           </div>
         </div>
@@ -353,7 +357,10 @@
 
 <!-- Explicit script include in case server does not auto-include page scripts -->
 
-<script src="/c/system.js"></script>
+<script src="/c/system-core.js"></script>
+<script src="/c/system-runtime.js"></script>
+<script src="/c/system-devices.js"></script>
+<script src="/c/system-layout.js"></script>
 <!-- Plotly required for plots.js -->
 <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
 <script src="/c/plots.js"></script>

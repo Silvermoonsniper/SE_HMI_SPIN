@@ -586,6 +586,23 @@ class NodeManagerDevice(BaseDevice):
                 self.log.error(f"get_plot_config failed: {e}")
                 return Reply(request.connection, request.key, request.transform, 'error', str(e))
 
+        elif cmd == 'delete_plot_config':
+            try:
+                data = request.data
+                if isinstance(data, str):
+                    data = json.loads(data)
+                name = data.get('name') if data else None
+                if not name:
+                    return Reply(request.connection, request.key, request.transform, 'error', 'No name provided')
+                file_path = os.path.join(PLOT_CONFIG_DIR, name + '.json')
+                if not os.path.exists(file_path):
+                    return Reply(request.connection, request.key, request.transform, 'error', 'Not found')
+                os.remove(file_path)
+                return Reply(request.connection, request.key, request.transform, 'ack', {'status': 'ok', 'name': name})
+            except Exception as e:
+                self.log.error(f"delete_plot_config failed: {e}")
+                return Reply(request.connection, request.key, request.transform, 'error', str(e))
+
         elif cmd == 'delete_layout':
             try:
                 data = request.data

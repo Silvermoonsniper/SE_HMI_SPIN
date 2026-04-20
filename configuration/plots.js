@@ -60,11 +60,17 @@ startPollingLatestValues();
   const deleteBtn = document.getElementById('delete-line');
 
   const plotConfigSelect = document.getElementById('plot-config-select');
+  const deletePlotConfigBtn = document.getElementById('delete-plot-config');
 
   const createBtn = document.getElementById('create-plot');
 
   const PLOT_CONFIG_STORAGE_KEY = 'plot_configurations';
   let activeSavedPlotName = '';
+
+  function getApiBase(){
+    const host = window.location.hostname || 'localhost';
+    return `${window.location.protocol}//${host}:8001`;
+  }
 
 
   // staged lines (added via Add Line before creating a plot)
@@ -91,6 +97,14 @@ startPollingLatestValues();
     if(!name || !config) return;
     const configs = getStoredPlotConfigs();
     configs[name] = config;
+    localStorage.setItem(PLOT_CONFIG_STORAGE_KEY, JSON.stringify(configs));
+  }
+
+  function removeStoredPlotConfig(name){
+    if(!name) return;
+    const configs = getStoredPlotConfigs();
+    if(!(name in configs)) return;
+    delete configs[name];
     localStorage.setItem(PLOT_CONFIG_STORAGE_KEY, JSON.stringify(configs));
   }
 
@@ -218,21 +232,60 @@ startPollingLatestValues();
   function updatePlotConfigList(selectedName){
     if(typeof selectedName === 'string') activeSavedPlotName = selectedName;
     refreshPlotConfigSelectors();
+
+    fetch(`${getApiBase()}/api/plot_configs`)
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => {
+        if(payload && payload.status === 'ok') {
+          mergePlotConfigNames(payload.names);
+        }
+      })
+      .catch((e) => {
+        console.debug('plot config API fallback failed', e);
+      });
+
     if(window.Spin && window.Spin.send_request){
       try {
         window.Spin.send_request('nodemanager.list_plot_configs', '', 'read', 'read', null, function(names){
-          if(!Array.isArray(names)) return;
-          const merged = getStoredPlotConfigs();
-          names.forEach((name) => {
-            if(!(name in merged)) merged[name] = { name: name };
-          });
-          localStorage.setItem(PLOT_CONFIG_STORAGE_KEY, JSON.stringify(merged));
-          refreshPlotConfigSelectors();
+          mergePlotConfigNames(names);
         });
       } catch (e) {
         console.error('list_plot_configs request failed', e);
       }
     }
+  }
+
+  function normalizePlotConfigNames(payload){
+    if(Array.isArray(payload)) return payload.filter((name) => typeof name === 'string' && name.trim());
+
+    if(payload && typeof payload === 'object') {
+      if(Array.isArray(payload.value)) return payload.value.filter((name) => typeof name === 'string' && name.trim());
+      if(Array.isArray(payload.names)) return payload.names.filter((name) => typeof name === 'string' && name.trim());
+    }
+
+    if(typeof payload === 'string') {
+      const trimmed = payload.trim();
+      if(!trimmed) return [];
+      try {
+        const parsed = JSON.parse(trimmed);
+        return normalizePlotConfigNames(parsed);
+      } catch (e) {
+        return trimmed.split(',').map((name) => name.trim()).filter(Boolean);
+      }
+    }
+
+    return [];
+  }
+
+  function mergePlotConfigNames(names){
+    const normalizedNames = normalizePlotConfigNames(names);
+    if(!normalizedNames.length) return;
+    const merged = getStoredPlotConfigs();
+    normalizedNames.forEach((name) => {
+      if(!(name in merged)) merged[name] = { name: name };
+    });
+    localStorage.setItem(PLOT_CONFIG_STORAGE_KEY, JSON.stringify(merged));
+    refreshPlotConfigSelectors();
   }
 
   function findExistingPlotByName(name){
@@ -263,6 +316,46 @@ startPollingLatestValues();
     });
   }
 
+  function deleteSelectedPlotConfig(){
+    const name = plotConfigSelect && plotConfigSelect.value ? plotConfigSelect.value.trim() : '';
+    if(!name) {
+      alert('Select a saved plot first.');
+      return;
+    }
+    if(!confirm(`Delete plot configuration "${name}"?`)) return;
+
+    removeStoredPlotConfig(name);
+    removePlotEntryByName(name);
+    if(activeSavedPlotName === name) {
+      setPlotConfigSelection('');
+    } else {
+      refreshPlotConfigSelectors();
+    }
+
+    const finishDelete = () => {
+      updatePlotConfigList('');
+      if(plotConfigSelect) plotConfigSelect.value = '';
+    };
+
+    if(window.Spin && window.Spin.send_request) {
+      try {
+        window.Spin.send_request('nodemanager.delete_plot_config', '', 'input', 'set', {name: name}, function(){
+          try {
+            window.Spin.send_request('nodemanager.list_plot_configs', '', 'read', 'read', null);
+          } catch (e) {
+            console.error('list_plot_configs request failed after delete', e);
+          }
+          finishDelete();
+        });
+        return;
+      } catch (e) {
+        console.error('delete_plot_config request failed', e);
+      }
+    }
+
+    finishDelete();
+  }
+
   function requestPlotConfigFromServer(name, callback){
     if(!(window.Spin && window.Spin.send_request)) return false;
     try {
@@ -279,6 +372,30 @@ startPollingLatestValues();
       console.error('get_plot_config request failed', e);
       return false;
     }
+  }
+
+  function requestPlotConfigFromApi(name, callback){
+    fetch(`${getApiBase()}/api/plot_configs/${encodeURIComponent(name)}`)
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => {
+        const config = payload && payload.status === 'ok' ? payload.config : null;
+        if(config && typeof config === 'object') {
+          if(!config.name) config.name = name;
+          storePlotConfigLocally(name, config);
+          updatePlotConfigList(name);
+          if(typeof callback === 'function') callback(config);
+          return;
+        }
+        if(!requestPlotConfigFromServer(name, callback)) {
+          alert('Plot configuration not found.');
+        }
+      })
+      .catch((e) => {
+        console.error('get_plot_config API fallback failed', e);
+        if(!requestPlotConfigFromServer(name, callback)) {
+          alert('Plot configuration not found.');
+        }
+      });
   }
 
   function removePlotEntryById(id){
@@ -325,9 +442,42 @@ startPollingLatestValues();
       callback(cachedConfig);
       return;
     }
-    if(!requestPlotConfigFromServer(name, callback)) {
-      alert('Plot configuration not found.');
+    requestPlotConfigFromApi(name, callback);
+  }
+
+  function getCurrentPlotEntry(){
+    if(activeSavedPlotName) {
+      const namedEntry = findExistingPlotByName(activeSavedPlotName);
+      if(namedEntry) return namedEntry;
     }
+
+    const entries = Object.values(plotsMap).filter((entry) => entry && entry.containerDiv);
+    if(entries.length === 1) return entries[0];
+
+    return null;
+  }
+
+  function handleTopLevelPlotConfigSelection(){
+    if(!plotConfigSelect) return;
+    const name = plotConfigSelect.value;
+    if(!name) {
+      setPlotConfigSelection('');
+      clearStagedLines();
+      refreshPlot();
+      return;
+    }
+
+    const currentEntry = getCurrentPlotEntry();
+    if(currentEntry) {
+      switchPlotPanelToConfig(currentEntry, name);
+      return;
+    }
+
+    loadPlotConfigByName(name, (config) => {
+      if(!config) return;
+      applyPlotConfig(config);
+      setPlotConfigSelection(name);
+    });
   }
 
   function switchPlotPanelToConfig(currentEntry, name){
@@ -981,6 +1131,12 @@ startPollingLatestValues();
       updateSpinupdateIndicator();
    
       const emittedKey = ev.detail.key || '';
+
+      if(emittedKey === 'nodemanager.list_plot_configs') {
+        mergePlotConfigNames(ev.detail.value);
+        return;
+      }
+
       // Use ev.detail.value.value if present, else fallback
    
       const val = (ev.detail.value && typeof ev.detail.value.value !== 'undefined') ? ev.detail.value.value : ev.detail.value;
@@ -1073,6 +1229,9 @@ startPollingLatestValues();
       addBtn && addBtn.addEventListener('click', addLine);
 
       deleteBtn && deleteBtn.addEventListener('click', deleteLine);
+
+      plotConfigSelect && plotConfigSelect.addEventListener('change', handleTopLevelPlotConfigSelection);
+      deletePlotConfigBtn && deletePlotConfigBtn.addEventListener('click', deleteSelectedPlotConfig);
 
       plotTypeSelect && plotTypeSelect.addEventListener('change', refreshPlot);
 

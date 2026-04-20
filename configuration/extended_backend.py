@@ -569,6 +569,37 @@ def start_api_server(backend=None):
             app.logger.exception('api_node_for_device lookup failed')
 
         return jsonify({'status': 'not_found'}), 404
+
+    @app.route('/api/plot_configs', methods=['GET'])
+    def api_plot_configs():
+        plot_config_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plot_config'))
+        try:
+            names = []
+            if os.path.isdir(plot_config_dir):
+                for fname in os.listdir(plot_config_dir):
+                    if fname.endswith('.json'):
+                        names.append(fname[:-5])
+            return jsonify({'status': 'ok', 'names': sorted(names)})
+        except Exception as exc:
+            app.logger.exception('api_plot_configs failed')
+            return jsonify({'status': 'error', 'error': str(exc)}), 500
+
+    @app.route('/api/plot_configs/<path:name>', methods=['GET'])
+    def api_plot_config(name):
+        plot_config_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plot_config'))
+        safe_name = os.path.basename(name)
+        file_path = os.path.join(plot_config_dir, safe_name + '.json')
+        try:
+            if not os.path.exists(file_path):
+                return jsonify({'status': 'not_found'}), 404
+            with open(file_path, 'r') as handle:
+                config = json.load(handle)
+            if isinstance(config, dict) and 'name' not in config:
+                config['name'] = safe_name
+            return jsonify({'status': 'ok', 'config': config})
+        except Exception as exc:
+            app.logger.exception('api_plot_config failed')
+            return jsonify({'status': 'error', 'error': str(exc)}), 500
    
     threading.Thread(target=lambda: app.run(host='0.0.0.0', port=8001, debug=False), daemon=True).start()
 
