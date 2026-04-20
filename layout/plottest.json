@@ -1,0 +1,20 @@
+{
+  "devices": [],
+  "valveIcons": [],
+  "decorations": [],
+  "plots": [
+    {
+      "id": "plot_1_panel",
+      "title": "Plot 1",
+      "left": "200px",
+      "top": "80px",
+      "width": "700px",
+      "height": "457px",
+      "traces": [
+        "sim_gas_dosing_backpress_contr1.value",
+        "sim_gas_dosing_backpress_contr1.target"
+      ]
+    }
+  ],
+  "connections": []
+}

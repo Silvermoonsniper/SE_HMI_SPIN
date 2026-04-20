@@ -1,0 +1,61 @@
+{
+  "name": "massflow_plot",
+  "plotType": "line",
+  "lines": [
+    {
+      "key": "sim_gas_dosing_massflow_contr1.value",
+      "suffix": "sim_gas_dosing_massflow_contr1.value",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#ed333b"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_massflow_contr1.target",
+      "suffix": "sim_gas_dosing_massflow_contr1.target",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#ed333b"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_massflow_contr2.value",
+      "suffix": "sim_gas_dosing_massflow_contr2.value",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#33d17a"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_massflow_contr2.target",
+      "suffix": "sim_gas_dosing_massflow_contr2.target",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#33d17a"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_massflow_contr3.value",
+      "suffix": "sim_gas_dosing_massflow_contr3.value",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#9141ac"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_massflow_contr3.target",
+      "suffix": "sim_gas_dosing_massflow_contr3.target",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#9141ac"
+      }
+    }
+  ],
+  "savedAt": "2026-04-20T13:26:57.705Z"
+}

@@ -1,0 +1,386 @@
+{
+  "devices": [
+    {
+      "id": "box-sim_gas_dosing_massflow_contr2",
+      "device": "massflow_contr2",
+      "logicalName": "sim_gas_dosing_massflow_contr2",
+      "left": "349px",
+      "top": "69px",
+      "width": "197px",
+      "height": "120px",
+      "info": {
+        "params": [
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_control_mode",
+          "_forward_calibration_coefficients",
+          "_gastype_select",
+          "_inverse_calibration_coefficients",
+          "_tolerance",
+          "_valveposition",
+          "pollinterval",
+          "ramp",
+          "target"
+        ],
+        "all_params": [
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_control_mode",
+          "_factory_reset",
+          "_forward_calibration_coefficients",
+          "_gastype_select",
+          "_inverse_calibration_coefficients",
+          "_test_cmd",
+          "_tolerance",
+          "_valveposition",
+          "pollinterval",
+          "ramp",
+          "stop",
+          "target"
+        ],
+        "commands": [
+          "_factory_reset",
+          "_test_cmd",
+          "stop"
+        ],
+        "original_name": "massflow_contr2",
+        "interface_classes": [
+          "_Calibratable",
+          "Drivable"
+        ],
+        "module_name": "massflow_contr2",
+        "param_info": [
+          {
+            "value": {
+              "description": "Mass flow of gas",
+              "datainfo": {
+                "unit": "mln/min",
+                "min": 0,
+                "max": 1000,
+                "type": "double"
+              },
+              "readonly": true
+            }
+          },
+          {
+            "status": {
+              "description": "current status of the module",
+              "datainfo": {
+                "type": "tuple",
+                "members": [
+                  {
+                    "type": "enum",
+                    "members": {
+                      "IDLE": 100,
+                      "WARN": 200,
+                      "BUSY": 300,
+                      "ERROR": 400
+                    }
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "readonly": true
+            }
+          },
+          {
+            "target": {
+              "description": "Desired mass flow of gas",
+              "datainfo": {
+                "unit": "mln/min",
+                "min": 0,
+                "max": 200,
+                "type": "double"
+              },
+              "readonly": false
+            }
+          },
+          {
+            "pollinterval": {
+              "description": "polling interval",
+              "datainfo": {
+                "min": 0,
+                "type": "double"
+              },
+              "readonly": false
+            }
+          },
+          {
+            "ramp": {
+              "description": "desired ramp speed for gas flow of gas",
+              "datainfo": {
+                "unit": "mln/min^2",
+                "min": 0,
+                "max": 200,
+                "type": "double"
+              },
+              "readonly": false
+            }
+          },
+          {
+            "setpoint": {
+              "description": "setpoint of  massflow controller",
+              "datainfo": {
+                "unit": "mln/min",
+                "min": 0,
+                "max": 200,
+                "type": "double"
+              },
+              "readonly": true
+            }
+          },
+          {
+            "stop": {
+              "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
+              "datainfo": {
+                "type": "command"
+              }
+            }
+          },
+          {
+            "_factory_reset": {
+              "description": "reset to values from config / default values",
+              "datainfo": {
+                "type": "command"
+              }
+            }
+          },
+          {
+            "_inverse_calibration_coefficients": {
+              "description": "Inverse calibration polynomial coefficients for value Parameter",
+              "datainfo": {
+                "type": "array",
+                "minlen": 2,
+                "maxlen": 5,
+                "members": {
+                  "min": -1000000,
+                  "max": 100000,
+                  "type": "double"
+                }
+              },
+              "readonly": false
+            }
+          },
+          {
+            "_forward_calibration_coefficients": {
+              "description": "Forward calibration polynomial coefficients for target Parameter",
+              "datainfo": {
+                "type": "array",
+                "minlen": 2,
+                "maxlen": 5,
+                "members": {
+                  "min": -1000000,
+                  "max": 100000,
+                  "type": "double"
+                }
+              },
+              "readonly": false
+            }
+          },
+          {
+            "_value_uncalibrated": {
+              "description": "uncalibrated readback directly from the hardware",
+              "datainfo": {
+                "type": "double"
+              },
+              "readonly": true,
+              "_signal_format": "HINTED_SIGNAL"
+            }
+          },
+          {
+            "_target_calibrated": {
+              "description": "calibrated target that is written to the hardware",
+              "datainfo": {
+                "type": "double"
+              },
+              "readonly": true,
+              "_signal_format": "HINTED_SIGNAL"
+            }
+          },
+          {
+            "target_limits": {
+              "description": "Limits for desired massflow of gas",
+              "datainfo": {
+                "type": "tuple",
+                "members": [
+                  {
+                    "unit": "mln/min",
+                    "min": 0,
+                    "max": 200,
+                    "type": "double"
+                  },
+                  {
+                    "unit": "mln/min",
+                    "min": 0,
+                    "max": 200,
+                    "type": "double"
+                  }
+                ]
+              },
+              "readonly": true
+            }
+          },
+          {
+            "_gastype": {
+              "description": "chemical formula of gas type handled by flow controller",
+              "datainfo": {
+                "maxchars": 50,
+                "type": "string"
+              },
+              "readonly": true
+            }
+          },
+          {
+            "_tolerance": {
+              "description": "flow range for stability checking",
+              "datainfo": {
+                "unit": "mln/min",
+                "min": 0,
+                "max": 100,
+                "type": "double"
+              },
+              "readonly": false
+            }
+          },
+          {
+            "_P_value": {
+              "description": "Proportional const for controller",
+              "datainfo": {
+                "min": 0,
+                "max": 20000,
+                "type": "double"
+              },
+              "readonly": false,
+              "group": "control parameter"
+            }
+          },
+          {
+            "_I_value": {
+              "description": "Integral const for controller",
+              "datainfo": {
+                "min": 0,
+                "max": 20000,
+                "type": "double"
+              },
+              "readonly": false,
+              "group": "control parameter"
+            }
+          },
+          {
+            "_D_value": {
+              "description": "Deviative const for controller",
+              "datainfo": {
+                "min": 0,
+                "max": 20000,
+                "type": "double"
+              },
+              "readonly": false,
+              "group": "control parameter"
+            }
+          },
+          {
+            "_gastype_select": {
+              "description": "enum of gastype",
+              "datainfo": {
+                "type": "enum",
+                "members": {
+                  "H2": 1,
+                  "CO": 2,
+                  "CO2": 3,
+                  "O2": 4,
+                  "He": 5,
+                  "N2": 6
+                }
+              },
+              "readonly": false
+            }
+          },
+          {
+            "_valveposition": {
+              "description": "valveposition",
+              "datainfo": {
+                "unit": "%",
+                "min": 0,
+                "max": 100,
+                "type": "double"
+              },
+              "readonly": false,
+              "group": "control parameter"
+            }
+          },
+          {
+            "_control_mode": {
+              "description": "control mode of  massflow controller",
+              "datainfo": {
+                "type": "enum",
+                "members": {
+                  "RS232": 0,
+                  "fully_open": 3,
+                  "fully_closed": 8
+                }
+              },
+              "readonly": false
+            }
+          },
+          {
+            "_test_cmd": {
+              "description": "testing with ophyd secop integration",
+              "datainfo": {
+                "type": "command",
+                "argument": {
+                  "type": "struct",
+                  "members": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "min": 0,
+                      "max": 1000,
+                      "type": "int"
+                    },
+                    "sort": {
+                      "type": "bool"
+                    }
+                  },
+                  "optional": []
+                },
+                "result": {
+                  "min": -16777216,
+                  "max": 16777216,
+                  "type": "int"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "image": null
+    }
+  ],
+  "valveIcons": [],
+  "decorations": [
+    {
+      "id": "deco-1776517348327",
+      "type": "contact",
+      "left": "100px",
+      "top": "100px",
+      "width": "20px",
+      "height": "20px",
+      "color": "",
+      "text": ""
+    }
+  ],
+  "plots": [],
+  "connections": [
+    {
+      "startBoxId": "box-sim_gas_dosing_massflow_contr2",
+      "startSide": "left",
+      "endBoxId": "deco-1776517348327",
+      "endSide": "center"
+    }
+  ]
+}

@@ -1,0 +1,1550 @@
+// ===== Decoration Logic =====
+let selectedDeco = null;
+
+function selectDeco(el) {
+  if (selectedDeco) selectedDeco.classList.remove('selected');
+  selectedDeco = el;
+  if (el) {
+    // mark selected visually
+    el.classList.add('selected');
+    // Sync color picker
+    const picker = document.getElementById('deco-color');
+    if (picker) {
+      let color;
+      if (el.dataset.type === 'label') {
+        color = el.style.color;
+      } else {
+        const visual = el.querySelector('.deco-visual');
+        if (visual) color = visual.style.backgroundColor;
+      }
+      if (color) {
+        if (color.startsWith('#')) {
+          picker.value = color;
+        } else {
+          // try to convert rgb(...) to hex
+          const m = color.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+          if (m) {
+            const hex = '#' + [1,2,3].map(i => ('0' + parseInt(m[i],10).toString(16)).slice(-2)).join('');
+            picker.value = hex;
+          }
+        }
+      }
+    // If this decoration is editable text, focus it so the user can start typing
+    try {
+      if (el.contentEditable === 'true' || el.isContentEditable) {
+        setTimeout(() => {
+          try {
+            el.focus();
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            range.collapse(false);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+          } catch (e) { }
+        }, 0);
+      }
+    } catch (e) {  }
+    }
+  }
+}
+
+// Initialize listeners for selection and color
+document.addEventListener('DOMContentLoaded', () => {
+  const grid = document.getElementById('device-grid');
+  if (grid) {
+    grid.addEventListener('mousedown', (e) => {
+      if (e.target === grid) selectDeco(null);
+    });
+    // Enable dropping device-boxes back onto the grid
+    grid.ondragover = (e) => { e.preventDefault(); };
+    grid.ondrop = (e) => {
+      const boxId = e.dataTransfer.getData('text/plain');
+      const box = document.getElementById(boxId);
+      if (box && box.classList.contains('device-box')) {
+        grid.appendChild(box);
+        // Position relative to grid
+        const rect = grid.getBoundingClientRect();
+        box.style.left = (e.clientX - rect.left - 20) + 'px';
+        box.style.top = (e.clientY - rect.top - 20) + 'px';
+        // Reset z-index and remove controlPanelPage assignment
+        box.style.zIndex = '10';
+        delete box.dataset.controlPanelPage;
+        // Ensure device box is visible and interactive
+        box.style.display = 'block';
+        box.style.pointerEvents = 'auto';
+      }
+    };
+  }
+    
+    const picker = document.getElementById('deco-color');
+    if (picker) {
+        picker.addEventListener('input', (e) => {
+            if (selectedDeco) {
+                const color = e.target.value;
+                if (selectedDeco.dataset.type === 'label') {
+                    selectedDeco.style.color = color;
+                } else {
+                    const visual = selectedDeco.querySelector('.deco-visual');
+                    if (visual) visual.style.backgroundColor = color;
+                }
+            }
+        });
+    }
+});
+
+function makeDraggable(el) 
+{
+
+  let isDragging = false;
+  let isResizing = false;
+  let startX, startY, initialLeft, initialTop, initialWidth, initialHeight;
+
+  // Make the whole element draggable on mousedown (simple, immediate behavior)
+  el.addEventListener('mousedown', (e) => {
+    
+    // Ignore non-left clicks
+    if (e.button !== 0) return;
+
+    // Don't start dragging when interacting with form controls or control sections
+    if (e.target.classList && e.target.classList.contains('deco-remove')) return;
+    if (e.target.tagName === 'SELECT') return;
+    if (e.target.tagName === 'INPUT') return;
+    if (e.target.tagName === 'BUTTON') return;
+    if (e.target.tagName === 'TEXTAREA') return;
+    if (e.target.closest && e.target.closest('.control-section')) return;
+
+    // If user clicked inside editable text, do not start dragging — allow editing
+    try {
+      // Allow dragging when the user clicks the dedicated drag handle even
+      // if the wrapper is contentEditable. Otherwise, clicks inside the
+      // editable text should not start a drag.
+      if (e.target.isContentEditable && !(e.target.classList && e.target.classList.contains('deco-drag-handle'))) return;
+    } catch (err) { /* ignore */ }
+
+    const style = window.getComputedStyle(el);
+    initialLeft = parseInt(style.left, 10) || 0;
+    initialTop = parseInt(style.top, 10) || 0;
+    startX = e.clientX;
+    startY = e.clientY;
+
+    isDragging = true;
+    el.style.zIndex = '1000';
+    e.preventDefault();
+
+    // Prepare HTML5 drag handlers for non-editable elements only
+    try {
+      if (!el.isContentEditable && el.dataset.type !== 'label') {
+        el.setAttribute('draggable', 'true');
+        el.ondragstart = (ev) => {
+          ev.dataTransfer.setData('text/plain', el.id);
+          setTimeout(() => { el.style.display = 'none'; }, 0);
+        };
+        el.ondragend = (ev) => { el.style.display = 'block'; };
+      } else {
+        try { el.removeAttribute('draggable'); } catch (e) {}
+      }
+    } catch (err) { /* ignore */ }
+  });
+
+  // Add resize handle if it doesn't exist (keep previous behavior)
+  let resizeHandle = el.querySelector('.resize-handle');
+  if (!resizeHandle && el.dataset.type !== 'label') {
+    resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    el.appendChild(resizeHandle);
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      if (e.button !== 0) return;
+
+      isResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+
+      const style = window.getComputedStyle(el);
+      initialWidth = parseInt(style.width, 10);
+      initialHeight = parseInt(style.height, 10);
+
+      e.preventDefault();
+    });
+  }
+
+  window.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+      e.preventDefault();
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      el.style.left = `${initialLeft + dx}px`;
+      el.style.top = `${initialTop + dy}px`;
+    } else if (isResizing) {
+      e.preventDefault();
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      el.style.width = `${Math.max(20, initialWidth + dx)}px`;
+      el.style.height = `${Math.max(20, initialHeight + dy)}px`;
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      el.style.zIndex = '5';
+    }
+    if (isResizing) {
+      isResizing = false;
+    }
+  });
+}
+
+function makeResizable(el) {
+  const resizeHandle = el.querySelector('.resize-handle');
+  if (!resizeHandle) return;
+  
+  let isResizing = false;
+  let startX, startY, initialWidth, initialHeight;
+  
+  resizeHandle.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (e.button !== 0) return; // Only left click
+    
+    isResizing = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    const style = window.getComputedStyle(el);
+    initialWidth = parseInt(style.width, 10);
+    initialHeight = parseInt(style.height, 10);
+  });
+  
+  const onMouseMove = (e) => {
+    if (!isResizing) return;
+    e.preventDefault();
+    
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    
+    el.style.width = `${Math.max(150, initialWidth + dx)}px`;
+    el.style.height = `${Math.max(80, initialHeight + dy)}px`;
+  };
+  
+  const onMouseUp = () => {
+    if (isResizing) {
+      isResizing = false;
+    }
+  };
+  
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+}
+
+function createDecoration(isConfigurelayout) 
+{
+  const select = document.getElementById('deco-select');
+  const colorInput = document.getElementById('deco-color');
+  const type = select.value;
+  const color = colorInput ? colorInput.value : '#cccccc';
+  
+ 
+
+  const id = 'deco-' + Date.now();
+  const wrapper = document.createElement('div');
+  wrapper.className = 'deco-box';
+  wrapper.id = id;
+  wrapper.dataset.type = type;
+  if (isConfigurelayout) wrapper.classList.add('configure-layout');
+  
+  // Selection logic
+  wrapper.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      selectDeco(wrapper);
+  });
+
+  if (type === 'contact') 
+  {
+    wrapper.classList.add('deco-type-contact');
+    wrapper.style.width = '20px';
+    wrapper.style.height = '20px';
+    wrapper.style.minWidth = '20px';
+    wrapper.style.minHeight = '20px';
+    appendSingleContactPoint(wrapper);
+  }
+  
+  else if (type === 'label') 
+    
+  {
+    
+    wrapper.classList.add('deco-label');
+    wrapper.contentEditable = true;
+  // Ensure the label can receive keyboard focus
+    wrapper.setAttribute('tabindex', '0');
+  // Allow text selection inside the label
+    wrapper.style.userSelect = 'text';
+    wrapper.textContent = 'Label';
+    wrapper.style.color = color;
+    wrapper.style.resize = 'none'; 
+    // Add a small drag handle (tiny dot) so labels can be moved without interfering with editing
+    const dragHandle = document.createElement('div');
+    dragHandle.className = 'deco-drag-handle';
+    dragHandle.title = 'Drag to move';
+    // Position the handle at the top-left outside the label so it doesn't block text clicks.
+    // Use inline styles to override the default centered CSS for labels and make it visible.
+    dragHandle.style.position = 'absolute';
+    dragHandle.style.top = '-6px';
+    dragHandle.style.left = '-6px';
+    dragHandle.style.transform = 'none';
+    dragHandle.style.width = '12px';
+    dragHandle.style.height = '12px';
+    dragHandle.style.background = 'rgba(0,0,0,0.22)';
+    dragHandle.style.borderRadius = '50%';
+    dragHandle.style.cursor = 'move';
+    dragHandle.style.pointerEvents = 'auto';
+    // Keep handle visible for easy dragging of labels
+    dragHandle.style.display = 'block';
+    dragHandle.style.zIndex = '20';
+    wrapper.appendChild(dragHandle);
+    // Ensure wrapper is positioned absolutely so left/top moves apply
+    wrapper.style.position = wrapper.style.position || 'absolute';
+  } 
+  
+ 
+
+  // Remove button
+  if ( isConfigurelayout)
+  {
+  const removeBtn = document.createElement('div');
+  removeBtn.className = 'deco-remove';
+  removeBtn.innerHTML = '&times;';
+  removeBtn.onclick = function(e) {
+    e.stopPropagation(); // Prevent bubbling
+    wrapper.remove();
+  };
+  wrapper.appendChild(removeBtn);
+  
+  makeDraggable(wrapper);
+  makeResizable(wrapper);
+  }
+  
+  
+  // Position randomly or in a default location
+  wrapper.style.left = '100px';
+  wrapper.style.top = '100px';
+  
+  // Append to device-grid
+  const grid = document.getElementById('device-grid');
+  if (grid) {
+    grid.appendChild(wrapper);
+  } else {
+    console.error('device-grid element not found!');
+    return;
+  }
+  
+  return wrapper;
+
+}
+
+function populateParamsForDevice(device, info, domId) {
+    // 1. Populate Parameters
+    const select = document.getElementById('param-select-' + domId);
+    
+    if (select && info.params) {
+      // Clear existing (except first)
+      while (select.options.length > 1) select.remove(1);
+      
+      info.params.sort().forEach(param => {
+        if (param === 'value') return;
+        const option = document.createElement('option');
+        option.value = param;
+        option.text = param;
+        select.add(option);
+      });
+    }
+
+    // 2. Populate Commands
+    const cmdContainer = document.getElementById('commands-' + domId);
+    if (cmdContainer && info.commands) {
+      cmdContainer.innerHTML = '';
+      if (info.commands.length === 0) {
+        cmdContainer.style.display = 'none';
+      } else {
+        cmdContainer.style.display = 'flex';
+        info.commands.sort().forEach(cmd => {
+          const btn = document.createElement('button');
+          btn.className = 'cmd-btn';
+          btn.textContent = cmd;
+          btn.title = `Execute ${cmd}`;
+          btn.onclick = () => sendCommand(device, cmd);
+          cmdContainer.appendChild(btn);
+        });
+      }
+    }
+}
+
+
+
+
+
+async function getModuleName(device) {
+  const runtimeInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
+  if (runtimeInfo) {
+    return runtimeInfo.module_name || runtimeInfo.original_name || null;
+  }
+
+  try {
+    const res = await fetch('./c/device_params.json');
+    const data = await res.json();
+    const info = data && data[device] ? data[device] : null;
+    return info ? (info.module_name || info.original_name || null) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function sendCommand(device, cmd) {
+  // Run the send logic as an async task so callers don't need to await
+  (async () => {
+    try {
+      const confirmed = await showAppConfirm(`Execute command '${cmd}' on ${device}?`, 'Execute Command');
+      if (!confirmed) return;
+
+      // Resolve module name (if available) so we can build full SECoP line.
+      // If moduleName cannot be resolved immediately, retry a few times
+      // because device metadata may be populated asynchronously.
+      let moduleName = null;
+      let resolveAttempts = 0;
+      const maxResolveAttempts = 6;
+      while (!moduleName && resolveAttempts < maxResolveAttempts) {
+        resolveAttempts++;
+        try {
+          moduleName = await getModuleName(device);
+        } catch (e) {
+          moduleName = null;
+        }
+        if (moduleName) break;
+        // small backoff before retrying
+        await new Promise(r => setTimeout(r, 500));
+      }
+
+      const commandToSend = `do ${(moduleName || device)}:${cmd}`;
+
+      // Resolve node address for the device via backend API
+      let addr = null;
+      try {
+        const ndResp = await fetch(API_BASE + '/api/node_for_device', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ device: device })
+        });
+        if (ndResp.ok) {
+          const j = await ndResp.json();
+          if (j && j.status === 'ok' && j.addr) addr = j.addr;
+        }
+      } catch (e) { /* ignore, we'll prompt */ }
+
+      if (!addr) {
+        const manual = await showAppPrompt(
+          'Could not auto-resolve node for device "' + device + '". Enter host:port to send command:',
+          '127.0.0.1:10803',
+          'Manual Node Address'
+        );
+        if (!manual) return;
+        addr = manual.trim();
+        if (!addr) return;
+      }
+
+      // Try sending via proxy with retry logic when backend returns an error.
+      const maxRetries = 5;
+      let attempt = 0;
+      let lastResp = null;
+
+      while (attempt < maxRetries) {
+        attempt++;
+        try {
+          const sendResp = await fetch(API_BASE + '/api/send_request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ addr: addr, command: commandToSend })
+          });
+
+          if (!sendResp.ok) {
+            lastResp = `HTTP ${sendResp.status}`;
+            // backoff and retry
+            await new Promise(r => setTimeout(r, Math.min(2000 * attempt, 10000)));
+            continue;
+          }
+
+          const sr = await sendResp.json();
+          lastResp = sr;
+
+          // Successful send
+          if (sr && sr.status === 'sent') {
+            await showAppAlert('Command sent via proxy. Response: ' + (sr.response || ''), 'Command Sent');
+            return;
+          }
+
+          // If backend reports an error (e.g., ProtocolError or error__scan), retry
+          const textBody = JSON.stringify(sr || '');
+          const isProtocolError = textBody.includes('ProtocolError') || textBody.includes('error__scan') || (sr && sr.status === 'error');
+          if (!isProtocolError) {
+            // Unknown non-retryable response — show it and stop
+            await showAppAlert('Proxy response: ' + textBody, 'Command Response');
+            return;
+          }
+
+          // retry after backoff
+          await new Promise(r => setTimeout(r, Math.min(2000 * attempt, 10000)));
+        } catch (e) {
+          lastResp = e;
+          // network or other error — retry after backoff
+          await new Promise(r => setTimeout(r, Math.min(2000 * attempt, 10000)));
+        }
+      }
+
+      // Exhausted retries
+      await showAppAlert('Failed to send command after ' + maxRetries + ' attempts. Last response: ' + JSON.stringify(lastResp), 'Command Failed');
+
+    } catch (e) {
+      console.error('sendCommand failed', e);
+      await showAppAlert('Failed to send command: ' + e, 'Command Failed');
+    }
+  })();
+}
+
+
+// Cache values for extra panel
+window.addEventListener('spinupdate', function(event) {
+  try {
+    const key = event.detail.key;
+    if (!key) return;
+    const parts = key.split('.');
+    if (parts.length < 2) return;
+    const device = parts[0];
+    const param = parts.slice(1).join('.');
+    
+    if (!latestValues[device]) latestValues[device] = {};
+    latestValues[device][param] = { 
+      value: event.detail.value, 
+      unit: event.detail.unit, 
+      state: event.detail.state, 
+      state_str: event.detail.state_str 
+    };
+    
+    const domId = deviceDomId(device);
+    
+    // Update extra panel if open
+    const panel = document.getElementById('extra-' + domId);
+    if (panel && panel.classList.contains('open')) {
+      renderExtra(device);
+    }
+    
+    // Update parameter display if this parameter is currently selected
+    const paramSelect = document.getElementById('param-select-' + domId);
+    if (paramSelect && paramSelect.value === param) {
+      updateParamDisplay(device, domId, param);
+    }
+    
+  
+   
+    
+  } catch (e) { 
+    console.error('cache spinupdate failed', e); 
+  }
+});
+
+
+function rgbToHex(col) {
+    if(!col) return null;
+    if(col.startsWith('#')) return col;
+    const rgb = col.match(/\d+/g);
+    if (!rgb || rgb.length < 3) return null;
+    const r = parseInt(rgb[0]).toString(16).padStart(2, '0');
+    const g = parseInt(rgb[1]).toString(16).padStart(2, '0');
+    const b = parseInt(rgb[2]).toString(16).padStart(2, '0');
+    return '#' + r + g + b;
+}
+
+
+function updateTransform() {
+  // Disabled
+}
+
+var currentZoom = 1.0;
+
+function zoomCanvas(delta) {
+  if (typeof currentZoom !== 'number' || isNaN(currentZoom)) {
+    currentZoom = 1.0;
+  }
+  currentZoom = Math.max(0.3, Math.min(3.0, currentZoom + delta));
+  const grid = document.getElementById('device-grid');
+  if (grid) {
+    grid.style.transform = `scale(${currentZoom})`;
+    grid.style.transformOrigin = '0 0';
+    const baseWidth = 3000;
+    const baseHeight = 2000;
+    grid.style.width = `${baseWidth}px`;
+    grid.style.height = `${baseHeight}px`;
+  }
+  refreshConnectionLines();
+}
+
+
+
+function resetView() {
+  currentZoom = 1.0;
+  const grid = document.getElementById('device-grid');
+  if (grid) {
+    grid.style.transform = 'scale(1)';
+  }
+  const viewport = document.getElementById('viewport');
+  if (viewport) {
+    viewport.scrollLeft = 0;
+    viewport.scrollTop = 0;
+  }
+  refreshConnectionLines();
+}
+
+// Pan Event Listeners
+let isPanning = false;
+let startPanX, startPanY;
+
+
+
+
+
+window.addEventListener('mouseup', () => {
+  if (isPanning) {
+    isPanning = false;
+    const vp = document.getElementById('viewport');
+    if (vp) vp.style.cursor = 'grab';
+  }
+});
+
+
+// ===== Save/Load Layout =====
+// STORAGE_KEY is declared at top of script
+
+function getStoredLayouts() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.error('Error reading localStorage', e);
+    return {};
+  }
+}
+
+function updateLayoutList() {
+  const select = document.getElementById('layout-select');
+  if (!select) return;
+  
+  // Keep first option
+  while (select.options.length > 1) select.remove(1);
+  
+  const layouts = getStoredLayouts();
+  Object.keys(layouts).sort().forEach(name => {
+    const option = document.createElement('option');
+    option.value = name;
+    option.text = name;
+    select.add(option);
+  });
+
+  //Also request server-side layouts (if Spin available)
+  if (window.Spin && window.Spin.send_request) {
+    try {
+      window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null);
+    } catch (e) {
+      console.error('list_layouts request failed', e);
+    }
+  }
+}
+
+function saveLayoutToStorage() {
+  const name = prompt('Enter a name for this layout:');
+  if (!name) return;
+  const layout = getCurrentLayoutData();
+  const layouts = getStoredLayouts();
+  layouts[name] = layout;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
+  updateLayoutList();
+  // Try to save on server as well if Spin is available
+  if (window.Spin && window.Spin.send_request) {
+    try {
+      window.Spin.send_request('nodemanager.save_layout', '', 'input', 'set', {name: name, layout: layout});
+      // Ask server for updated list (server will write file into layout/)
+      window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null);
+    } catch (e) {
+      console.error('save_layout request failed', e);
+    }
+  }
+  alert('Layout "' + name + '" saved locally (and requested save on server if available).');
+}
+
+function loadLayoutFromFile() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = event => {
+      try {
+        const layout = JSON.parse(event.target.result);
+        // Prompt for a name to store in localStorage and dropdown
+        const name = prompt('Enter a name for this layout:', file.name.replace(/\.json$/i, ''));
+        if (!name) return;
+        const layouts = getStoredLayouts();
+        layouts[name] = layout;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
+        updateLayoutList();
+        alert('Layout "' + name + '" loaded and saved!');
+        applyLayout(layout);
+      } catch(err) {
+        alert('Error loading layout: ' + err);
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function loadSelectedLayout() {
+  const select = document.getElementById('layout-select');
+  const name = select.value;
+  if (!name) {
+    alert('Please select a layout preset.');
+    return;
+  }
+  
+  const layouts = getStoredLayouts();
+  if (layouts[name]) {
+    sessionStorage.setItem('selectedLayout', name);
+    applyLayout(layouts[name]);
+  } else {
+    // Otherwise request it from the server
+    if (window.Spin && window.Spin.send_request) {
+      try {
+        window.Spin.send_request('nodemanager.get_layout', '', 'read', 'read', {name: name});
+      } catch (e) {
+       
+        alert('Failed to request layout from server.');
+      }
+    } else {
+      alert('Layout not found.');
+    }
+  }
+}
+
+
+// funtion to get a new empty layout
+function create_newLayoutFile()
+{
+  
+   
+  // remove all device boxes
+  const gridEl = document.getElementById('device-grid');
+  document.querySelectorAll('.device-box:not(.plot-panel)').forEach(box => 
+  {
+  box.remove();
+  });
+
+  // remove Valve Icons (individual valve/switch icons)
+  document.querySelectorAll('.valve-icon').forEach(icon => {
+  icon.remove();
+  });
+
+  // remove decorations
+  document.querySelectorAll('.deco-box').forEach(box => {
+  box.remove();
+  });
+  // remove plots
+  document.querySelectorAll('.plot-panel').forEach(box => {
+  box.remove();
+  });
+
+  document.querySelectorAll('.device-connection-line').forEach(line => {
+  line.remove();
+  });
+  clearTemporaryConnection();
+}
+
+// function to get current layout description
+
+function getCurrentLayoutData() {
+  const layout = {
+    devices: [],
+    valveIcons: [],
+    decorations: [],
+    plots: [],
+    connections: []
+  };
+  
+  // Save Devices (regular device boxes) with full device info
+    // Exclude plot panels (they are saved separately below)
+  const gridEl = document.getElementById('device-grid');
+  const gridRect = gridEl ? gridEl.getBoundingClientRect() : { left:0, top:0 };
+  document.querySelectorAll('.device-box:not(.plot-panel)').forEach(box => {
+  const titleEl = box.querySelector('.device-title');
+  const title = titleEl ? titleEl.textContent : '';
+  // Try to get logical device name from box id
+  const logicalName = box.id.replace(/^box-/, '');
+    // Get device info from WRITABLE_PARAMS if available
+    let deviceInfo = {};
+    if (window.WRITABLE_PARAMS && window.WRITABLE_PARAMS[logicalName]) {
+      deviceInfo = window.WRITABLE_PARAMS[logicalName];
+    }
+    // If this device-box contains an image (sample slot), record it so layouts
+    // can restore per-slot images.
+    let imageSrc = null;
+    try 
+    {
+      const imgEl = box.querySelector('img');
+      if (imgEl && imgEl.src) imageSrc = imgEl.src;
+    } 
+    catch 
+    (e) 
+    {
+    imageSrc = null; 
+    }
+    
+    // compute fallback position/size from bounding rect if inline style missing
+    const rect = box.getBoundingClientRect();
+    const left = box.style.left && box.style.left.trim() ? box.style.left : Math.round(rect.left - gridRect.left) + 'px';
+    const top = box.style.top && box.style.top.trim() ? box.style.top : Math.round(rect.top - gridRect.top) + 'px';
+    const width = box.style.width && box.style.width.trim() ? box.style.width : Math.round(rect.width) + 'px';
+    const height = box.style.height && box.style.height.trim() ? box.style.height : Math.round(rect.height) + 'px';
+   
+    layout.devices.push({
+      id: box.id,
+      device: title,
+      logicalName: logicalName,
+      left: left,
+      top: top,
+      width: width,
+      height: height,
+      info: deviceInfo,
+      image: imageSrc
+    });
+  });
+
+  // Save Plot panels (if any) so they are restored with layouts.
+  try {
+    const plotsMap = window._plots && window._plots.plotsMap ? window._plots.plotsMap : null;
+    document.querySelectorAll('.plot-panel').forEach(box => {
+      const plotId = box.id || null; // e.g., 'plot_1_panel'
+      const titleEl = box.querySelector('.plot-title-label');
+      const title = titleEl ? titleEl.textContent : (box.querySelector('.plot-header strong') ? box.querySelector('.plot-header strong').textContent : '');
+      // find traces from plotsMap if available
+      let traces = [];
+      let configName = '';
+      if (plotsMap) {
+        Object.keys(plotsMap).forEach(pid => {
+          const p = plotsMap[pid];
+          try {
+            if (p && p.containerDiv && p.containerDiv.id === plotId) {
+              traces = Object.keys(p.traces || {}).map(k => k);
+              configName = p.configName || '';
+            }
+          } catch (e) { }
+        });
+      }
+      // compute fallback from bounding rect relative to device-grid
+      const rect = box.getBoundingClientRect();
+      const leftVal = box.style.left && box.style.left.trim() ? box.style.left : Math.round(rect.left - gridRect.left) + 'px';
+      const topVal = box.style.top && box.style.top.trim() ? box.style.top : Math.round(rect.top - gridRect.top) + 'px';
+      const widthVal = box.style.width && box.style.width.trim() ? box.style.width : Math.round(rect.width) + 'px';
+      const heightVal = box.style.height && box.style.height.trim() ? box.style.height : Math.round(rect.height) + 'px';
+
+      layout.plots.push({
+        id: plotId,
+        title: title,
+        configName: configName,
+        left: leftVal,
+        top: topVal,
+        width: widthVal,
+        height: heightVal,
+        traces: traces
+      });
+    });
+  } 
+  catch 
+  (e) 
+  { 
+    console.debug('getCurrentLayoutData: plot save skipped', e); 
+  }
+  
+  // Save Valve Icons (individual valve/switch icons)
+  document.querySelectorAll('.valve-icon').forEach(icon => {
+    const device = icon.dataset.device;
+    const field = icon.dataset.field;
+    if (device && field) {
+      layout.valveIcons.push({
+        id: icon.id,
+        device: device, // e.g., "sim_gas_dosing_valve_controller"
+        field: field,   // e.g., "V1_1"
+        left: icon.style.left,
+        top: icon.style.top,
+        width: icon.style.width,
+        height: icon.style.height
+      });
+    }
+  });
+  // Saved valveIcons information
+  
+  // Save Decorations
+  document.querySelectorAll('.deco-box').forEach(box => {
+    const type = box.dataset.type;
+    let color = '';
+    let text = '';
+    
+    if (type === 'label') {
+        color = box.style.color;
+        // Clean up text
+        const clone = box.cloneNode(true);
+        const rm = clone.querySelector('.deco-remove');
+        const dh = clone.querySelector('.deco-drag-handle');
+        const rh = clone.querySelector('.resize-handle');
+        if(rm) rm.remove();
+        if(dh) dh.remove();
+        if(rh) rh.remove();
+        text = clone.textContent;
+    } else {
+        const visual = box.querySelector('.deco-visual');
+        if (visual) color = visual.style.backgroundColor;
+    }
+    
+    layout.decorations.push({
+      id: box.id,
+      type: type,
+      left: box.style.left,
+      top: box.style.top,
+      width: box.style.width,
+      height: box.style.height,
+      color: color,
+      text: text
+    });
+  });
+
+  layout.connections = getCurrentConnectionsData();
+
+  return layout;
+}
+
+
+// function to show the system GUI with chosen layout configs, all elements are fixed, not draggable or resizeable or removable
+
+function connect_to_system(layout)
+{
+
+  const isconfigure_layout = false; 
+  // Clear current
+  document.getElementById('device-grid').innerHTML = '';
+  getConnectionSvg();
+  setConfigurationMode(false);
+  
+  // Restore Devices with robust matching to current SEC node configuration
+  if (layout.devices) 
+    {
+    const select = document.getElementById('device-select');
+    const availableDevices = Array.from(select.options).map(opt => opt.value);
+    layout.devices.forEach(d => {
+      // Try to match by logicalName first
+      let match = availableDevices.find(dev => dev === d.logicalName);
+      // If not found, try by device title
+      if (!match) match = availableDevices.find(dev => dev === d.device);
+      // If still not found, try by original_name in WRITABLE_PARAMS
+      if (!match && window.WRITABLE_PARAMS) {
+        match = availableDevices.find(dev => {
+          const info = window.WRITABLE_PARAMS[dev];
+          return info && info.original_name === d.device;
+        });
+      }
+      if (match) 
+        {
+        select.value = match;
+        dev_box = createDeviceDisplay(false);
+         
+        // This creates it at default pos
+        // Find the newly created box (last one)
+        const boxes = document.querySelectorAll('.device-box');
+        const newBox = boxes[boxes.length - 1];
+        if (newBox) {
+          newBox.style.left = d.left;
+          newBox.style.top = d.top;
+          if(d.width) newBox.style.width = d.width;
+          if(d.height) newBox.style.height = d.height;
+        }
+        }
+        else 
+        {
+        // If this device wasn't matched to an available device, it may be
+        // a synthetic element such as a sample magazine slot (id starts with
+        // 'mag-'). Restore a placeholder slot so saved positions are kept.
+        try {
+          const isMag = (d.logicalName && d.logicalName.startsWith && d.logicalName.startsWith('mag-')) || (d.id && d.id.startsWith && d.id.startsWith('mag-') || d.logicalName == "sample_presence");
+        
+          if (isMag) {
+            const grid = document.getElementById('device-grid');
+            if (grid) {
+              
+              slot = create_sample_block(d,isconfigure_layout);
+              grid.appendChild(slot);
+            
+            }
+          }
+        }
+        catch (err) 
+        {
+          console.error('applyLayout: failed to restore synthetic device', err);
+        }
+      }
+    });
+  }
+  
+  // Restore Plots (if any) so saved plot panels reappear in the workspace
+  if (layout.plots && Array.isArray(layout.plots)) {
+    try 
+    {
+    create_plot(layout,isconfigure_layout); 
+    } 
+    catch (err) 
+    { 
+      console.debug('applyLayout: plots restore skipped', err); 
+    }
+  }
+
+  // Restore Decorations
+  if (layout.decorations) {
+      layout.decorations.forEach(d => {
+          create_decoration(d,isconfigure_layout);
+      });
+  }
+
+  // Restore Valve Icons (individual valve/switch icons) if present in layout
+  if (layout.valveIcons && Array.isArray(layout.valveIcons)) {
+    const select = document.getElementById('device-select');
+    const availableDevices = select ? Array.from(select.options).map(opt => opt.value) : [];
+
+    layout.valveIcons.forEach(iconDef => {
+      try {
+        const isconfigure_layout = false;
+        
+        valve_element = create_valve_icon(availableDevices,iconDef,isconfigure_layout);
+        const grid = document.getElementById('device-grid');
+        if (grid) {
+          grid.appendChild(valve_element[0]);
+        }
+       
+
+        // Ensure we have image listeners for this device (safe to call multiple times)
+        try 
+        {
+           setupValveImageListeners(realDevice, deviceDomId(realDevice)); 
+        } 
+        catch (e) 
+        {}
+      } 
+      catch (e) 
+      {}
+    });
+   
+  }
+
+  // After restoring valve icons, reload Spin to bind new data-spin attributes
+  if (window.Spin && window.Spin.reload) {
+    window.Spin.reload();
+  }
+
+  restoreConnectionLines(layout.connections);
+}
+
+
+function applyLayout(layout) {
+  // Clear current
+  document.getElementById('device-grid').innerHTML = '';
+  getConnectionSvg();
+  setConfigurationMode(true);
+  const isConfigurelayout = true; 
+  // Restore Devices with robust matching to current SEC node configuration
+  if (layout.devices) 
+    {
+    const select = document.getElementById('device-select');
+    const availableDevices = Array.from(select.options).map(opt => opt.value);
+    layout.devices.forEach(d => {
+      // Try to match by logicalName first
+      let match = availableDevices.find(dev => dev === d.logicalName);
+      // If not found, try by device title
+      if (!match) match = availableDevices.find(dev => dev === d.device);
+      // If still not found, try by original_name in WRITABLE_PARAMS
+      if (!match && window.WRITABLE_PARAMS) {
+        match = availableDevices.find(dev => {
+          const info = window.WRITABLE_PARAMS[dev];
+          return info && info.original_name === d.device;
+        });
+      }
+      if (match) 
+        {
+        select.value = match;
+        
+        dev_block = createDeviceDisplay(isConfigurelayout);
+          // Initialize draggable & resizable
+        makeDraggable(dev_block);
+        makeResizable(dev_block); 
+        // This creates it at default pos
+        // Find the newly created box (last one)
+        const boxes = document.querySelectorAll('.device-box');
+        const newBox = boxes[boxes.length - 1];
+        if (newBox) {
+          newBox.style.left = d.left;
+          newBox.style.top = d.top;
+          if(d.width) newBox.style.width = d.width;
+          if(d.height) newBox.style.height = d.height;
+        }
+        }
+        else 
+        {
+        // If this device wasn't matched to an available device, it may be
+        // a synthetic element such as a sample magazine slot (id starts with
+        // 'mag-'). Restore a placeholder slot so saved positions are kept.
+        try {
+          const isMag = (d.logicalName && d.logicalName.startsWith && d.logicalName.startsWith('mag-')) || (d.id && d.id.startsWith && d.id.startsWith('mag-') || d.logicalName == "sample_presence");
+        
+          if (isMag) {
+            const grid = document.getElementById('device-grid');
+            if (grid) {
+              
+              slot = create_sample_block(d,isConfigurelayout);
+              grid.appendChild(slot);
+              makeDraggable(slot);
+              makeResizable(slot);
+            }
+          }
+        }
+        catch (err) 
+        {
+          console.error('applyLayout: failed to restore synthetic device', err);
+        }
+      }
+    });
+  }
+  
+  // Restore Plots (if any) so saved plot panels reappear in the workspace
+  if (layout.plots && Array.isArray(layout.plots)) {
+    try 
+    {
+    create_plot(layout,isConfigurelayout); 
+    } 
+    catch (err) 
+    { 
+      console.debug('applyLayout: plots restore skipped', err); 
+    }
+  }
+
+  // Restore Decorations
+  if (layout.decorations) {
+      layout.decorations.forEach(d => {
+          create_decoration(d,isConfigurelayout);
+      });
+  }
+
+  // Restore Valve Icons (individual valve/switch icons) if present in layout
+  if (layout.valveIcons && Array.isArray(layout.valveIcons)) {
+    const select = document.getElementById('device-select');
+    const availableDevices = select ? Array.from(select.options).map(opt => opt.value) : [];
+
+    layout.valveIcons.forEach(iconDef => {
+      try {
+        const isconfigure_layout = true;
+        
+        valve_element = create_valve_icon(availableDevices,iconDef,isconfigure_layout);
+        const grid = document.getElementById('device-grid');
+        if (grid) {
+          grid.appendChild(valve_element[0]);
+        }
+        makeValveIconDraggable(valve_element[0]);
+        makeValveIconResizable(valve_element[0], valve_element[1]);
+
+        // Ensure we have image listeners for this device (safe to call multiple times)
+        try 
+        {
+           setupValveImageListeners(realDevice, deviceDomId(realDevice)); 
+        } 
+        catch (e) 
+        {}
+      } 
+      catch (e) 
+      {}
+    });
+   
+  }
+
+  // After restoring valve icons, reload Spin to bind new data-spin attributes
+  if (window.Spin && window.Spin.reload) {
+    window.Spin.reload();
+  }
+
+  restoreConnectionLines(layout.connections);
+  refreshConnectionLines();
+}
+
+function create_sample_block(d,isconfigure_layout)
+{
+
+              const slot = document.createElement('div');
+              slot.className = 'sample-slot device-box';
+              slot.id = d.id || ('mag-' + Date.now());
+              slot.style.position = 'absolute';
+              slot.style.left = d.left || '200px';
+              slot.style.top = d.top || '50px';
+              if (d.width) slot.style.width = d.width; else slot.style.width = '120px';
+              if (d.height) slot.style.height = d.height; else slot.style.height = '120px';
+              slot.style.padding = '6px';
+              slot.style.boxSizing = 'border-box';
+              slot.style.cursor = 'move';
+              slot.style.zIndex = '5';
+
+              // Header with title and remove button
+              const header = document.createElement('div');
+              header.className = 'device-header';
+              header.style.height = '20px';
+              header.style.display = 'flex';
+              header.style.alignItems = 'center';
+              header.style.justifyContent = 'space-between';
+
+              const title = document.createElement('div');
+              title.className = 'device-title';
+              title.textContent = d.device || slot.id;
+              title.style.fontSize = '12px';
+              title.style.paddingRight = '6px';
+              header.appendChild(title);
+              
+              if (isconfigure_layout) 
+              {
+              const removeBtn = document.createElement('div');
+              removeBtn.className = 'deco-remove';
+              removeBtn.innerHTML = '&times;';
+              removeBtn.style.cursor = 'pointer';
+              removeBtn.onclick = (e) => { e.stopPropagation(); slot.remove(); };
+              header.appendChild(removeBtn);
+              }
+              slot.appendChild(header);
+
+              // image placeholder
+              const imgHolder = document.createElement('div');
+              imgHolder.style.width = '100%';
+              imgHolder.style.height = '86px';
+              imgHolder.style.display = 'flex';
+              imgHolder.style.alignItems = 'center';
+              imgHolder.style.justifyContent = 'center';
+              imgHolder.style.overflow = 'hidden';
+              
+             
+              
+              const img = document.createElement('img');
+              img.style.maxWidth = '100%';
+              img.style.maxHeight = '100%';
+              img.style.objectFit = 'contain';
+              img.src = '/c/assets/sample_holder.svg';
+              imgHolder.appendChild(img);
+              slot.appendChild(imgHolder);
+              
+              const resizeHandle = document.createElement('div');
+              resizeHandle.className = 'resize-handle';
+              slot.appendChild(resizeHandle);
+
+              return slot;
+}
+
+function create_plot(layout,isconfigure_layout)
+
+{
+
+        // ensure window._plots exists
+      window._plots = window._plots || { plotsMap: {}, staged: {} };
+      window._plots._restoreCounter = window._plots._restoreCounter || 0;
+      layout.plots.forEach(p => {
+      try {
+          if (window._plots && typeof window._plots.restorePlotPanelFromLayout === 'function') {
+            window._plots.restorePlotPanelFromLayout(p, isconfigure_layout);
+            return;
+          }
+
+          const grid = document.getElementById('device-grid');
+          if (!grid) return;
+          const container = document.createElement('div');
+          container.className = 'device-box plot-panel';
+          container.id = p.id || ('restored_plot_' + (++window._plots._restoreCounter) + '_panel');
+          container.style.position = 'absolute';
+          if (p.left) container.style.left = p.left;
+          if (p.top) container.style.top = p.top;
+          if (p.width) container.style.width = p.width;
+          if (p.height) container.style.height = p.height;
+          container.style.maxWidth = 'none';
+          container.style.boxSizing = 'border-box';
+          container.style.zIndex = '5';
+
+          const titleDiv = document.createElement('div');
+          titleDiv.className = 'plot-title-label';
+          titleDiv.contentEditable = true;
+          titleDiv.innerText = p.title || '';
+          titleDiv.style.fontWeight = 'bold';
+          titleDiv.style.fontSize = '18px';
+          titleDiv.style.textAlign = 'center';
+          titleDiv.style.margin = '8px 0 4px 0';
+          titleDiv.style.outline = 'none';
+          container.appendChild(titleDiv);
+
+          const plotDiv = document.createElement('div');
+          plotDiv.id = (container.id ? container.id + '_plot' : ('restored_plot_' + window._plots._restoreCounter + '_plot'));
+          plotDiv.style.width = '100%';
+          plotDiv.style.height = (p.height || '360px');
+          container.appendChild(plotDiv);
+
+          grid.appendChild(container);
+          if (isconfigure_layout)
+          {
+          try { makeDraggable(container); } catch (e) {}
+          try { makeResizable(container); } catch (e) {}
+          }
+
+          try { container.style.transform = ''; container.removeAttribute('data-x'); container.removeAttribute('data-y'); } catch(e){}
+
+          const newKey = 'restored_plot_' + (++window._plots._restoreCounter);
+          const plotEntry = { id: newKey, containerDiv: container, plotDiv: plotDiv, traces: {}, configName: p.configName || p.title || '' };
+          if (Array.isArray(p.traces)) {
+            p.traces.forEach(tkey => {
+              const trace = { x: [], y: [], mode: 'lines+markers', name: tkey };
+              plotEntry.traces[tkey] = { traceObj: trace, suffix: tkey, _traceIndex: undefined, _lastSent: 0 };
+            });
+          }
+          window._plots.plotsMap[newKey] = plotEntry;
+
+          try 
+          {
+            const data = Object.values(plotEntry.traces).map(t => t.traceObj);
+            Plotly.newPlot(plotDiv, data, getTimeRangePlotLayout({ margin: { t: 30 } })).then(() => {
+              Object.values(plotEntry.traces).forEach((t, i) => { t._traceIndex = i; t._lastSent = t.traceObj.x.length; });
+            }).catch(()=>{});
+          } 
+          catch(e) 
+          {}
+
+        } 
+        catch (err) 
+        { 
+          console.debug('applyLayout: failed to restore plot', err); 
+        }
+      });
+}
+
+
+function create_decoration(d,isConfigurelayout)
+{
+
+          const select = document.getElementById('deco-select');
+          const colorInput = document.getElementById('deco-color');
+          
+          select.value = d.type;
+          if (d.color && colorInput) colorInput.value = rgbToHex(d.color) || d.color;
+          
+          wrapper = createDecoration(isConfigurelayout);
+          // Make it draggable and resizable
+          if (isConfigurelayout)
+             {
+             makeDraggable(wrapper);
+             makeResizable(wrapper);
+             }
+          
+          const boxes = document.querySelectorAll('.deco-box');
+          const newBox = boxes[boxes.length - 1];
+          if (newBox) {
+              if (d.id) newBox.id = d.id;
+              newBox.style.left = d.left;
+              newBox.style.top = d.top;
+              if(d.width) newBox.style.width = d.width;
+              if(d.height) newBox.style.height = d.height;
+              
+              if (d.type === 'label' && d.text) {
+                  // Restore text content carefully preserving handle/remove btn
+                  // Actually createDecoration adds them, so we just update the text node
+                  // But text node is mixed. Simplest is to set textContent then re-add buttons?
+                  // Or just find the text node.
+                  // Let's just set innerHTML to text + buttons
+                  // Re-creating buttons is safer
+                  newBox.childNodes.forEach(n => {
+                      if (n.nodeType === 3) n.textContent = d.text;
+                  });
+              }
+          }
+
+}
+
+
+function create_valve_icon(availableDevices,iconDef,isconfigure_layout)
+
+{
+
+  // Saved values may use older/short device names or long field names.
+        let realDevice = iconDef.device;
+        let fieldName = iconDef.field;
+
+        // If the saved field contains the device prefix (long form), try to extract a short field like V1_1 or Switch1
+        if (fieldName && !/^(V|v|Switch|switch)/.test(fieldName)) {
+          const m = fieldName.match(/(V\d+(?:_\d+)?|Switch\d+)/i);
+          if (m) fieldName = m[1];
+        }
+
+        // If the device in layout doesn't match available devices, try heuristics to find the correct device
+        if (availableDevices.length && !availableDevices.includes(realDevice)) {
+          // 1) find device that contains the saved device string
+          let found = availableDevices.find(d => d.includes(realDevice) || realDevice.includes(d));
+          // 2) try matching by original_name in WRITABLE_PARAMS
+          if (!found && window.WRITABLE_PARAMS) {
+            found = availableDevices.find(dev => {
+              const info = window.WRITABLE_PARAMS[dev];
+              return info && (info.original_name === iconDef.device || (info.original_name && iconDef.device && iconDef.device.includes(info.original_name)));
+            });
+          }
+          // 3) if still not found and iconDef.device is short like 'sim', try any device containing 'sim'
+          if (!found && iconDef.device) {
+            found = availableDevices.find(d => d.toLowerCase().includes(iconDef.device.toLowerCase()));
+          }
+          if (found) realDevice = found;
+        }
+
+        const valveDomId = `${deviceDomId(realDevice)}_${fieldName}`;
+
+        // If an element with same id already exists, skip
+        if (document.getElementById(`icon-${valveDomId}`)) return;
+
+        const valveIcon = document.createElement('div'); 
+        valveIcon.className = 'valve-icon';
+        valveIcon.id = `icon-${valveDomId}`;
+        valveIcon.dataset.device = realDevice; // Store device name
+        valveIcon.dataset.field = fieldName; // Store field name
+        valveIcon.style.position = 'absolute';
+        if (iconDef.left) valveIcon.style.left = iconDef.left;
+        if (iconDef.top) valveIcon.style.top = iconDef.top;
+        if (iconDef.width) valveIcon.style.width = iconDef.width;
+        if (iconDef.height) valveIcon.style.height = iconDef.height;
+        valveIcon.style.cursor = 'pointer';
+        valveIcon.style.userSelect = 'none';
+        valveIcon.style.overflow = 'visible';
+        if (isconfigure_layout) valveIcon.classList.add('configure-layout');
+        appendContactPoints(valveIcon);
+       
+        
+        // Image container
+        const imgContainer = document.createElement('div');
+        imgContainer.id = `img-${valveDomId}`;
+        
+        imgContainer.style.width = iconDef.width;
+        imgContainer.style.height = iconDef.height;
+
+        const lowerField = (fieldName || '').toLowerCase();
+        const isSwitch = lowerField.includes('switch');
+        const isValve = lowerField.includes('valve') || (fieldName && fieldName.startsWith('V'));
+
+        // Create img element similar to setupValveController
+        const img = document.createElement('img');
+        img.style.cssText = 'width: 100%; height: 100%; object-fit: contain;';
+        if (isSwitch) img.style.transform = 'rotate(0deg)';
+        // Default to closed appearance
+        img.src = isValve ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=' : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=';
+        // ensure valve image id matches expected lookup used by updateValveImage
+        if (isValve) img.id = `valve-img-${valveDomId}`;
+        imgContainer.appendChild(img);
+
+        // Click handler toggles by reading latestValues and sending setValveField
+        imgContainer.onclick = () => {
+        
+          // If Spin is not connected, do not attempt to send (no persistent red border)
+          if (!window.Spin || !window.Spin.current_socket || window.Spin.current_socket.readyState !== WebSocket.OPEN) {
+            return;
+          }
+
+          const data = latestValues[realDevice];
+          let currentValue = 0;
+          if (data && data.target && data.target.value && data.target.value[fieldName] !== undefined) {
+            currentValue = data.target.value[fieldName];
+          } else if (data && data.value && data.value.value && data.value.value[fieldName] !== undefined) {
+            currentValue = data.value.value[fieldName];
+          }
+          // Normalize different shapes ('0'/'1', booleans, {value:'0'}) to numeric
+          currentValue = toNumeric(currentValue);
+          const newValue = isSwitch ? (currentValue === 0 ? 1 : 0) : (currentValue === 1 ? 0 : 1);
+          setValveField(realDevice, fieldName, newValue);
+          // optimistic UI update: rotate switches, update valve visuals
+          if (isSwitch) {
+            try { updateSwitchRotation(imgContainer, newValue); } catch (e) { /* ignore */ }
+          } else {
+            try { updateValveImage(valveDomId, newValue); } catch (e) { /* ignore */ }
+          }
+        };
+
+        const label = document.createElement('div');
+        label.style.cssText = 'font-size: 10px; color: #333; text-align: center; margin-top: 4px; font-weight: 600;';
+        label.textContent = fieldName;
+
+        const resizeHandle = document.createElement('div');
+        resizeHandle.style.cssText = 'position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; background: #007bff; cursor: nwse-resize; border-radius: 2px; opacity: 0.7;';
+        resizeHandle.title = 'Resize';
+
+        const valueDisplay = document.createElement('div');
+        valueDisplay.id = `valve-${valveDomId}`;
+        valueDisplay.style.display = 'none';
+        // Bind to live value so restored icons reflect actual valve states
+        valueDisplay.setAttribute('data-spin', `@${realDevice}.value.${fieldName}`);
+
+        // Initialize visual from latestValues if available (normalize with toNumeric)
+        try 
+        {
+          const d = latestValues[realDevice];
+          const liveRaw = d && d.value && d.value.value && typeof d.value.value[fieldName] !== 'undefined' ? d.value.value[fieldName] : undefined;
+          if (typeof liveRaw !== 'undefined') {
+            const lv = toNumeric(liveRaw);
+            if (isSwitch) {
+              updateSwitchRotation(imgContainer, lv);
+              const valveEl = imgContainer.closest('.valve-icon');
+              if (valveEl) valveEl.dataset.open = lv === 1 ? '1' : '0';
+            } else {
+              updateValveImage(valveDomId, lv === 1);
+              // store optimistic/open state so subsequent queries read consistent state
+              const valveEl = imgContainer.closest('.valve-icon');
+              if (valveEl) valveEl.dataset.open = lv === 1 ? '1' : '0';
+            }
+            // Add non-intrusive init debug info to the element title (visible on hover)
+            try {
+              const valveEl = imgContainer.closest('.valve-icon');
+              if (valveEl) valveEl.title = `init ${fieldName}: ${String(liveRaw)} -> ${lv}`;
+            } catch (e) { /* ignore */ }
+          }
+        } 
+        catch (e) 
+        { 
+          /* ignore init errors */ 
+        }
+
+        valveIcon.appendChild(imgContainer);
+        valveIcon.appendChild(label);
+        valveIcon.appendChild(resizeHandle);
+        valveIcon.appendChild(valueDisplay);
+        
+        if (isconfigure_layout) 
+          {
+        // Remove button
+        const removeBtn = document.createElement('div');
+        removeBtn.className = 'deco-remove';
+        removeBtn.style.cursor = 'pointer';
+        removeBtn.onclick = function(e) 
+        {
+        e.stopPropagation(); // Prevent bubbling
+        valveIcon.remove();
+        };
+        
+        valveIcon.appendChild(removeBtn);
+          }
+      
+        return [valveIcon, imgContainer];
+}     
