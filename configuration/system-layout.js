@@ -1,5 +1,99 @@
 // ===== Decoration Logic =====
 let selectedDeco = null;
+let selectedTextDeco = null;
+
+function getLabelTextNode(el) {
+  return Array.from(el.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
+}
+
+function hideTextContextMenu() {
+  const menu = document.getElementById('text-context-menu');
+  if (!menu) return;
+  menu.style.display = 'none';
+  selectedTextDeco = null;
+}
+
+function syncTextContextMenuInputs(el) {
+  const fontFamilySelect = document.getElementById('text-font-family');
+  const fontSizeSelect = document.getElementById('text-font-size');
+  const colorInput = document.getElementById('text-font-color');
+  if (!el || !fontFamilySelect || !fontSizeSelect || !colorInput) {
+    return;
+  }
+
+  const style = window.getComputedStyle(el);
+  const fontFamily = el.style.fontFamily || style.fontFamily;
+  const fontSize = el.style.fontSize || style.fontSize;
+  const color = rgbToHex(el.style.color || style.color) || '#333333';
+
+  fontFamilySelect.value = fontFamilySelect.querySelector(`option[value="${fontFamily}"]`) ? fontFamily : 'Arial, sans-serif';
+  fontSizeSelect.value = fontSizeSelect.querySelector(`option[value="${fontSize}"]`) ? fontSize : '16px';
+  colorInput.value = color;
+}
+
+function applyTextStyleToSelectedDeco(styleUpdates) {
+  if (!selectedTextDeco) return;
+  if (styleUpdates.fontFamily) selectedTextDeco.style.fontFamily = styleUpdates.fontFamily;
+  if (styleUpdates.fontSize) selectedTextDeco.style.fontSize = styleUpdates.fontSize;
+  if (styleUpdates.color) selectedTextDeco.style.color = styleUpdates.color;
+}
+
+function showTextContextMenu(el, clientX, clientY) {
+  const menu = document.getElementById('text-context-menu');
+  if (!menu || !el) return;
+
+  selectedTextDeco = el;
+  syncTextContextMenuInputs(el);
+  menu.style.display = 'block';
+  menu.style.left = `${clientX}px`;
+  menu.style.top = `${clientY}px`;
+}
+
+function setupTextContextMenu() {
+  const menu = document.getElementById('text-context-menu');
+  if (!menu || menu.dataset.textMenuReady === 'true') return;
+
+  menu.dataset.textMenuReady = 'true';
+
+  document.addEventListener('contextmenu', (event) => {
+    const label = event.target && event.target.closest ? event.target.closest('.deco-label') : null;
+    if (!label) {
+      hideTextContextMenu();
+      return;
+    }
+
+    event.preventDefault();
+    selectDeco(label);
+    showTextContextMenu(label, event.clientX, event.clientY);
+  });
+
+  document.addEventListener('mousedown', (event) => {
+    if (menu.contains(event.target)) return;
+    hideTextContextMenu();
+  });
+
+  const fontFamilySelect = document.getElementById('text-font-family');
+  const fontSizeSelect = document.getElementById('text-font-size');
+  const colorInput = document.getElementById('text-font-color');
+
+  if (fontFamilySelect) {
+    fontFamilySelect.addEventListener('change', () => {
+      applyTextStyleToSelectedDeco({ fontFamily: fontFamilySelect.value });
+    });
+  }
+
+  if (fontSizeSelect) {
+    fontSizeSelect.addEventListener('change', () => {
+      applyTextStyleToSelectedDeco({ fontSize: fontSizeSelect.value });
+    });
+  }
+
+  if (colorInput) {
+    colorInput.addEventListener('input', () => {
+      applyTextStyleToSelectedDeco({ color: colorInput.value });
+    });
+  }
+}
 
 function selectDeco(el) {
   if (selectedDeco) selectedDeco.classList.remove('selected');
@@ -92,6 +186,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+  document.addEventListener('DOMContentLoaded', setupTextContextMenu, { once: true });
 
 function makeDraggable(el) 
 {
@@ -283,6 +379,8 @@ function createDecoration(isConfigurelayout)
     wrapper.style.userSelect = 'text';
     wrapper.textContent = 'Label';
     wrapper.style.color = color;
+    wrapper.style.fontFamily = 'Arial, sans-serif';
+    wrapper.style.fontSize = '16px';
     wrapper.style.resize = 'none'; 
     // Add a small drag handle (tiny dot) so labels can be moved without interfering with editing
     const dragHandle = document.createElement('div');
@@ -897,9 +995,14 @@ function getCurrentLayoutData() {
     const type = box.dataset.type;
     let color = '';
     let text = '';
+    let fontFamily = '';
+    let fontSize = '';
     
     if (type === 'label') {
-        color = box.style.color;
+      const computed = window.getComputedStyle(box);
+      color = box.style.color || computed.color;
+      fontFamily = box.style.fontFamily || computed.fontFamily;
+      fontSize = box.style.fontSize || computed.fontSize;
         // Clean up text
         const clone = box.cloneNode(true);
         const rm = clone.querySelector('.deco-remove');
@@ -922,7 +1025,9 @@ function getCurrentLayoutData() {
       width: box.style.width,
       height: box.style.height,
       color: color,
-      text: text
+      text: text,
+      fontFamily: fontFamily,
+      fontSize: fontSize
     });
   });
 
@@ -1364,17 +1469,17 @@ function create_decoration(d,isConfigurelayout)
               newBox.style.top = d.top;
               if(d.width) newBox.style.width = d.width;
               if(d.height) newBox.style.height = d.height;
+              if (d.type === 'label') {
+                if (d.color) newBox.style.color = d.color;
+                if (d.fontFamily) newBox.style.fontFamily = d.fontFamily;
+                if (d.fontSize) newBox.style.fontSize = d.fontSize;
+              }
               
               if (d.type === 'label' && d.text) {
-                  // Restore text content carefully preserving handle/remove btn
-                  // Actually createDecoration adds them, so we just update the text node
-                  // But text node is mixed. Simplest is to set textContent then re-add buttons?
-                  // Or just find the text node.
-                  // Let's just set innerHTML to text + buttons
-                  // Re-creating buttons is safer
-                  newBox.childNodes.forEach(n => {
-                      if (n.nodeType === 3) n.textContent = d.text;
-                  });
+                const textNode = getLabelTextNode(newBox);
+                if (textNode) {
+                  textNode.textContent = d.text;
+                }
               }
           }
 

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   se_hmi_spin:
     build: .
@@ -18,8 +16,6 @@ services:
       - PYTHONUNBUFFERED=1
 
     restart: unless-stopped
-
-    network_mode: "host"
 
 
 

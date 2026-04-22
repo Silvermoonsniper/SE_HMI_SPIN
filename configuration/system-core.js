@@ -1,8 +1,77 @@
+const START_PAGE_MODE_KEY = 'startPageMode';
+
+function getAutomaticStartPageMode() {
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const hour = new Date().getHours();
+  return prefersDark || hour < 7 || hour >= 19 ? 'night' : 'day';
+}
+
+function applyStartPageMode(mode) {
+  const panel = document.getElementById('connection-panel');
+  const label = document.getElementById('start-page-mode-label');
+  if (!panel || !label) {
+    return;
+  }
+
+  const normalizedMode = mode === 'night' ? 'night' : 'day';
+  panel.dataset.mode = normalizedMode;
+  document.body.dataset.startPageMode = normalizedMode;
+  label.textContent = normalizedMode === 'night' ? 'Night mode' : 'Day mode';
+}
+
+function updateStartPageModeIndicator() {
+  const storedMode = localStorage.getItem(START_PAGE_MODE_KEY);
+  const mode = storedMode === 'day' || storedMode === 'night'
+    ? storedMode
+    : getAutomaticStartPageMode();
+  applyStartPageMode(mode);
+}
+
+function toggleStartPageMode() {
+  const panel = document.getElementById('connection-panel');
+  if (!panel) {
+    return;
+  }
+
+  const nextMode = panel.dataset.mode === 'night' ? 'day' : 'night';
+  localStorage.setItem(START_PAGE_MODE_KEY, nextMode);
+  applyStartPageMode(nextMode);
+}
+
+function setupStartPageModeIndicator() {
+  updateStartPageModeIndicator();
+
+  const indicator = document.getElementById('start-page-mode-indicator');
+  if (indicator) {
+    indicator.addEventListener('click', toggleStartPageMode);
+  }
+
+  if (!window.matchMedia) {
+    return;
+  }
+
+  const colorSchemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  if (typeof colorSchemeQuery.addEventListener === 'function') {
+    colorSchemeQuery.addEventListener('change', () => {
+      if (!localStorage.getItem(START_PAGE_MODE_KEY)) {
+        updateStartPageModeIndicator();
+      }
+    });
+  } else if (typeof colorSchemeQuery.addListener === 'function') {
+    colorSchemeQuery.addListener(() => {
+      if (!localStorage.getItem(START_PAGE_MODE_KEY)) {
+        updateStartPageModeIndicator();
+      }
+    });
+  }
+}
+
 // --- Connect to Node Modal Logic ---
 document.addEventListener('DOMContentLoaded', function() 
 
 {
- 
+  setupStartPageModeIndicator();
+
   const connectBtn = document.getElementById('connect-node-btn');
   const modal = document.getElementById('connect-node-modal');
   const submitBtn = document.getElementById('conn-node-submit');

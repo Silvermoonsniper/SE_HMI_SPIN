@@ -6,6 +6,10 @@
 
 
 <div id="connection-panel">
+  <button id="start-page-mode-indicator" class="mode-indicator" type="button" aria-live="polite" aria-label="Toggle day and night mode" title="Toggle day and night mode">
+    <span class="mode-indicator-dot"></span>
+    <span id="start-page-mode-label">Day mode</span>
+  </button>
   <div class="conn-box">
     <div class="conn-box-inner">
     <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:20px;">
@@ -109,23 +113,15 @@
     <div class="plots-container" style="background:#f6fff6; border:1px solid #c7f0c7; padding:8px; border-radius:6px;">
       <div class="plots-top">
         <div class="plots-steps" style="display:flex; gap:12px; align-items:flex-start;">
-          <!-- Step 1: choose plot type -->
-          <div class="plot-step" id="plot-step-1" style="display:flex; flex-direction:column; gap:6px;">
-            <label for="plot-type" style="font-weight:600;">Plot type</label>
-            <select id="plot-type" class="ctrl">
-              <option value="line">Time series</option>
-              <option value="xy">XY scatter</option>
-              <option value="array">Array plot</option>
-            </select>
-          </div>
-
           <!-- Step 2: select device param and manage staged lines -->
           <div class="plot-step" id="plot-step-2" style="display:flex; flex-direction:column; gap:6px;">
             <label for="curve-key" style="font-weight:600;">Configure Plot</label>
-            <select id="curve-key" class="ctrl">
-              <option value="">-- select device.param --</option>
-            </select>
-            <div style="display:flex; gap:6px; align-items:center;">
+            <div class="plot-config-row" style="display:flex; gap:6px; align-items:center;">
+              <select id="plot-type" class="ctrl" title="Plot type">
+                <option value="line">Time series</option>
+                <option value="xy">XY plot</option>
+                <option value="array">Array plot</option>
+              </select>
               <select id="curve-line-type" class="ctrl" title="Line type">
                 <option value="solid">Solid</option>
                 <option value="dashed">Dashed</option>
@@ -140,23 +136,39 @@
               <input id="curve-line-color" class="ctrl" type="color" value="#007bff" title="Line color">
               <button id="add-curve" class="ctrl">Add Line</button>
             </div>
+            <div class="plot-parameter-row" style="display:flex; gap:6px; align-items:center;">
+              <select id="curve-key" class="ctrl">
+                <option value="">-- select device.param --</option>
+              </select>
+              <div id="xy-curve-key-group" class="xy-curve-key-group" style="display:none;">
+                <span class="xy-axis-tag">X</span>
+                <select id="curve-key-x" class="ctrl">
+                  <option value="">-- select x device.param --</option>
+                </select>
+                <span class="xy-axis-tag">Y</span>
+                <select id="curve-key-y" class="ctrl">
+                  <option value="">-- select y device.param --</option>
+                </select>
+              </div>
+            </div>
             <label for="added-lines" style="font-weight:600;">Staged lines</label>
-            <div style="display:flex; gap:6px; align-items:center;">
-              <select id="added-lines" class="ctrl" size="4" multiple>
+            <div class="staged-lines-row" style="display:flex; gap:6px; align-items:center;">
+              <select id="added-lines" class="ctrl staged-lines-native" size="4" multiple>
                 <option value="">-- added lines --</option>
               </select>
+              <div id="added-lines-list" class="staged-lines-list" aria-label="Staged lines" role="listbox"></div>
               <button id="delete-line" class="ctrl">Delete Line</button>
             </div>
+            <button id="create-plot" class="ctrl">Create Plot</button>
           </div>
 
-          <!-- Step 3: create plot -->
+          <!-- Step 3: saved plots -->
           <div class="plot-step" id="plot-step-3" style="display:flex; flex-direction:column; gap:6px; justify-content:flex-end;">
             <label for="plot-config-select" style="font-weight:600;">Saved plot</label>
             <select id="plot-config-select" class="ctrl">
               <option value="">Plot selection</option>
             </select>
             <button id="delete-plot-config" class="ctrl">Delete Plot</button>
-            <button id="create-plot" class="ctrl">Create Plot</button>
           </div>
         </div>
       </div>
@@ -352,6 +364,35 @@
     <button type="button" class="line-type-option" data-line-type="dashed"><span class="line-type-preview line-type-dashed"></span>Dashed</button>
     <button type="button" class="line-type-option" data-line-type="dotted"><span class="line-type-preview line-type-dotted"></span>Dotted</button>
   </div>
+</div>
+
+<div id="text-context-menu" class="line-context-menu text-context-menu" style="display:none;">
+  <div class="line-context-title">Edit Text</div>
+  <label class="text-context-field" for="text-font-family">Font</label>
+  <select id="text-font-family" class="text-context-select">
+    <option value="Arial, sans-serif">Arial</option>
+    <option value="Verdana, sans-serif">Verdana</option>
+    <option value="Tahoma, sans-serif">Tahoma</option>
+    <option value="Trebuchet MS, sans-serif">Trebuchet MS</option>
+    <option value="Georgia, serif">Georgia</option>
+    <option value="Times New Roman, serif">Times New Roman</option>
+    <option value="Courier New, monospace">Courier New</option>
+  </select>
+
+  <label class="text-context-field" for="text-font-size">Size</label>
+  <select id="text-font-size" class="text-context-select">
+    <option value="12px">12 px</option>
+    <option value="14px">14 px</option>
+    <option value="16px">16 px</option>
+    <option value="18px">18 px</option>
+    <option value="20px">20 px</option>
+    <option value="24px">24 px</option>
+    <option value="28px">28 px</option>
+    <option value="32px">32 px</option>
+  </select>
+
+  <label class="text-context-field" for="text-font-color">Color</label>
+  <input type="color" id="text-font-color" value="#333333">
 </div>
 
 

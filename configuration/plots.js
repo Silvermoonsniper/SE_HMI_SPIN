@@ -49,6 +49,9 @@ startPollingLatestValues();
   const plotTypeSelect = document.getElementById('plot-type');
 
   const deviceParamsSelect = document.getElementById('curve-key');
+  const xyCurveKeyGroup = document.getElementById('xy-curve-key-group');
+  const xyCurveXSelect = document.getElementById('curve-key-x');
+  const xyCurveYSelect = document.getElementById('curve-key-y');
   const curveLineTypeSelect = document.getElementById('curve-line-type');
   const curveLineWidthSelect = document.getElementById('curve-line-width');
   const curveLineColorInput = document.getElementById('curve-line-color');
@@ -56,6 +59,7 @@ startPollingLatestValues();
   const addBtn = document.getElementById('add-curve');
 
   const addedLinesSelect = document.getElementById('added-lines');
+  const addedLinesList = document.getElementById('added-lines-list');
 
   const deleteBtn = document.getElementById('delete-line');
 
@@ -79,6 +83,35 @@ startPollingLatestValues();
   // created plots: id -> { id, containerDiv, plotDiv, traces: { key -> {x,y,traceObj,suffix} } }
   const plotsMap = {};
   let plotCounter = 0;
+
+  function isXYPlotType(typeOverride){
+    const type = typeOverride || (plotTypeSelect && plotTypeSelect.value ? plotTypeSelect.value : 'line');
+    return type === 'xy';
+  }
+
+  function createXYLineKey(xKey, yKey){
+    return `xy:${xKey}::${yKey}`;
+  }
+
+  function isXYLineMeta(meta){
+    return !!(meta && meta.xKey && meta.yKey);
+  }
+
+  function updatePlotTypeControls(options){
+    const settings = Object.assign({ clearIncompatibleStaged: true }, options || {});
+    const isXY = isXYPlotType();
+    if(deviceParamsSelect) deviceParamsSelect.style.display = isXY ? 'none' : '';
+    if(xyCurveKeyGroup) xyCurveKeyGroup.style.display = isXY ? 'inline-flex' : 'none';
+
+    if(!settings.clearIncompatibleStaged || !Object.keys(staged).length) {
+      return;
+    }
+
+    const hasIncompatible = Object.values(staged).some((meta) => isXY ? !isXYLineMeta(meta) : isXYLineMeta(meta));
+    if(hasIncompatible) {
+      clearStagedLines();
+    }
+  }
 
   function getStoredPlotConfigs(){
     try 
@@ -113,7 +146,8 @@ startPollingLatestValues();
     const style = line.style || {};
     const type = style.lineType || 'solid';
     const width = style.lineWidth || 2;
-    return `${line.key} (${type}, ${width}px)`;
+    const label = line.xKey && line.yKey ? `${line.yKey} vs ${line.xKey}` : line.key;
+    return `■ ${label} (${type}, ${width}px)`;
   }
 
   function clearStagedLines(){
@@ -122,6 +156,63 @@ startPollingLatestValues();
     addedLinesSelect.innerHTML = '<option value="">-- added lines --</option>';
     addedLinesSelect.size = 1;
     addedLinesSelect.value = '';
+    rebuildStagedLinesList();
+  }
+
+  function setSelectedStagedLine(key){
+    if(!addedLinesSelect) return;
+    addedLinesSelect.value = key || '';
+    rebuildStagedLinesList();
+  }
+
+  function getSelectedStagedLineKey(){
+    return addedLinesSelect && addedLinesSelect.value ? addedLinesSelect.value : '';
+  }
+
+  function rebuildStagedLinesList(){
+    if(!addedLinesList) return;
+    const keys = Object.keys(staged);
+    addedLinesList.innerHTML = '';
+
+    if(keys.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'staged-lines-empty';
+      empty.textContent = '-- added lines --';
+      addedLinesList.appendChild(empty);
+      return;
+    }
+
+    const selectedKey = getSelectedStagedLineKey();
+    keys.forEach((key) => {
+      const meta = staged[key] || {};
+      const style = meta.style || {};
+      const color = style.lineColor || '#007bff';
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'staged-line-item';
+      if(key === selectedKey) item.classList.add('is-selected');
+      item.dataset.value = key;
+      item.setAttribute('role', 'option');
+      item.setAttribute('aria-selected', key === selectedKey ? 'true' : 'false');
+
+      const swatch = document.createElement('span');
+      swatch.className = 'staged-line-swatch';
+      swatch.style.backgroundColor = color;
+
+      const label = document.createElement('span');
+      label.className = 'staged-line-label';
+      label.textContent = meta.xKey && meta.yKey
+        ? `${meta.yKey} vs ${meta.xKey} (${style.lineType || 'solid'}, ${(style.lineWidth || 2)}px)`
+        : `${key} (${style.lineType || 'solid'}, ${(style.lineWidth || 2)}px)`;
+
+      item.appendChild(swatch);
+      item.appendChild(label);
+      item.addEventListener('click', () => {
+        setSelectedStagedLine(key);
+      });
+
+      addedLinesList.appendChild(item);
+    });
   }
 
   function rebuildStagedLinesSelect(){
@@ -132,38 +223,69 @@ startPollingLatestValues();
       addedLinesSelect.innerHTML = '<option value="">-- added lines --</option>';
       addedLinesSelect.size = 1;
       addedLinesSelect.value = '';
+      rebuildStagedLinesList();
       return;
     }
     addedLinesSelect.size = Math.min(Math.max(keys.length, 2), 6);
     keys.forEach((key) => {
       const meta = staged[key] || {};
+      const style = meta.style || {};
+      const color = style.lineColor || '#007bff';
       const option = document.createElement('option');
       option.value = key;
-      option.textContent = getDisplayLabelForLine({ key, style: meta.style });
+      option.textContent = getDisplayLabelForLine({ key, style });
+      option.style.color = color;
       addedLinesSelect.add(option);
     });
     addedLinesSelect.selectedIndex = 0;
+    rebuildStagedLinesList();
   }
 
-  function getPreparedStagedLine(key, style, suffix){
-    return {
+  function getPreparedStagedLine(key, style, suffix, extra){
+    return Object.assign({
       suffix: suffix || key,
       style: Object.assign({
         lineType: 'solid',
         lineWidth: 2,
         lineColor: '#007bff'
       }, style || {})
-    };
+    }, extra || {});
+  }
+
+  function getAutoPreparedLinesForCurrentType(){
+    if(isXYPlotType()) {
+      const xKey = xyCurveXSelect && xyCurveXSelect.value ? xyCurveXSelect.value.trim() : '';
+      const yKey = xyCurveYSelect && xyCurveYSelect.value ? xyCurveYSelect.value.trim() : '';
+      if(!xKey || !yKey) return {};
+      const key = createXYLineKey(xKey, yKey);
+      return {
+        [key]: getPreparedStagedLine(key, getSelectedCurveStyle(), key, {
+          xKey,
+          yKey,
+          xSuffix: xKey,
+          ySuffix: yKey,
+          label: `${yKey} vs ${xKey}`
+        })
+      };
+    }
+
+    const preselected = deviceParamsSelect && deviceParamsSelect.value ? deviceParamsSelect.value.trim() : '';
+    if(!preselected) return {};
+    return { [preselected]: getPreparedStagedLine(preselected, getSelectedCurveStyle(), preselected) };
   }
 
   function getCurrentPlotConfig(nameOverride){
-    const preselected = deviceParamsSelect && deviceParamsSelect.value ? deviceParamsSelect.value.trim() : '';
-    const nextStaged = Object.keys(staged).length ? staged : (preselected ? { [preselected]: getPreparedStagedLine(preselected, getSelectedCurveStyle(), preselected) } : {});
+    const nextStaged = Object.keys(staged).length ? staged : getAutoPreparedLinesForCurrentType();
     const lines = Object.keys(nextStaged).map((key) => {
       const meta = nextStaged[key] || {};
       return {
         key,
         suffix: meta.suffix || key,
+        xKey: meta.xKey || '',
+        yKey: meta.yKey || '',
+        xSuffix: meta.xSuffix || '',
+        ySuffix: meta.ySuffix || '',
+        label: meta.label || '',
         style: Object.assign({
           lineType: 'solid',
           lineWidth: 2,
@@ -182,15 +304,27 @@ startPollingLatestValues();
   function applyPlotConfig(config){
     if(!config) return;
     if(plotTypeSelect && config.plotType) plotTypeSelect.value = config.plotType;
+    updatePlotTypeControls({ clearIncompatibleStaged: false });
     clearStagedLines();
     (config.lines || []).forEach((line) => {
       if(!line || !line.key) return;
-      staged[line.key] = getPreparedStagedLine(line.key, line.style, line.suffix || line.key);
+      staged[line.key] = getPreparedStagedLine(line.key, line.style, line.suffix || line.key, {
+        xKey: line.xKey || '',
+        yKey: line.yKey || '',
+        xSuffix: line.xSuffix || '',
+        ySuffix: line.ySuffix || '',
+        label: line.label || ''
+      });
     });
     rebuildStagedLinesSelect();
     const firstLine = (config.lines || [])[0];
     if(firstLine){
-      if(deviceParamsSelect) deviceParamsSelect.value = firstLine.key;
+      if(isXYPlotType(config.plotType)) {
+        if(xyCurveXSelect) xyCurveXSelect.value = firstLine.xKey || '';
+        if(xyCurveYSelect) xyCurveYSelect.value = firstLine.yKey || '';
+      } else if(deviceParamsSelect) {
+        deviceParamsSelect.value = firstLine.key;
+      }
       if(curveLineTypeSelect && firstLine.style && firstLine.style.lineType) curveLineTypeSelect.value = firstLine.style.lineType;
       if(curveLineWidthSelect && firstLine.style && firstLine.style.lineWidth) curveLineWidthSelect.value = String(firstLine.style.lineWidth);
       if(curveLineColorInput && firstLine.style && firstLine.style.lineColor) curveLineColorInput.value = firstLine.style.lineColor;
@@ -467,12 +601,6 @@ startPollingLatestValues();
       return;
     }
 
-    const currentEntry = getCurrentPlotEntry();
-    if(currentEntry) {
-      switchPlotPanelToConfig(currentEntry, name);
-      return;
-    }
-
     loadPlotConfigByName(name, (config) => {
       if(!config) return;
       applyPlotConfig(config);
@@ -626,6 +754,27 @@ startPollingLatestValues();
       const prepared = getPreparedStagedLine(line.key, line.style, line.suffix || line.key);
       if(plotEntry.plotType === 'array') {
         plotEntry.traces[key] = { isArrayParent: true, suffix: prepared.suffix, children: {}, name: key, style: prepared.style };
+      } else if(plotEntry.plotType === 'xy') {
+        const traceLabel = line.label || `${prepared.yKey || line.yKey || key} vs ${prepared.xKey || line.xKey || key}`;
+        const trace = { x: [], y: [], mode: 'lines+markers', name: traceLabel };
+        applyTraceStyle(trace, prepared.style);
+        plotEntry.traces[key] = {
+          x: trace.x,
+          y: trace.y,
+          traceObj: trace,
+          name: traceLabel,
+          xKey: prepared.xKey || line.xKey || '',
+          yKey: prepared.yKey || line.yKey || '',
+          xSuffix: prepared.xSuffix || line.xSuffix || prepared.xKey || line.xKey || '',
+          ySuffix: prepared.ySuffix || line.ySuffix || prepared.yKey || line.yKey || '',
+          latestX: undefined,
+          latestY: undefined,
+          lastPushedX: undefined,
+          lastPushedY: undefined,
+          _traceIndex: undefined,
+          _lastSent: 0,
+          style: prepared.style
+        };
       } else {
         const traceLabel = key || prepared.suffix || 'trace';
         const trace = { x: [], y: [], mode: 'lines+markers', name: traceLabel };
@@ -817,39 +966,30 @@ startPollingLatestValues();
 
   }
 
-  function populateDeviceParams(data){
-
-    if(!deviceParamsSelect) return;
-
-    deviceParamsSelect.innerHTML = '<option value="">-- select device.param --</option>';
-
+  function populateParamSelect(selectEl, data, placeholder){
+    if(!selectEl) return;
+    selectEl.innerHTML = `<option value="">${placeholder}</option>`;
     if(!data) return;
 
     Object.keys(data).sort().forEach(device => {
-
       const info = data[device] || {};
-      // Use all_params if available, else fallback to params
-
       const params = info.all_params || info.params || info.param_list || [];
-
       const displayDevice = info.original_name || device;
 
       params.forEach(p => {
-
         const opt = document.createElement('option');
-        // keep the real key (device as in JSON) as the value so spinupdate keys will match
         opt.value = device + '.' + p;
-
-        // display a friendly label: original_name.param (host-prefixed device kept in title attr)
-        opt.text = (displayDevice + '.' + p);
-
+        opt.text = displayDevice + '.' + p;
         opt.title = device + '.' + p;
-
-        deviceParamsSelect.add(opt);
-
+        selectEl.add(opt);
       });
     });
-   
+  }
+
+  function populateDeviceParams(data){
+    populateParamSelect(deviceParamsSelect, data, '-- select device.param --');
+    populateParamSelect(xyCurveXSelect, data, '-- select x device.param --');
+    populateParamSelect(xyCurveYSelect, data, '-- select y device.param --');
   }
 
  
@@ -860,7 +1000,10 @@ startPollingLatestValues();
 
     const layout = { title: '', xaxis:{type:'date'}, margin:{t:30} };
 
-    if(type === 'xy') layout.xaxis = { title: 'X' };
+    if(type === 'xy') {
+      layout.xaxis = { title: 'X', type: 'linear' };
+      layout.yaxis = { title: 'Y', type: 'linear' };
+    }
 
     return withTimeRangeControls(layout);
 
@@ -927,29 +1070,40 @@ startPollingLatestValues();
   }
 
   function addLine(){
-  
-    const key = deviceParamsSelect && deviceParamsSelect.value ? deviceParamsSelect.value.trim() : '';
-  
-    if(!key) return alert('Select a device parameter to add');
-  
-    if(staged[key]) return alert('Parameter already staged');
-    // store full device.param as the suffix so we can match host-prefixed emitted keys
-    // e.g. emitted key might be "host_123_sim_gas_dosing_massflow_contr1.target"
-    // and endsWith('sim_gas_dosing_massflow_contr1.target') will match.
-    const suffix = key;
+    let key = '';
+    let preparedLine = null;
     const style = getSelectedCurveStyle();
 
-    staged[key] = getPreparedStagedLine(key, style, suffix);
+    if(isXYPlotType()) {
+      const xKey = xyCurveXSelect && xyCurveXSelect.value ? xyCurveXSelect.value.trim() : '';
+      const yKey = xyCurveYSelect && xyCurveYSelect.value ? xyCurveYSelect.value.trim() : '';
+      if(!xKey || !yKey) return alert('Select both X and Y device parameters to add an XY curve');
+      key = createXYLineKey(xKey, yKey);
+      preparedLine = getPreparedStagedLine(key, style, key, {
+        xKey,
+        yKey,
+        xSuffix: xKey,
+        ySuffix: yKey,
+        label: `${yKey} vs ${xKey}`
+      });
+    } else {
+      key = deviceParamsSelect && deviceParamsSelect.value ? deviceParamsSelect.value.trim() : '';
+      if(!key) return alert('Select a device parameter to add');
+      preparedLine = getPreparedStagedLine(key, style, key);
+    }
+
+    if(staged[key]) return alert('Parameter already staged');
+
+    staged[key] = preparedLine;
   
     rebuildStagedLinesSelect();
-    if (addedLinesSelect) addedLinesSelect.value = key;
+    setSelectedStagedLine(key);
   }
 
   function deleteLine(){
   
-    const sel = addedLinesSelect; if(!sel || !sel.value) return alert('Select a staged line to delete');
-  
-    const key = sel.value;
+    const key = getSelectedStagedLineKey();
+    if(!key) return alert('Select a staged line to delete');
   
     if(!staged[key]) return alert('Selected staged line not found');
   
@@ -1157,7 +1311,10 @@ startPollingLatestValues();
    
             const meta = p.traces[k];
    
-            if(emittedKey === k || (meta && meta.suffix && emittedKey.endsWith(meta.suffix))){
+            const xyMatchX = p.plotType === 'xy' && meta && meta.xSuffix && (emittedKey === meta.xKey || emittedKey.endsWith(meta.xSuffix));
+            const xyMatchY = p.plotType === 'xy' && meta && meta.ySuffix && (emittedKey === meta.yKey || emittedKey.endsWith(meta.ySuffix));
+
+            if(xyMatchX || xyMatchY || emittedKey === k || (meta && meta.suffix && emittedKey.endsWith(meta.suffix))){
    
               matched = true;
     
@@ -1179,6 +1336,31 @@ startPollingLatestValues();
                   }
                 });
                 updatedPlots.add(p.id);
+              } else if (p.plotType === 'xy' && meta && meta.traceObj && (xyMatchX || xyMatchY)) {
+                const numericVal = (typeof val === 'number') ? val : parseFloat(val);
+                if(Number.isFinite(numericVal)) {
+                  if(xyMatchX) meta.latestX = numericVal;
+                  if(xyMatchY) meta.latestY = numericVal;
+
+                  if(Number.isFinite(meta.latestX) && Number.isFinite(meta.latestY)) {
+                    const isDuplicatePoint = meta.lastPushedX === meta.latestX && meta.lastPushedY === meta.latestY;
+                    if(!isDuplicatePoint) {
+                      meta.traceObj.x.push(meta.latestX);
+                      meta.traceObj.y.push(meta.latestY);
+                      meta.lastPushedX = meta.latestX;
+                      meta.lastPushedY = meta.latestY;
+                      if(typeof meta._traceIndex === 'number') {
+                        try {
+                          Plotly.extendTraces(p.plotDiv, { x: [[meta.latestX]], y: [[meta.latestY]] }, [meta._traceIndex]);
+                        }
+                        catch(e)
+                        {
+                        }
+                      }
+                      updatedPlots.add(p.id);
+                    }
+                  }
+                }
               } else {
                 // scalar handling
                 let yval;
@@ -1233,7 +1415,10 @@ startPollingLatestValues();
       plotConfigSelect && plotConfigSelect.addEventListener('change', handleTopLevelPlotConfigSelection);
       deletePlotConfigBtn && deletePlotConfigBtn.addEventListener('click', deleteSelectedPlotConfig);
 
-      plotTypeSelect && plotTypeSelect.addEventListener('change', refreshPlot);
+      plotTypeSelect && plotTypeSelect.addEventListener('change', () => {
+        updatePlotTypeControls();
+        refreshPlot();
+      });
 
       createBtn && createBtn.addEventListener('click', ()=>{
         const enteredName = prompt('Enter a name for this plot:', activeSavedPlotName || `Plot ${plotCounter + 1}`);
@@ -1257,6 +1442,7 @@ startPollingLatestValues();
       });
 
   // start
+  updatePlotTypeControls({ clearIncompatibleStaged: false });
   loadDeviceParams();
   updatePlotConfigList();
   if(typeof waitForSpin === 'function') {

@@ -32,7 +32,7 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
-Open the browser at the address Spin shows (default: http://localhost:8000), if you want to open plot pages, open another webpage with URL: http://localhost:8000/plots.
+Open the browser at http://localhost:8080. If you want to open plot pages, use http://localhost:8080/plots.
 
 
 ## Development workflow (recommended)
