@@ -1,8 +1,77 @@
+const START_PAGE_MODE_KEY = 'startPageMode';
+
+function getAutomaticStartPageMode() {
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const hour = new Date().getHours();
+  return prefersDark || hour < 7 || hour >= 19 ? 'night' : 'day';
+}
+
+function applyStartPageMode(mode) {
+  const panel = document.getElementById('connection-panel');
+  const label = document.getElementById('start-page-mode-label');
+  if (!panel || !label) {
+    return;
+  }
+
+  const normalizedMode = mode === 'night' ? 'night' : 'day';
+  panel.dataset.mode = normalizedMode;
+  document.body.dataset.startPageMode = normalizedMode;
+  label.textContent = normalizedMode === 'night' ? 'Night mode' : 'Day mode';
+}
+
+function updateStartPageModeIndicator() {
+  const storedMode = localStorage.getItem(START_PAGE_MODE_KEY);
+  const mode = storedMode === 'day' || storedMode === 'night'
+    ? storedMode
+    : getAutomaticStartPageMode();
+  applyStartPageMode(mode);
+}
+
+function toggleStartPageMode() {
+  const panel = document.getElementById('connection-panel');
+  if (!panel) {
+    return;
+  }
+
+  const nextMode = panel.dataset.mode === 'night' ? 'day' : 'night';
+  localStorage.setItem(START_PAGE_MODE_KEY, nextMode);
+  applyStartPageMode(nextMode);
+}
+
+function setupStartPageModeIndicator() {
+  updateStartPageModeIndicator();
+
+  const indicator = document.getElementById('start-page-mode-indicator');
+  if (indicator) {
+    indicator.addEventListener('click', toggleStartPageMode);
+  }
+
+  if (!window.matchMedia) {
+    return;
+  }
+
+  const colorSchemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  if (typeof colorSchemeQuery.addEventListener === 'function') {
+    colorSchemeQuery.addEventListener('change', () => {
+      if (!localStorage.getItem(START_PAGE_MODE_KEY)) {
+        updateStartPageModeIndicator();
+      }
+    });
+  } else if (typeof colorSchemeQuery.addListener === 'function') {
+    colorSchemeQuery.addListener(() => {
+      if (!localStorage.getItem(START_PAGE_MODE_KEY)) {
+        updateStartPageModeIndicator();
+      }
+    });
+  }
+}
+
 // --- Connect to Node Modal Logic ---
 document.addEventListener('DOMContentLoaded', function() 
 
 {
- 
+  setupStartPageModeIndicator();
+
   const connectBtn = document.getElementById('connect-node-btn');
   const modal = document.getElementById('connect-node-modal');
   const submitBtn = document.getElementById('conn-node-submit');
@@ -39,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function()
 });
 // function to delete selected layout
 
-function deleteSelectedLayout() {
+async function deleteSelectedLayout() {
  
   const select = document.getElementById('layout-select');
  
@@ -49,12 +118,13 @@ function deleteSelectedLayout() {
   
   {
  
-    alert('Please select a layout to delete.');
+    await showAppAlert('Please select a layout to delete.', 'Delete Layout');
  
     return;
   }
  
-  if (!confirm('Delete layout "' + name + '"? This cannot be undone.')) return;
+  const confirmed = await showAppConfirm('Delete layout "' + name + '"? This cannot be undone.', 'Delete Layout');
+  if (!confirmed) return;
 
   // Remove from localStorage (client-side copy)
   const layouts = getStoredLayouts();
@@ -81,28 +151,16 @@ function deleteSelectedLayout() {
         window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null); } catch (e) { /* ignore */ 
 
       }
-      alert('Layout deleted (locally and server request sent).');
+      await showAppAlert('Layout deleted locally and delete request sent to the server.', 'Delete Layout');
     } 
     catch (e) 
     {
-      try 
-      
-      { 
-        
-        alert('Layout deleted locally, but could not contact server to remove file.'); 
-      } 
-      catch (e2) 
-      {}
+      await showAppAlert('Layout deleted locally, but the server could not be contacted to remove the saved file.', 'Delete Layout');
     }
   } 
   else 
   {
-    try 
-    { 
-      alert('Layout deleted locally. Not connected to server, so server file (if any) was not removed.'); 
-    } 
-    catch (e) 
-    {}
+    await showAppAlert('Layout deleted locally. No server connection is active, so any server-side copy was not removed.', 'Delete Layout');
   }
 }
 
@@ -432,6 +490,33 @@ function getLineDashArray(lineType) {
   return '';
 }
 
+function getConnectionLineRotationDegrees(line) {
+  if (!line) return 0;
+  const value = parseFloat(line.dataset.rotationDegrees || '0');
+  return Number.isFinite(value) ? value : 0;
+}
+
+function applyConnectionLineRotation(line, degrees) {
+  if (!line) return;
+
+  const parsedDegrees = parseFloat(degrees);
+  const rotationDegrees = Number.isFinite(parsedDegrees) ? parsedDegrees : 0;
+  line.dataset.rotationDegrees = String(rotationDegrees);
+
+  if (Math.abs(rotationDegrees) < 0.0001) {
+    line.removeAttribute('transform');
+    return;
+  }
+
+  const x1 = parseFloat(line.getAttribute('x1') || '0');
+  const y1 = parseFloat(line.getAttribute('y1') || '0');
+  const x2 = parseFloat(line.getAttribute('x2') || '0');
+  const y2 = parseFloat(line.getAttribute('y2') || '0');
+  const centerX = (x1 + x2) / 2;
+  const centerY = (y1 + y2) / 2;
+  line.setAttribute('transform', `rotate(${rotationDegrees} ${centerX} ${centerY})`);
+}
+
 function applyConnectionLineStyle(line, style = {}) {
   if (!line) return;
 
@@ -459,13 +544,79 @@ function hideLineSubmenus() {
   });
 }
 
+function clearConnectionLineSelection() {
+  if (selectedConnectionLine) {
+    selectedConnectionLine.classList.remove('is-selected');
+  }
+  selectedConnectionLine = null;
+}
+
+function selectConnectionLine(line) {
+  if (selectedConnectionLine === line) return;
+  if (selectedConnectionLine) {
+    selectedConnectionLine.classList.remove('is-selected');
+  }
+  selectedConnectionLine = line || null;
+  if (selectedConnectionLine) {
+    selectedConnectionLine.classList.add('is-selected');
+  }
+}
+
+function repositionSelectedConnectionLine(side) {
+  if (!selectedConnectionLine || !side) return;
+
+  const startBox = document.getElementById(selectedConnectionLine.dataset.startBoxId);
+  const endBox = document.getElementById(selectedConnectionLine.dataset.endBoxId);
+  if (!startBox || !endBox) return;
+
+  const startPoint = startBox.querySelector(`.contact-point.${side}`);
+  const endPoint = endBox.querySelector(`.contact-point.${side}`);
+  if (!startPoint || !endPoint) return;
+
+  selectedConnectionLine.dataset.startSide = side;
+  selectedConnectionLine.dataset.endSide = side;
+  setConnectionLinePosition(
+    selectedConnectionLine,
+    getContactAnchor(startPoint),
+    getContactAnchor(endPoint)
+  );
+}
+
+function setupConnectionLineKeyboardControl() {
+  if (document.body.dataset.lineKeyboardReady === 'true') return;
+  document.body.dataset.lineKeyboardReady = 'true';
+
+  document.addEventListener('keydown', (event) => {
+    if (!selectedConnectionLine) return;
+    if (event.target && (event.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName))) {
+      return;
+    }
+
+    const sideByKey = {
+      ArrowUp: 'top',
+      ArrowDown: 'bottom',
+      ArrowLeft: 'left',
+      ArrowRight: 'right'
+    };
+    const nextSide = sideByKey[event.key];
+    if (!nextSide) {
+      if (event.key === 'Escape') {
+        clearConnectionLineSelection();
+      }
+      return;
+    }
+
+    event.preventDefault();
+    repositionSelectedConnectionLine(nextSide);
+  });
+}
+
 function hideLineContextMenu() {
   const menu = document.getElementById('context-menu');
   if (!menu) return;
 
   menu.style.display = 'none';
   hideLineSubmenus();
-  selectedConnectionLine = null;
 }
 
 function showLineContextMenu(line, clientX, clientY) {
@@ -473,7 +624,7 @@ function showLineContextMenu(line, clientX, clientY) {
   const colorPicker = document.getElementById('line-color-picker');
   if (!menu || !line) return;
 
-  selectedConnectionLine = line;
+  selectConnectionLine(line);
   menu.style.display = 'block';
   menu.style.left = `${clientX}px`;
   menu.style.top = `${clientY}px`;
@@ -489,6 +640,19 @@ function setupLineContextMenu() {
   if (!menu || menu.dataset.lineMenuReady === 'true') return;
 
   menu.dataset.lineMenuReady = 'true';
+  setupConnectionLineKeyboardControl();
+
+  document.addEventListener('mousedown', (event) => {
+    const line = event.target && event.target.closest ? event.target.closest('.device-connection-line:not(.is-temporary)') : null;
+    if (line) {
+      selectConnectionLine(line);
+      return;
+    }
+
+    if (!menu.contains(event.target)) {
+      clearConnectionLineSelection();
+    }
+  });
 
   document.addEventListener('contextmenu', (event) => {
     const line = event.target && event.target.closest ? event.target.closest('.device-connection-line:not(.is-temporary)') : null;
@@ -509,6 +673,8 @@ function setupLineContextMenu() {
   menu.querySelectorAll('.line-context-item').forEach(button => {
     button.addEventListener('click', () => {
       const submenuName = button.dataset.lineSubmenu;
+      if (!submenuName) return;
+
       const submenu = document.getElementById(`line-submenu-${submenuName}`);
       if (!submenu) return;
 
@@ -532,6 +698,27 @@ function setupLineContextMenu() {
     });
   });
 
+  const rotationAction = document.getElementById('line-rotation-action');
+  if (rotationAction && rotationAction.dataset.rotationReady !== 'true') {
+    rotationAction.dataset.rotationReady = 'true';
+    rotationAction.addEventListener('click', async () => {
+      const targetLine = selectedConnectionLine;
+      if (!targetLine) return;
+      const currentDegrees = getConnectionLineRotationDegrees(targetLine);
+      hideLineContextMenu();
+      const response = await showAppPrompt('Enter line rotation in degrees', String(currentDegrees), 'Rotate Line');
+      if (response === null) return;
+
+      const nextDegrees = parseFloat(String(response).trim());
+      if (!Number.isFinite(nextDegrees)) {
+        await showAppAlert('Please enter a valid number of degrees.', 'Rotate Line');
+        return;
+      }
+
+      applyConnectionLineRotation(targetLine, nextDegrees);
+    });
+  }
+
   menu.querySelectorAll('.line-type-option').forEach(button => {
     button.addEventListener('click', () => {
       if (!selectedConnectionLine) return;
@@ -554,10 +741,16 @@ function setupLineContextMenu() {
 
 function setConfigurationMode(enabled) {
   const mainPanel = document.getElementById('main-panel');
+  document.body.dataset.configurationMode = enabled ? 'true' : 'false';
   if (mainPanel) {
     mainPanel.classList.toggle('config-mode', !!enabled);
   }
 }
+
+window.isConfigurationModeActive = function isConfigurationModeActive() {
+  const mainPanel = document.getElementById('main-panel');
+  return document.body.dataset.configurationMode === 'true' || !!(mainPanel && mainPanel.classList.contains('config-mode'));
+};
 
 function getConnectionSvg() {
   const grid = document.getElementById('device-grid');
@@ -572,7 +765,7 @@ function getConnectionSvg() {
     svg.style.left = '0';
     svg.style.width = '100%';
     svg.style.height = '100%';
-    svg.style.pointerEvents = 'none';
+    svg.style.pointerEvents = 'auto';
     grid.insertBefore(svg, grid.firstChild);
   }
 
@@ -639,6 +832,7 @@ function setConnectionLinePosition(line, startPoint, endPoint) {
   line.setAttribute('y1', startPoint.y);
   line.setAttribute('x2', endPoint.x);
   line.setAttribute('y2', endPoint.y);
+  applyConnectionLineRotation(line, getConnectionLineRotationDegrees(line));
 }
 
 function getTimeRangePlotLayout(baseLayout) {
@@ -699,6 +893,7 @@ function startTemporaryConnection(point, event) {
   activeConnectionStart = startDescriptor;
   temporaryConnectionLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
   temporaryConnectionLine.classList.add('device-connection-line', 'is-temporary');
+  temporaryConnectionLine.style.pointerEvents = 'none';
   getConnectionSvg().appendChild(temporaryConnectionLine);
 
   setConnectionLinePosition(
@@ -725,6 +920,7 @@ function finalizeConnection(point) {
 
   const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
   line.classList.add('device-connection-line');
+  line.style.pointerEvents = 'stroke';
   line.dataset.startBoxId = activeConnectionStart.boxId;
   line.dataset.startSide = activeConnectionStart.side;
   line.dataset.endBoxId = endDescriptor.boxId;
@@ -749,7 +945,8 @@ function getCurrentConnectionsData() {
     endSide: line.dataset.endSide,
     strokeColor: line.dataset.strokeColor || '#007bff',
     strokeWidth: line.dataset.strokeWidth || '2',
-    lineType: line.dataset.lineType || 'solid'
+    lineType: line.dataset.lineType || 'solid',
+    rotationDegrees: line.dataset.rotationDegrees || '0'
   })).filter(line => line.startBoxId && line.startSide && line.endBoxId && line.endSide);
 }
 
@@ -772,10 +969,12 @@ function restoreConnectionLines(connections) {
 
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.classList.add('device-connection-line');
+    line.style.pointerEvents = 'stroke';
     line.dataset.startBoxId = connection.startBoxId;
     line.dataset.startSide = connection.startSide;
     line.dataset.endBoxId = connection.endBoxId;
     line.dataset.endSide = connection.endSide;
+    line.dataset.rotationDegrees = connection.rotationDegrees || '0';
     svg.appendChild(line);
     applyConnectionLineStyle(line, connection);
     setConnectionLinePosition(line, getContactAnchor(startPoint), getContactAnchor(endPoint));

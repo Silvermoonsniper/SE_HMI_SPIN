@@ -1,0 +1,49 @@
+{
+  "name": "temperature_plot",
+  "plotType": "line",
+  "lines": [
+    {
+      "key": "reactor_cell_temperature_reg.value",
+      "suffix": "reactor_cell_temperature_reg.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#ff2600"
+      }
+    },
+    {
+      "key": "reactor_cell_temperature_reg.setpoint",
+      "suffix": "reactor_cell_temperature_reg.setpoint",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#ff2600"
+      }
+    },
+    {
+      "key": "reactor_cell_temperature_sam.value",
+      "suffix": "reactor_cell_temperature_sam.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#0061ff"
+      }
+    }
+  ],
+  "savedAt": "2026-04-24T11:32:56.403Z"
+}

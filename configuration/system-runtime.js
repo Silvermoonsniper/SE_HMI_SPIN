@@ -2,6 +2,9 @@
 window.addEventListener('spinupdate', function(event) 
 {
   try {
+    if (typeof window.isConfigurationModeActive === 'function' && window.isConfigurationModeActive()) {
+      return;
+    }
     var key = event.detail.key || '';
     
        fetchNodesList(); 
@@ -601,68 +604,57 @@ function renderExtra(device)
 
 function handleExpansion(box, originalHeight) 
 {
-    requestAnimationFrame(() => {
-        const newHeight = box.offsetHeight;
-        const heightIncrease = newHeight - originalHeight;
+  requestAnimationFrame(() => {
+    if (!box || !box.parentElement) return;
 
-        if (heightIncrease > 0) {
-            const boxRect = box.getBoundingClientRect();
-            const containerRect = box.parentElement.getBoundingClientRect();
+    const newHeight = box.offsetHeight;
+    const heightIncrease = newHeight - originalHeight;
+    if (heightIncrease <= 0) return;
 
-            document.querySelectorAll('.device-box, .deco-box').forEach(otherEl => {
-                if (otherEl.id === box.id) return;
+    const boxRect = box.getBoundingClientRect();
+    const originalBottom = boxRect.top + originalHeight;
 
-                const otherRect = otherEl.getBoundingClientRect();
+    document.querySelectorAll('.device-box, .deco-box').forEach((otherEl) => {
+      if (otherEl.id === box.id) return;
 
-                // Check if other display is below the expanding box and horizontally overlapping
-                const isBelow = otherRect.top > boxRect.top;
-                
-                const isHorizontallyOverlapping = (boxRect.left < otherRect.right && boxRect.right > otherRect.left);
+      const otherRect = otherEl.getBoundingClientRect();
+      const isBelowOriginalBottom = otherRect.top >= (originalBottom - 1);
+      const isHorizontallyOverlapping = boxRect.left < otherRect.right && boxRect.right > otherRect.left;
+      if (!isBelowOriginalBottom || !isHorizontallyOverlapping) return;
 
-                if (isBelow && isHorizontallyOverlapping) {
-                    const currentTop = otherRect.top - containerRect.top;
-                    const newTop = currentTop + heightIncrease;
-
-                    otherEl.style.transition = 'top 0.2s ease-out';
-                    otherEl.style.top = newTop + 'px';
-                    
-                    setTimeout(() => { otherEl.style.transition = ''; }, 200);
-                }
-            });
-        }
+      const currentTop = parseFloat(otherEl.style.top || '') || otherEl.offsetTop || 0;
+      otherEl.style.transition = 'top 0.2s ease-out';
+      otherEl.style.top = `${currentTop + heightIncrease}px`;
+      setTimeout(() => { otherEl.style.transition = ''; }, 200);
     });
+  });
 }
 
 function handleCollapse(box, originalHeight) {
-    requestAnimationFrame(() => {
-        const newHeight = box.offsetHeight;
-        const heightReduction = originalHeight - newHeight;
+  requestAnimationFrame(() => {
+    if (!box || !box.parentElement) return;
 
-        if (heightReduction > 0) {
-            const boxRect = box.getBoundingClientRect();
-            const containerRect = box.parentElement.getBoundingClientRect();
+    const newHeight = box.offsetHeight;
+    const heightReduction = originalHeight - newHeight;
+    if (heightReduction <= 0) return;
 
-            document.querySelectorAll('.device-box, .deco-box').forEach(otherEl => {
-                if (otherEl.id === box.id) return;
+    const boxRect = box.getBoundingClientRect();
+    const previousBottom = boxRect.top + originalHeight;
 
-                const otherRect = otherEl.getBoundingClientRect();
+    document.querySelectorAll('.device-box, .deco-box').forEach((otherEl) => {
+      if (otherEl.id === box.id) return;
 
-                // Check if otherEl is below the collapsing box and horizontally overlapping
-                const isBelow = otherRect.top > boxRect.top;
-                const isHorizontallyOverlapping = (boxRect.left < otherRect.right && boxRect.right > otherRect.left);
+      const otherRect = otherEl.getBoundingClientRect();
+      const isBelowPreviousBottom = otherRect.top >= (previousBottom - 1);
+      const isHorizontallyOverlapping = boxRect.left < otherRect.right && boxRect.right > otherRect.left;
+      if (!isBelowPreviousBottom || !isHorizontallyOverlapping) return;
 
-                if (isBelow && isHorizontallyOverlapping) {
-                    const currentTop = otherRect.top - containerRect.top;
-                    const newTop = currentTop - heightReduction;
-
-                    otherEl.style.transition = 'top 0.2s ease-out';
-                    otherEl.style.top = newTop + 'px';
-                    
-                    setTimeout(() => { otherEl.style.transition = ''; }, 200);
-                }
-            });
-        }
+      const currentTop = parseFloat(otherEl.style.top || '') || otherEl.offsetTop || 0;
+      otherEl.style.transition = 'top 0.2s ease-out';
+      otherEl.style.top = `${currentTop - heightReduction}px`;
+      setTimeout(() => { otherEl.style.transition = ''; }, 200);
     });
+  });
 }
 
 function toggleExtra(device) {

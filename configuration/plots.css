@@ -18,7 +18,7 @@ body {
   /* Single configuration box (green) for all plot settings - smaller and left-aligned */
   width: 100%;
   max-width: 720px;
-  background: #2ecc40; /* green */
+  background: #e5ede6; /* white */
   color: #042d07;
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(46,204,64,0.08);
@@ -52,6 +52,12 @@ body {
   font-size: 11px; /* as small as readable */
 }
 
+#xy-chart-type.xy-chart-type-select {
+  min-width: 96px;
+  width: 96px;
+  max-width: 96px;
+}
+
 /* Ensure control elements don't force extra rows by allowing them to shrink */
 .ctrl { flex: 0 0 auto }
 .spacer{ flex:1; min-width:0 }
@@ -67,10 +73,16 @@ body {
   color: rgba(4,45,7,0.9);
 }
 
-/* Make the main plot-type select wider so its contents are fully visible */
-#plot-type {
-  min-width: 220px;
-  max-width: 360px;
+#plot-step-2 {
+  flex: 1 1 430px;
+  min-width: 430px;
+}
+
+#plot-step-3 {
+  flex: 0 0 145px;
+  align-self: flex-end;
+  justify-content: flex-end;
+  min-height: 100%;
 }
 
 .plots-main{ display:block; width:100%; max-width:1100px }
@@ -95,8 +107,66 @@ body {
 .ctrl button { background:#fff; border:1px solid #ccc; padding:6px 8px; border-radius:6px }
 .ctrl select { padding:4px 6px }
 
-#plot-step-2 > div {
-  flex-wrap: wrap;
+.plot-config-row,
+.plot-parameter-row,
+.xy-axis-title-group,
+.staged-lines-row {
+  width: 100%;
+}
+
+.plot-config-row {
+  flex-wrap: nowrap;
+}
+
+.plot-parameter-row {
+  flex-wrap: nowrap;
+}
+
+.xy-axis-title-group {
+  display: none;
+  flex-wrap: nowrap;
+}
+
+.xy-curve-key-group {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  flex: 0 1 auto;
+}
+
+.xy-axis-title-input {
+  min-width: 120px;
+  width: 160px;
+  max-width: 220px;
+}
+
+.xy-axis-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #d7e7d8;
+  color: #164e1a;
+  font-size: 10px;
+  font-weight: 700;
+  flex: 0 0 22px;
+}
+
+.staged-lines-row {
+  flex-wrap: nowrap;
+}
+
+#plot-step-2 > #create-plot {
+  align-self: flex-start;
+  min-width: 180px;
+  max-width: 220px;
+}
+
+#plot-type {
+  min-width: 120px;
+  max-width: 140px;
 }
 
 #curve-line-type,
@@ -114,14 +184,95 @@ body {
   padding: 1px;
 }
 
-#curve-key,
+#curve-key {
+  min-width: 260px;
+  max-width: 320px;
+}
+
+#curve-key-x,
+#curve-key-y {
+  min-width: 170px;
+  max-width: 210px;
+}
+
 #added-lines {
-  min-width: 180px;
-  max-width: 260px;
+  flex: 1 1 360px;
+  min-width: 320px;
+  max-width: none;
 }
 
 #added-lines {
   min-height: 96px;
+}
+
+.staged-lines-native {
+  display: none;
+}
+
+.staged-lines-list {
+  flex: 1 1 360px;
+  min-width: 320px;
+  max-width: none;
+  min-height: 96px;
+  max-height: 132px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.staged-lines-empty {
+  color: #64748b;
+  font-size: 11px;
+  padding: 4px 6px;
+}
+
+.staged-line-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  font-size: 11px;
+  color: #111827;
+  cursor: pointer;
+}
+
+.staged-line-item:hover {
+  background: #eef5ff;
+}
+
+.staged-line-item.is-selected {
+  background: #dbeafe;
+  box-shadow: inset 0 0 0 1px #93c5fd;
+}
+
+.staged-line-swatch {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+}
+
+.staged-line-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#plot-config-select,
+#delete-plot-config {
+  width: 100%;
+  min-width: 118px;
+  max-width: 145px;
 }
 
 .plot-saved-control {
