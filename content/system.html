@@ -14,7 +14,7 @@
     <div class="conn-box-inner">
     <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:20px;">
       <h1 style="margin:0; color:#333; font-size:28px;">GSE-UI</h1>
-      <span style="color:#64748b; font-size:12px; font-weight:600;">V 1.0.3</span>
+      <span style="color:#64748b; font-size:12px; font-weight:600;">V 1.0.4</span>
     </div>
     
     <!-- Connect to Node Button -->
@@ -101,6 +101,7 @@
     </div>
     <div id="main-config-btns" style="display:flex; gap:8px; align-items:center;">
       <button onclick="disconnectNode()" style="padding:4px 8px; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer;">Back</button>
+      <button id="toggle-config-panels-btn" onclick="toggleConfigurationPanels()" style="padding:4px 8px; background:#495057; color:white; border:none; border-radius:4px; cursor:pointer;">Hide configuration panel</button>
       <button id="toggle-gui-btn" onclick="toggleConfigView()" style="padding:4px 8px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">Show GUI</button>
     </div>
   </div>
@@ -161,6 +162,15 @@
               <span class="xy-axis-tag">Y</span>
               <input id="xy-axis-title-y" class="ctrl xy-axis-title-input" type="text" placeholder="Y axis name" title="Y axis name">
             </div>
+            <div id="array-element-style-group" class="array-element-style-group" style="display:none;">
+              <button id="array-element-style-toggle" class="array-element-style-toggle" type="button" aria-expanded="true">
+                <span class="array-element-style-toggle-label">Array element styles</span>
+                <span class="array-element-style-toggle-icon">▾</span>
+              </button>
+              <div id="array-element-style-panel" class="array-element-style-panel">
+                <div id="array-element-style-list" class="array-element-style-list"></div>
+              </div>
+            </div>
             <label for="added-lines" style="font-weight:600;">Staged lines</label>
             <div class="staged-lines-row" style="display:flex; gap:6px; align-items:center;">
               <select id="added-lines" class="ctrl staged-lines-native" size="4" multiple>
@@ -200,18 +210,19 @@
   <button onclick="createDeviceDisplay(true)" style="padding: 4px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Create Display</button>
   </div>
 
-  <div id="decoration-manager" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; gap: 10px; align-items: center;">
-  <label for="deco-select" style="font-weight: bold; font-size: 12px;">Add customized display:</label>
-  <select id="deco-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; min-width: 150px;">
-    <option value="">-- Select Decoration --</option>
-    <option value="line">Line</option>
-    <option value="switch">Valve Switch</option>
-    <option value="label">Text Label</option>
-    <option value="control-panel">Control Panel</option>
-  </select>
-  <button onclick="createDecoration(true)" style="padding: 4px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Create customized display</button>
-  <div style="width:1px; height:20px; background:#ddd; margin:0 10px;"></div>
-  <div style="display: flex; gap: 8px; align-items: center;">
+  <div id="decoration-manager" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+  <div id="decoration-controls" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+    <label for="deco-select" style="font-weight: bold; font-size: 12px;">Add customized display:</label>
+    <select id="deco-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; min-width: 150px;">
+      <option value="">-- Select Decoration --</option>
+      <option value="line">Line</option>
+      <option value="switch">Valve Switch</option>
+      <option value="label">Text Label</option>
+      <option value="control-panel">Control Panel</option>
+    </select>
+    <button onclick="createDecoration(true)" style="padding: 4px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Create customized display</button>
+  </div>
+  <div id="layout-controls" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto;">
     <button onclick="zoomCanvas(0.1)" style="padding: 4px 8px; font-weight:bold;" title="Zoom In">+</button>
     <button onclick="zoomCanvas(-0.1)" style="padding: 4px 8px; font-weight:bold;" title="Zoom Out">-</button>
     <button onclick="resetView()" style="padding: 4px 8px; font-size:11px;">Reset View</button>

@@ -1,0 +1,23 @@
+{
+  "name": "mass_spec_measurement",
+  "plotType": "array",
+  "xAxisTitle": "",
+  "yAxisTitle": "",
+  "lines": [
+    {
+      "key": "gas_analysis_myspot_sim_mass_spec.value",
+      "suffix": "gas_analysis_myspot_sim_mass_spec.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#ed333b"
+      }
+    }
+  ],
+  "savedAt": "2026-04-24T15:07:28.668Z"
+}

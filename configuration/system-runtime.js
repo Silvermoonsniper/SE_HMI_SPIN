@@ -259,7 +259,7 @@ function sendValue(key, inputElementId) {
   }
 }
 
-function sendSelectedParam(device, domId) {
+async function sendSelectedParam(device, domId) {
   try {
     const paramSelect = document.getElementById('param-select-' + domId);
     const valueInput = document.getElementById('param-value-' + domId);
@@ -268,8 +268,14 @@ function sendSelectedParam(device, domId) {
     const param = paramSelect.value;
     const value = valueInput.value.trim();
     
-    if (!param) { alert('Please select a parameter first'); return; }
-    if (!value) { alert('Please enter a value'); return; }
+    if (!param) {
+      await showAppAlert('Please select a parameter first.', 'Set Parameter');
+      return;
+    }
+    if (!value) {
+      await showAppAlert('Please enter a value.', 'Set Parameter');
+      return;
+    }
     
     let finalValue = isNaN(value) ? value : parseFloat(value);
     const key = device + '.' + param;
@@ -611,15 +617,19 @@ function handleExpansion(box, originalHeight)
     const heightIncrease = newHeight - originalHeight;
     if (heightIncrease <= 0) return;
 
-    const boxRect = box.getBoundingClientRect();
-    const originalBottom = boxRect.top + originalHeight;
+    const boxTop = parseFloat(box.style.top || '') || box.offsetTop || 0;
+    const boxLeft = parseFloat(box.style.left || '') || box.offsetLeft || 0;
+    const boxWidth = box.offsetWidth || 0;
+    const originalBottom = boxTop + originalHeight;
 
     document.querySelectorAll('.device-box, .deco-box').forEach((otherEl) => {
       if (otherEl.id === box.id) return;
 
-      const otherRect = otherEl.getBoundingClientRect();
-      const isBelowOriginalBottom = otherRect.top >= (originalBottom - 1);
-      const isHorizontallyOverlapping = boxRect.left < otherRect.right && boxRect.right > otherRect.left;
+      const otherTop = parseFloat(otherEl.style.top || '') || otherEl.offsetTop || 0;
+      const otherLeft = parseFloat(otherEl.style.left || '') || otherEl.offsetLeft || 0;
+      const otherWidth = otherEl.offsetWidth || 0;
+      const isBelowOriginalBottom = otherTop >= (originalBottom - 1);
+      const isHorizontallyOverlapping = boxLeft < (otherLeft + otherWidth) && (boxLeft + boxWidth) > otherLeft;
       if (!isBelowOriginalBottom || !isHorizontallyOverlapping) return;
 
       const currentTop = parseFloat(otherEl.style.top || '') || otherEl.offsetTop || 0;
@@ -638,15 +648,19 @@ function handleCollapse(box, originalHeight) {
     const heightReduction = originalHeight - newHeight;
     if (heightReduction <= 0) return;
 
-    const boxRect = box.getBoundingClientRect();
-    const previousBottom = boxRect.top + originalHeight;
+    const boxTop = parseFloat(box.style.top || '') || box.offsetTop || 0;
+    const boxLeft = parseFloat(box.style.left || '') || box.offsetLeft || 0;
+    const boxWidth = box.offsetWidth || 0;
+    const previousBottom = boxTop + originalHeight;
 
     document.querySelectorAll('.device-box, .deco-box').forEach((otherEl) => {
       if (otherEl.id === box.id) return;
 
-      const otherRect = otherEl.getBoundingClientRect();
-      const isBelowPreviousBottom = otherRect.top >= (previousBottom - 1);
-      const isHorizontallyOverlapping = boxRect.left < otherRect.right && boxRect.right > otherRect.left;
+      const otherTop = parseFloat(otherEl.style.top || '') || otherEl.offsetTop || 0;
+      const otherLeft = parseFloat(otherEl.style.left || '') || otherEl.offsetLeft || 0;
+      const otherWidth = otherEl.offsetWidth || 0;
+      const isBelowPreviousBottom = otherTop >= (previousBottom - 1);
+      const isHorizontallyOverlapping = boxLeft < (otherLeft + otherWidth) && (boxLeft + boxWidth) > otherLeft;
       if (!isBelowPreviousBottom || !isHorizontallyOverlapping) return;
 
       const currentTop = parseFloat(otherEl.style.top || '') || otherEl.offsetTop || 0;

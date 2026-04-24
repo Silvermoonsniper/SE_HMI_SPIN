@@ -213,6 +213,7 @@ let activeConnectionStart = null;
 let temporaryConnectionLine = null;
 let selectedConnectionLine = null;
 let guiModeActive = false;
+let configurationPanelsHidden = false;
 const RUNTIME_NODE_ADDRS_KEY = 'runtime_node_addrs';
 let pendingAddedNodeAddr = null;
 const deviceHydrationRequests = new Map();
@@ -1059,15 +1060,49 @@ function setPlotsTopHeight() {
   }
 }
 
+function applyConfigurationPanelVisibility() {
+  const toggleBtn = document.getElementById('toggle-config-panels-btn');
+  const plotsPanel = document.getElementById('plots-panel');
+  const deviceManager = document.getElementById('device-manager');
+  const decorationControls = document.getElementById('decoration-controls');
+  const configPanel = document.getElementById('config-panel');
+
+  if (toggleBtn) {
+    toggleBtn.textContent = configurationPanelsHidden ? 'Show configuration panel' : 'Hide configuration panel';
+  }
+
+  if (guiModeActive) {
+    if (toggleBtn) toggleBtn.style.display = 'none';
+    return;
+  }
+
+  if (toggleBtn) toggleBtn.style.display = '';
+  if (plotsPanel) plotsPanel.style.display = configurationPanelsHidden ? 'none' : '';
+  if (deviceManager) deviceManager.style.display = configurationPanelsHidden ? 'none' : 'flex';
+  if (decorationControls) decorationControls.style.display = configurationPanelsHidden ? 'none' : 'flex';
+  if (configPanel) {
+    configPanel.style.maxWidth = configurationPanelsHidden ? '100%' : '760px';
+    configPanel.style.flex = configurationPanelsHidden ? '1 1 100%' : '1 1 60%';
+  }
+  setPlotsTopHeight();
+}
+
+function toggleConfigurationPanels() {
+  configurationPanelsHidden = !configurationPanelsHidden;
+  applyConfigurationPanelVisibility();
+}
+
 function toggleConfigView() {
   const btn = document.getElementById('toggle-gui-btn');
+  const configToggleBtn = document.getElementById('toggle-config-panels-btn');
   const mainPanel = document.getElementById('main-panel');
   const mainPanelHeader = document.getElementById('main-panel-header');
   const mainPanelTitle = document.getElementById('main-panel-title');
   const mainPanelTitleWrap = document.getElementById('main-panel-title-wrap');
   const configParts = [
     document.getElementById('device-manager'),
-    document.getElementById('decoration-manager')
+    document.getElementById('decoration-manager'),
+    document.getElementById('decoration-controls')
   ];
   const plotsPanel = document.getElementById('plots-panel');
   const editorTopRow = document.getElementById('editor-top-row');
@@ -1075,8 +1110,10 @@ function toggleConfigView() {
   const btnRow = document.getElementById('main-config-btns');
 
   if (guiModeActive) {
-    configParts.forEach(el => { if (el) el.style.display = ''; });
-    if (plotsPanel) plotsPanel.style.display = '';
+    if (configToggleBtn) configToggleBtn.style.display = '';
+    if (document.getElementById('decoration-manager')) {
+      document.getElementById('decoration-manager').style.display = 'flex';
+    }
     if (editorTopRow) editorTopRow.style.display = 'flex';
     if (viewport) viewport.style.height = '75vh';
     if (btn) btn.textContent = 'Show GUI';
@@ -1094,13 +1131,14 @@ function toggleConfigView() {
     guiModeActive = false;
     setConfigurationMode(true);
     setGuiFullscreen(false);
-    setPlotsTopHeight();
+    applyConfigurationPanelVisibility();
   } else {
     configParts.forEach(el => { if (el) el.style.display = 'none'; });
     if (plotsPanel) plotsPanel.style.display = 'none';
     if (editorTopRow) editorTopRow.style.display = 'none';
     if (viewport) viewport.style.height = 'calc(100vh - 110px)';
     if (btn) btn.textContent = 'Configure GUI';
+    if (configToggleBtn) configToggleBtn.style.display = 'none';
     if (btnRow) btnRow.style.display = 'flex';
     if (mainPanel) mainPanel.classList.add('gui-fullscreen');
     if (mainPanelHeader) mainPanelHeader.style.justifyContent = 'flex-end';
@@ -1464,6 +1502,9 @@ function enterSystem(isConfigure = true) {
     toggleConfigView();
   } else if (!isConfigure && !guiModeActive) {
     toggleConfigView();
+  }
+  if (isConfigure) {
+    applyConfigurationPanelVisibility();
   }
   
   // Fetch device params when entering the system to ensure dropdown is populated

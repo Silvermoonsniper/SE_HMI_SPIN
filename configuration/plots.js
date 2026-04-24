@@ -54,6 +54,9 @@ startPollingLatestValues();
   const deviceParamsSelect = document.getElementById('curve-key');
   const xyCurveKeyGroup = document.getElementById('xy-curve-key-group');
   const xyAxisTitleGroup = document.getElementById('xy-axis-title-group');
+  const arrayElementStyleGroup = document.getElementById('array-element-style-group');
+  const arrayElementStyleToggle = document.getElementById('array-element-style-toggle');
+  const arrayElementStyleList = document.getElementById('array-element-style-list');
   const xyCurveXSelect = document.getElementById('curve-key-x');
   const xyCurveYSelect = document.getElementById('curve-key-y');
   const xyAxisTitleXInput = document.getElementById('xy-axis-title-x');
@@ -89,6 +92,10 @@ startPollingLatestValues();
 
   // created plots: id -> { id, containerDiv, plotDiv, traces: { key -> {x,y,traceObj,suffix} } }
   const plotsMap = {};
+  const plotHistoryCache = {};
+  const storedLinePlotHistories = {};
+  const warmingPlotConfigNames = new Set();
+  const latestPlotValues = {};
   let currentDeviceParamsData = {};
   let plotCounter = 0;
 
@@ -108,10 +115,12 @@ startPollingLatestValues();
   function updatePlotTypeControls(options){
     const settings = Object.assign({ clearIncompatibleStaged: true }, options || {});
     const isXY = isXYPlotType();
+    const isArray = !isXY && (plotTypeSelect && plotTypeSelect.value === 'array');
     if(deviceParamsSelect) deviceParamsSelect.style.display = isXY ? 'none' : '';
     if(xyCurveKeyGroup) xyCurveKeyGroup.style.display = isXY ? 'inline-flex' : 'none';
     if(xyAxisTitleGroup) xyAxisTitleGroup.style.display = isXY ? 'flex' : 'none';
     if(xyChartTypeSelect) xyChartTypeSelect.style.display = isXY ? '' : 'none';
+    if(arrayElementStyleGroup) arrayElementStyleGroup.style.display = isArray ? 'block' : 'none';
 
     if(!settings.clearIncompatibleStaged || !Object.keys(staged).length) {
       return;
@@ -141,6 +150,7 @@ startPollingLatestValues();
     const configs = getStoredPlotConfigs();
     configs[name] = config;
     localStorage.setItem(PLOT_CONFIG_STORAGE_KEY, JSON.stringify(configs));
+    ensureStoredLinePlotHistory(config);
   }
 
   function removeStoredPlotConfig(name){
@@ -314,6 +324,214 @@ startPollingLatestValues();
     return !!canonicalEmittedKey && canonicalEmittedKey === canonicalCandidateKey;
   }
 
+  function getDeviceInfoForPlotDevice(deviceName){
+    const rawName = String(deviceName || '').trim();
+    if(!rawName) return null;
+
+    if(currentDeviceParamsData[rawName]) return currentDeviceParamsData[rawName];
+
+    const knownDevices = Object.keys(currentDeviceParamsData || {});
+    for(const device of knownDevices) {
+      const info = currentDeviceParamsData[device] || {};
+      const moduleName = info.module_name || '';
+      const originalName = info.original_name || '';
+      if(rawName === device || rawName === moduleName || rawName === originalName || rawName.endsWith(`_${moduleName}`) || rawName.endsWith(`_${originalName}`)) {
+        return info;
+      }
+    }
+
+    return null;
+  }
+
+  function getUnitForPlotKey(key){
+    const parts = splitPlotKey(key);
+    if(!parts.device || !parts.param) return '';
+
+    const deviceInfo = getDeviceInfoForPlotDevice(parts.device);
+    const paramInfo = Array.isArray(deviceInfo && deviceInfo.param_info) ? deviceInfo.param_info : [];
+    for(const entry of paramInfo) {
+      if(!entry || !entry[parts.param]) continue;
+      const datainfo = entry[parts.param].datainfo || {};
+      if(typeof datainfo.unit === 'string' && datainfo.unit.trim()) {
+        return datainfo.unit.trim();
+      }
+    }
+
+    return '';
+  }
+
+  function formatLegendLabelForKey(key, baseLabel){
+    const label = String(baseLabel || key || '').trim();
+    if(!label) return '';
+    const unit = getUnitForPlotKey(key);
+    return unit ? `${label} [${unit}]` : label;
+  }
+
+  function formatXYLegendLabel(xKey, yKey){
+    const yLabel = formatLegendLabelForKey(yKey, yKey || 'Y');
+    const xLabel = formatLegendLabelForKey(xKey, xKey || 'X');
+    return `${yLabel} vs ${xLabel}`;
+  }
+
+  function getParamMetaForPlotKey(key){
+    const parts = splitPlotKey(key);
+    if(!parts.device || !parts.param) return null;
+
+    const deviceInfo = getDeviceInfoForPlotDevice(parts.device);
+    const paramInfo = Array.isArray(deviceInfo && deviceInfo.param_info) ? deviceInfo.param_info : [];
+    for(const entry of paramInfo) {
+      if(entry && entry[parts.param]) return entry[parts.param];
+    }
+    return null;
+  }
+
+  function getLatestArrayValueForPlotKey(key){
+    if(Array.isArray(latestPlotValues[key])) return latestPlotValues[key];
+
+    const knownKeys = Object.keys(latestPlotValues);
+    for(const candidateKey of knownKeys) {
+      if(plotKeyMatches(candidateKey, key) && Array.isArray(latestPlotValues[candidateKey])) {
+        return latestPlotValues[candidateKey];
+      }
+    }
+
+    return null;
+  }
+
+  function getArrayElementCountForPlotKey(key){
+    const latestValue = getLatestArrayValueForPlotKey(key);
+    if(Array.isArray(latestValue) && latestValue.length) return latestValue.length;
+
+    const paramMeta = getParamMetaForPlotKey(key);
+    const datainfo = paramMeta && paramMeta.datainfo ? paramMeta.datainfo : {};
+    if(datainfo.type !== 'array') return 0;
+    if(Number.isFinite(datainfo.maxlen) && datainfo.maxlen > 0) return datainfo.maxlen;
+    if(Number.isFinite(datainfo.minlen) && datainfo.minlen > 0) return datainfo.minlen;
+    return 0;
+  }
+
+  function getBaseCurveStyleFromControls(){
+    return {
+      lineType: curveLineTypeSelect && curveLineTypeSelect.value ? curveLineTypeSelect.value : 'solid',
+      lineWidth: curveLineWidthSelect && curveLineWidthSelect.value ? parseInt(curveLineWidthSelect.value, 10) : 2,
+      lineColor: curveLineColorInput && curveLineColorInput.value ? curveLineColorInput.value : '#007bff'
+    };
+  }
+
+  function getArrayElementStylesFromPanel(){
+    if(!arrayElementStyleList) return [];
+    return Array.from(arrayElementStyleList.querySelectorAll('.array-element-style-row')).map((row) => ({
+      name: row.querySelector('[data-style-field="name"]') ? row.querySelector('[data-style-field="name"]').value.trim() : '',
+      lineType: row.querySelector('[data-style-field="lineType"]') ? row.querySelector('[data-style-field="lineType"]').value : 'solid',
+      lineWidth: row.querySelector('[data-style-field="lineWidth"]') ? parseInt(row.querySelector('[data-style-field="lineWidth"]').value, 10) : 2,
+      lineColor: row.querySelector('[data-style-field="lineColor"]') ? row.querySelector('[data-style-field="lineColor"]').value : '#007bff'
+    }));
+  }
+
+  function renderArrayElementStyleRows(count, presetStyles){
+    if(!arrayElementStyleList) return;
+    arrayElementStyleList.innerHTML = '';
+
+    if(!count) {
+      const empty = document.createElement('div');
+      empty.className = 'array-element-style-empty';
+      empty.textContent = 'Waiting for array size information for this parameter.';
+      arrayElementStyleList.appendChild(empty);
+      return;
+    }
+
+    for(let index = 0; index < count; index += 1) {
+      const baseStyle = getBaseCurveStyleFromControls();
+      const style = Array.isArray(presetStyles) && presetStyles[index]
+        ? Object.assign({}, baseStyle, presetStyles[index])
+        : baseStyle;
+      const row = document.createElement('div');
+      row.className = 'array-element-style-row';
+      row.dataset.index = String(index);
+      row.innerHTML = `
+        <span class="array-element-style-index">[${index}]</span>
+        <input class="ctrl array-element-style-name" data-style-field="name" type="text" placeholder="Line name">
+        <select class="ctrl" data-style-field="lineType">
+          <option value="solid">Solid</option>
+          <option value="dashed">Dashed</option>
+          <option value="dotted">Dotted</option>
+        </select>
+        <select class="ctrl" data-style-field="lineWidth">
+          <option value="1">1 px</option>
+          <option value="2">2 px</option>
+          <option value="4">4 px</option>
+          <option value="6">6 px</option>
+        </select>
+        <input class="ctrl" data-style-field="lineColor" type="color" value="#007bff" title="Line color">
+      `;
+      const nameInput = row.querySelector('[data-style-field="name"]');
+      const typeSelect = row.querySelector('[data-style-field="lineType"]');
+      const widthSelect = row.querySelector('[data-style-field="lineWidth"]');
+      const colorInput = row.querySelector('[data-style-field="lineColor"]');
+      if(nameInput) nameInput.value = style.name || '';
+      if(typeSelect) typeSelect.value = style.lineType || 'solid';
+      if(widthSelect) widthSelect.value = String(style.lineWidth || 2);
+      if(colorInput) colorInput.value = style.lineColor || '#007bff';
+      arrayElementStyleList.appendChild(row);
+    }
+  }
+
+  function refreshArrayElementStylePanel(presetStyles){
+    if(!arrayElementStyleGroup || !arrayElementStyleList) return;
+
+    const isArrayPlot = plotTypeSelect && plotTypeSelect.value === 'array';
+    const selectedKey = deviceParamsSelect && deviceParamsSelect.value ? deviceParamsSelect.value.trim() : '';
+    const paramMeta = getParamMetaForPlotKey(selectedKey);
+    const isArrayParam = !!(isArrayPlot && paramMeta && paramMeta.datainfo && paramMeta.datainfo.type === 'array');
+    arrayElementStyleGroup.style.display = isArrayPlot ? 'block' : 'none';
+
+    if(!isArrayPlot) {
+      arrayElementStyleList.innerHTML = '';
+      return;
+    }
+
+    if(!selectedKey) {
+      arrayElementStyleList.innerHTML = '';
+      const empty = document.createElement('div');
+      empty.className = 'array-element-style-empty';
+      empty.textContent = 'Select an array parameter to configure per-element styles.';
+      arrayElementStyleList.appendChild(empty);
+      return;
+    }
+
+    if(!isArrayParam) {
+      arrayElementStyleList.innerHTML = '';
+      const empty = document.createElement('div');
+      empty.className = 'array-element-style-empty';
+      empty.textContent = 'The selected parameter is not an array parameter.';
+      arrayElementStyleList.appendChild(empty);
+      return;
+    }
+
+    const currentStyles = Array.isArray(presetStyles) ? presetStyles : getArrayElementStylesFromPanel();
+    renderArrayElementStyleRows(getArrayElementCountForPlotKey(selectedKey), currentStyles);
+  }
+
+  function setArrayElementStyleDropdownOpen(isOpen){
+    if(!arrayElementStyleGroup) return;
+    arrayElementStyleGroup.classList.toggle('is-open', !!isOpen);
+    if(arrayElementStyleToggle) {
+      arrayElementStyleToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+  }
+
+  function getArrayChildStyle(parentStyle, index){
+    const style = parentStyle || {};
+    const perElementStyle = Array.isArray(style.arrayElementStyles) ? style.arrayElementStyles[index] : null;
+    return Object.assign({}, style, perElementStyle || {});
+  }
+
+  function getArrayChildTraceLabel(parentKey, index, parentStyle){
+    const childStyle = getArrayChildStyle(parentStyle, index);
+    const baseLabel = childStyle && childStyle.name ? childStyle.name.trim() : `${parentKey}[${index}]`;
+    return formatLegendLabelForKey(parentKey, baseLabel);
+  }
+
   function getAutoPreparedLinesForCurrentType(){
     if(isXYPlotType()) {
       const xKey = xyCurveXSelect && xyCurveXSelect.value ? xyCurveXSelect.value.trim() : '';
@@ -409,9 +627,11 @@ startPollingLatestValues();
       if(curveLineWidthSelect && firstLine.style && firstLine.style.lineWidth) curveLineWidthSelect.value = String(firstLine.style.lineWidth);
       if(curveLineColorInput && firstLine.style && firstLine.style.lineColor) curveLineColorInput.value = firstLine.style.lineColor;
       if(xyChartTypeSelect && firstLine.style && firstLine.style.xyChartType) xyChartTypeSelect.value = firstLine.style.xyChartType;
+      refreshArrayElementStylePanel(firstLine.style && firstLine.style.arrayElementStyles ? firstLine.style.arrayElementStyles : undefined);
     } else {
       if(xyAxisTitleXInput) xyAxisTitleXInput.value = config.xAxisTitle || '';
       if(xyAxisTitleYInput) xyAxisTitleYInput.value = config.yAxisTitle || '';
+      refreshArrayElementStylePanel();
     }
     refreshPlot();
   }
@@ -450,6 +670,7 @@ startPollingLatestValues();
   function updatePlotConfigList(selectedName){
     if(typeof selectedName === 'string') activeSavedPlotName = selectedName;
     refreshPlotConfigSelectors();
+    warmStoredLinePlotHistories();
 
     fetch(`${getApiBase()}/api/plot_configs`)
       .then((response) => response.ok ? response.json() : null)
@@ -504,6 +725,81 @@ startPollingLatestValues();
     });
     localStorage.setItem(PLOT_CONFIG_STORAGE_KEY, JSON.stringify(merged));
     refreshPlotConfigSelectors();
+    warmStoredLinePlotHistories();
+  }
+
+  function ensureStoredLinePlotHistory(config){
+    if(!config || !config.name) return null;
+    const plotType = config.plotType || 'line';
+    if(plotType !== 'line' || !Array.isArray(config.lines) || !config.lines.length) return null;
+
+    const name = config.name;
+    const existing = storedLinePlotHistories[name] || { plotType: 'line', traces: {} };
+    existing.plotType = 'line';
+    existing.name = name;
+    existing.configName = name;
+
+    const nextTraces = {};
+    config.lines.forEach((line) => {
+      if(!line || !line.key) return;
+      const prepared = getPreparedStagedLine(line.key, line.style, line.suffix || line.key);
+      const traceKey = line.key;
+      const prior = existing.traces[traceKey] || {};
+      nextTraces[traceKey] = {
+        key: traceKey,
+        suffix: prepared.suffix || line.suffix || traceKey,
+        name: prior.name || traceKey,
+        style: prepared.style,
+        x: Array.isArray(prior.x) ? prior.x : [],
+        y: Array.isArray(prior.y) ? prior.y : []
+      };
+    });
+
+    existing.traces = nextTraces;
+    storedLinePlotHistories[name] = existing;
+    return existing;
+  }
+
+  function warmStoredLinePlotHistories(){
+    const configs = getStoredPlotConfigs();
+    Object.keys(configs).forEach((name) => {
+      const config = configs[name];
+      if(config && Array.isArray(config.lines) && config.lines.length) {
+        if(!config.name) config.name = name;
+        ensureStoredLinePlotHistory(config);
+        return;
+      }
+
+      if(warmingPlotConfigNames.has(name)) return;
+      warmingPlotConfigNames.add(name);
+      loadPlotConfigByName(name, (loadedConfig) => {
+        warmingPlotConfigNames.delete(name);
+        if(loadedConfig && !loadedConfig.name) loadedConfig.name = name;
+        ensureStoredLinePlotHistory(loadedConfig);
+      });
+    });
+  }
+
+  function normalizeTimeSeriesValue(value){
+    if(Array.isArray(value)) return JSON.stringify(value);
+    if(typeof value === 'number') return value;
+    const numericValue = parseFloat(value);
+    return Number.isFinite(numericValue) ? numericValue : null;
+  }
+
+  function appendToStoredLinePlotHistories(emittedKey, value, now){
+    Object.values(storedLinePlotHistories).forEach((history) => {
+      if(!history || history.plotType !== 'line' || !history.traces) return;
+
+      Object.values(history.traces).forEach((trace) => {
+        if(!trace) return;
+        if(!(plotKeyMatches(emittedKey, trace.key) || plotKeyMatches(emittedKey, trace.suffix))) return;
+
+        const yValue = normalizeTimeSeriesValue(value);
+        trace.x.push(now);
+        trace.y.push(yValue);
+      });
+    });
   }
 
   function findExistingPlotByName(name){
@@ -520,11 +816,62 @@ startPollingLatestValues();
     }
   }
 
+  function snapshotPlotEntryHistory(entry){
+    if(!entry || !entry.configName) return;
+
+    const history = {
+      plotType: entry.plotType || 'line',
+      xAxisTitle: entry.xAxisTitle || '',
+      yAxisTitle: entry.yAxisTitle || '',
+      traces: {}
+    };
+
+    Object.keys(entry.traces || {}).forEach((key) => {
+      const meta = entry.traces[key];
+      if(!meta) return;
+
+      if(meta.isArrayParent) {
+        history.traces[key] = {
+          isArrayParent: true,
+          suffix: meta.suffix || key,
+          name: meta.name || key,
+          style: meta.style || {}
+        };
+        return;
+      }
+
+      if(!meta.traceObj) return;
+
+      history.traces[key] = {
+        x: Array.isArray(meta.traceObj.x) ? meta.traceObj.x.slice() : [],
+        y: Array.isArray(meta.traceObj.y) ? meta.traceObj.y.slice() : [],
+        name: meta.traceObj.name || meta.name || key,
+        suffix: meta.suffix || key,
+        style: meta.style || {},
+        parent: meta.parent || '',
+        xKey: meta.xKey || '',
+        yKey: meta.yKey || '',
+        xSuffix: meta.xSuffix || '',
+        ySuffix: meta.ySuffix || '',
+        latestX: meta.latestX,
+        latestY: meta.latestY,
+        latestXSeries: Array.isArray(meta.latestXSeries) ? meta.latestXSeries.slice() : undefined,
+        latestYSeries: Array.isArray(meta.latestYSeries) ? meta.latestYSeries.slice() : undefined,
+        lastPushedX: meta.lastPushedX,
+        lastPushedY: meta.lastPushedY,
+        lastPushedSignature: meta.lastPushedSignature
+      };
+    });
+
+    plotHistoryCache[entry.configName] = history;
+  }
+
   function removePlotEntryByName(name){
     if(!name) return;
     Object.keys(plotsMap).forEach((id) => {
       const entry = plotsMap[id];
       if(entry && entry.containerDiv && entry.containerDiv.dataset && entry.containerDiv.dataset.plotName === name){
+        snapshotPlotEntryHistory(entry);
         try {
           if(entry.plotDiv) Plotly.purge(entry.plotDiv);
         } catch (e) {}
@@ -619,6 +966,7 @@ startPollingLatestValues();
   function removePlotEntryById(id){
     const entry = plotsMap[id];
     if(!entry) return;
+    snapshotPlotEntryHistory(entry);
     try {
       if(entry.plotDiv) Plotly.purge(entry.plotDiv);
     } catch (e) {}
@@ -833,6 +1181,8 @@ startPollingLatestValues();
       xAxisTitle: config.xAxisTitle || '',
       yAxisTitle: config.yAxisTitle || ''
     };
+    const cachedHistory = plotHistoryCache[plotName] || null;
+    const storedLineHistory = plotEntry.plotType === 'line' ? ensureStoredLinePlotHistory(Object.assign({ name: plotName }, config)) : null;
     const savedPlotControl = document.createElement('div');
     savedPlotControl.className = 'plot-saved-control';
     const savedPlotSelect = document.createElement('select');
@@ -860,7 +1210,7 @@ startPollingLatestValues();
       if(plotEntry.plotType === 'array') {
         plotEntry.traces[key] = { isArrayParent: true, suffix: prepared.suffix, children: {}, name: key, style: prepared.style };
       } else if(plotEntry.plotType === 'xy') {
-        const traceLabel = line.label || `${prepared.yKey || line.yKey || key} vs ${prepared.xKey || line.xKey || key}`;
+        const traceLabel = line.label || formatXYLegendLabel(prepared.xKey || line.xKey || '', prepared.yKey || line.yKey || key);
         const trace = { x: [], y: [], name: traceLabel };
         applyTraceStyle(trace, prepared.style);
         plotEntry.traces[key] = {
@@ -884,12 +1234,68 @@ startPollingLatestValues();
           style: prepared.style
         };
       } else {
-        const traceLabel = key || prepared.suffix || 'trace';
+        const traceLabel = formatLegendLabelForKey(key, key || prepared.suffix || 'trace');
         const trace = { x: [], y: [], mode: 'lines+markers', name: traceLabel };
         applyTraceStyle(trace, prepared.style);
         plotEntry.traces[key] = { x: trace.x, y: trace.y, traceObj: trace, name: traceLabel, suffix: prepared.suffix, _traceIndex: undefined, _lastSent: 0, style: prepared.style };
       }
     });
+
+    if(cachedHistory && cachedHistory.plotType === plotEntry.plotType) {
+      if(cachedHistory.xAxisTitle && !plotEntry.xAxisTitle) plotEntry.xAxisTitle = cachedHistory.xAxisTitle;
+      if(cachedHistory.yAxisTitle && !plotEntry.yAxisTitle) plotEntry.yAxisTitle = cachedHistory.yAxisTitle;
+
+      Object.keys(cachedHistory.traces || {}).forEach((key) => {
+        const cachedTrace = cachedHistory.traces[key];
+        if(!cachedTrace || cachedTrace.isArrayParent) return;
+
+        if(plotEntry.traces[key] && plotEntry.traces[key].traceObj) {
+          const meta = plotEntry.traces[key];
+          meta.traceObj.x = Array.isArray(cachedTrace.x) ? cachedTrace.x.slice() : [];
+          meta.traceObj.y = Array.isArray(cachedTrace.y) ? cachedTrace.y.slice() : [];
+          meta.x = meta.traceObj.x;
+          meta.y = meta.traceObj.y;
+          meta.latestX = cachedTrace.latestX;
+          meta.latestY = cachedTrace.latestY;
+          meta.latestXSeries = Array.isArray(cachedTrace.latestXSeries) ? cachedTrace.latestXSeries.slice() : undefined;
+          meta.latestYSeries = Array.isArray(cachedTrace.latestYSeries) ? cachedTrace.latestYSeries.slice() : undefined;
+          meta.lastPushedX = cachedTrace.lastPushedX;
+          meta.lastPushedY = cachedTrace.lastPushedY;
+          meta.lastPushedSignature = cachedTrace.lastPushedSignature;
+          return;
+        }
+
+        if(plotEntry.plotType === 'array' && cachedTrace.parent && plotEntry.traces[cachedTrace.parent]) {
+          const traceObj = {
+            x: Array.isArray(cachedTrace.x) ? cachedTrace.x.slice() : [],
+            y: Array.isArray(cachedTrace.y) ? cachedTrace.y.slice() : [],
+            mode: 'lines+markers',
+            name: cachedTrace.name || key
+          };
+          applyTraceStyle(traceObj, cachedTrace.style || plotEntry.traces[cachedTrace.parent].style || {});
+          plotEntry.traces[key] = {
+            traceObj,
+            suffix: cachedTrace.suffix || key,
+            _traceIndex: undefined,
+            _lastSent: 0,
+            parent: cachedTrace.parent,
+            style: cachedTrace.style || plotEntry.traces[cachedTrace.parent].style || {}
+          };
+        }
+      });
+    }
+
+    if(storedLineHistory && storedLineHistory.traces) {
+      Object.keys(storedLineHistory.traces).forEach((key) => {
+        const storedTrace = storedLineHistory.traces[key];
+        const meta = plotEntry.traces[key];
+        if(!storedTrace || !meta || !meta.traceObj) return;
+        meta.traceObj.x = Array.isArray(storedTrace.x) ? storedTrace.x.slice() : [];
+        meta.traceObj.y = Array.isArray(storedTrace.y) ? storedTrace.y.slice() : [];
+        meta.x = meta.traceObj.x;
+        meta.y = meta.traceObj.y;
+      });
+    }
 
     plotsMap[id] = plotEntry;
     const initTraceMetas = Object.values(plotEntry.traces).filter(t => t && t.traceObj);
@@ -956,13 +1362,12 @@ startPollingLatestValues();
   }
 
   function getSelectedCurveStyle(){
-    const style = {
-      lineType: curveLineTypeSelect && curveLineTypeSelect.value ? curveLineTypeSelect.value : 'solid',
-      lineWidth: curveLineWidthSelect && curveLineWidthSelect.value ? parseInt(curveLineWidthSelect.value, 10) : 2,
-      lineColor: curveLineColorInput && curveLineColorInput.value ? curveLineColorInput.value : '#007bff'
-    };
+    const style = getBaseCurveStyleFromControls();
     if(isXYPlotType()) {
       style.xyChartType = xyChartTypeSelect && xyChartTypeSelect.value ? xyChartTypeSelect.value : 'area';
+    }
+    if(plotTypeSelect && plotTypeSelect.value === 'array') {
+      style.arrayElementStyles = getArrayElementStylesFromPanel();
     }
     return style;
   }
@@ -1128,6 +1533,7 @@ startPollingLatestValues();
     populateParamSelect(deviceParamsSelect, data, '-- select device.param --');
     populateParamSelect(xyCurveXSelect, data, '-- select x device.param --');
     populateParamSelect(xyCurveYSelect, data, '-- select y device.param --');
+    refreshArrayElementStylePanel();
   }
 
  
@@ -1311,15 +1717,6 @@ startPollingLatestValues();
     meta.lastPushedY = nextY[nextY.length - 1];
     meta.lastPushedSignature = batchSignature;
 
-    if(typeof meta._traceIndex === 'number') {
-      try {
-        Plotly.extendTraces(plotEntry.plotDiv, { x: [nextX], y: [nextY] }, [meta._traceIndex]);
-      }
-      catch(e)
-      {
-      }
-    }
-
     return true;
   }
 
@@ -1368,7 +1765,7 @@ startPollingLatestValues();
           // Only include real trace objects in full react
           const traceMetas = traces.filter(tt => tt && tt.traceObj);
           const data = traceMetas.map(tt=>tt.traceObj);
-          Plotly.react(p.plotDiv, data, layoutForType(p.plotType), {responsive:true}).then(()=>{
+          Plotly.react(p.plotDiv, data, layoutForType(p.plotType, p), {responsive:true}).then(()=>{
             traceMetas.forEach((tt,i)=> tt._traceIndex = i);
             traceMetas.forEach(tt=> tt._lastSent = tt.traceObj.x.length);
           }).catch(e=>{ console.error('Plotly.react failed during flush', e); });
@@ -1394,11 +1791,12 @@ startPollingLatestValues();
       const childKey = `${parentKey}::${i}`;
       if (!plotEntry.traces[childKey]) 
       {
-        const name = `${parentKey}[${i}]`;
+        const name = getArrayChildTraceLabel(parentKey, i, (plotEntry.traces[parentKey] || {}).style);
         const traceObj = { x: [], y: [], mode: 'lines+markers', name: name };
         const parentMeta = plotEntry.traces[parentKey] || {};
-        applyTraceStyle(traceObj, parentMeta.style);
-        plotEntry.traces[childKey] = { traceObj: traceObj, suffix: childKey, _traceIndex: undefined, _lastSent: 0, parent: parentKey, style: parentMeta.style };
+        const childStyle = getArrayChildStyle(parentMeta.style, i);
+        applyTraceStyle(traceObj, childStyle);
+        plotEntry.traces[childKey] = { traceObj: traceObj, suffix: childKey, _traceIndex: undefined, _lastSent: 0, parent: parentKey, style: childStyle };
         toAdd.push({ traceObj: traceObj, childKey: childKey });
       }
     }
@@ -1486,8 +1884,14 @@ startPollingLatestValues();
       // Use ev.detail.value.value if present, else fallback
    
       const val = (ev.detail.value && typeof ev.detail.value.value !== 'undefined') ? ev.detail.value.value : ev.detail.value;
+      latestPlotValues[emittedKey] = val;
+
+      if (plotTypeSelect && plotTypeSelect.value === 'array' && deviceParamsSelect && deviceParamsSelect.value && plotKeyMatches(emittedKey, deviceParamsSelect.value)) {
+        refreshArrayElementStylePanel();
+      }
    
       const now = new Date();
+      appendToStoredLinePlotHistories(emittedKey, val, now);
       // route update to all created plot traces that match
       // mark plots that received updates so we only redraw those
    
@@ -1523,9 +1927,6 @@ startPollingLatestValues();
                   const yval = (typeof elem === 'number') ? elem : (parseFloat(elem) || null);
                   childMeta.traceObj.x.push(now);
                   childMeta.traceObj.y.push(yval);
-                  if (typeof childMeta._traceIndex === 'number') {
-                    try { Plotly.extendTraces(p.plotDiv, { x: [[now]], y: [[yval]] }, [childMeta._traceIndex]); } catch(e) { }
-                  }
                 });
                 updatedPlots.add(p.id);
               } else if (p.plotType === 'xy' && meta && meta.traceObj && (xyMatchX || xyMatchY)) {
@@ -1559,17 +1960,6 @@ startPollingLatestValues();
                   meta.traceObj.y.push(yval);
                   // skip parent placeholders during per-trace restyle/extend; they don't have traceObj
                   if (meta && meta.isArrayParent) return;
-                  if(typeof meta._traceIndex === 'number')
-                  {
-                    try 
-                    {
-                       Plotly.extendTraces(p.plotDiv, { x: [[now]], y: [[yval]] }, [meta._traceIndex]); 
-                    }
-                    catch(e) 
-                    {
-
-                    }
-                  }
                   updatedPlots.add(p.id);
                 }
               }
@@ -1600,7 +1990,17 @@ startPollingLatestValues();
 
       plotTypeSelect && plotTypeSelect.addEventListener('change', () => {
         updatePlotTypeControls();
+        refreshArrayElementStylePanel();
         refreshPlot();
+      });
+
+      deviceParamsSelect && deviceParamsSelect.addEventListener('change', () => {
+        refreshArrayElementStylePanel();
+      });
+
+      arrayElementStyleToggle && arrayElementStyleToggle.addEventListener('click', () => {
+        const isOpen = arrayElementStyleGroup && arrayElementStyleGroup.classList.contains('is-open');
+        setArrayElementStyleDropdownOpen(!isOpen);
       });
 
       xyChartTypeSelect && xyChartTypeSelect.addEventListener('change', refreshPlot);
@@ -1628,6 +2028,8 @@ startPollingLatestValues();
 
   // start
   updatePlotTypeControls({ clearIncompatibleStaged: false });
+  setArrayElementStyleDropdownOpen(true);
+  refreshArrayElementStylePanel();
   loadDeviceParams();
   updatePlotConfigList();
   if(typeof waitForSpin === 'function') {
