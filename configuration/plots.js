@@ -4,6 +4,9 @@
 function startPollingLatestValues() {
 
   setInterval(() => {
+    if (typeof window.isConfigurationModeActive === 'function' && window.isConfigurationModeActive()) {
+      return;
+    }
     // Use the current page host so requests work when UI is served from a different host
     // (e.g. container/host mappings). Port 8001 is where the backend Flask API serves latest values.
 
@@ -50,8 +53,12 @@ startPollingLatestValues();
 
   const deviceParamsSelect = document.getElementById('curve-key');
   const xyCurveKeyGroup = document.getElementById('xy-curve-key-group');
+  const xyAxisTitleGroup = document.getElementById('xy-axis-title-group');
   const xyCurveXSelect = document.getElementById('curve-key-x');
   const xyCurveYSelect = document.getElementById('curve-key-y');
+  const xyAxisTitleXInput = document.getElementById('xy-axis-title-x');
+  const xyAxisTitleYInput = document.getElementById('xy-axis-title-y');
+  const xyChartTypeSelect = document.getElementById('xy-chart-type');
   const curveLineTypeSelect = document.getElementById('curve-line-type');
   const curveLineWidthSelect = document.getElementById('curve-line-width');
   const curveLineColorInput = document.getElementById('curve-line-color');
@@ -82,6 +89,7 @@ startPollingLatestValues();
 
   // created plots: id -> { id, containerDiv, plotDiv, traces: { key -> {x,y,traceObj,suffix} } }
   const plotsMap = {};
+  let currentDeviceParamsData = {};
   let plotCounter = 0;
 
   function isXYPlotType(typeOverride){
@@ -102,6 +110,8 @@ startPollingLatestValues();
     const isXY = isXYPlotType();
     if(deviceParamsSelect) deviceParamsSelect.style.display = isXY ? 'none' : '';
     if(xyCurveKeyGroup) xyCurveKeyGroup.style.display = isXY ? 'inline-flex' : 'none';
+    if(xyAxisTitleGroup) xyAxisTitleGroup.style.display = isXY ? 'flex' : 'none';
+    if(xyChartTypeSelect) xyChartTypeSelect.style.display = isXY ? '' : 'none';
 
     if(!settings.clearIncompatibleStaged || !Object.keys(staged).length) {
       return;
@@ -252,6 +262,58 @@ startPollingLatestValues();
     }, extra || {});
   }
 
+  function splitPlotKey(key){
+    const rawKey = String(key || '').trim();
+    const dotIndex = rawKey.lastIndexOf('.');
+    if(dotIndex === -1) {
+      return { device: rawKey, param: '' };
+    }
+
+    return {
+      device: rawKey.slice(0, dotIndex),
+      param: rawKey.slice(dotIndex + 1)
+    };
+  }
+
+  function getModuleIdentityForDevice(deviceName){
+    const rawName = String(deviceName || '').trim();
+    if(!rawName) return '';
+
+    const directInfo = currentDeviceParamsData[rawName] || {};
+    if(directInfo.module_name) return directInfo.module_name;
+    if(directInfo.original_name) return directInfo.original_name;
+
+    const knownDevices = Object.keys(currentDeviceParamsData || {});
+    for(const device of knownDevices) {
+      const info = currentDeviceParamsData[device] || {};
+      const moduleName = info.module_name || info.original_name || '';
+      if(!moduleName) continue;
+      if(rawName === device || rawName === moduleName || rawName.endsWith(`_${moduleName}`)) {
+        return moduleName;
+      }
+    }
+
+    return rawName;
+  }
+
+  function getCanonicalPlotKey(key){
+    const parts = splitPlotKey(key);
+    if(!parts.device || !parts.param) return String(key || '').trim();
+    const moduleIdentity = getModuleIdentityForDevice(parts.device);
+    return moduleIdentity ? `${moduleIdentity}.${parts.param}` : `${parts.device}.${parts.param}`;
+  }
+
+  function plotKeyMatches(emittedKey, candidateKey){
+    const rawEmittedKey = String(emittedKey || '').trim();
+    const rawCandidateKey = String(candidateKey || '').trim();
+    if(!rawEmittedKey || !rawCandidateKey) return false;
+    if(rawEmittedKey === rawCandidateKey || rawEmittedKey.endsWith(rawCandidateKey)) return true;
+
+    const canonicalEmittedKey = getCanonicalPlotKey(rawEmittedKey);
+    const canonicalCandidateKey = getCanonicalPlotKey(rawCandidateKey);
+    return !!canonicalEmittedKey && canonicalEmittedKey === canonicalCandidateKey;
+  }
+
   function getAutoPreparedLinesForCurrentType(){
     if(isXYPlotType()) {
       const xKey = xyCurveXSelect && xyCurveXSelect.value ? xyCurveXSelect.value.trim() : '';
@@ -276,8 +338,26 @@ startPollingLatestValues();
 
   function getCurrentPlotConfig(nameOverride){
     const nextStaged = Object.keys(staged).length ? staged : getAutoPreparedLinesForCurrentType();
+    const activePlotType = plotTypeSelect && plotTypeSelect.value ? plotTypeSelect.value : 'line';
+    const activeXYChartType = xyChartTypeSelect && xyChartTypeSelect.value ? xyChartTypeSelect.value : 'area';
+    const firstKey = Object.keys(nextStaged)[0] || '';
+    const firstMeta = firstKey ? (nextStaged[firstKey] || {}) : {};
+    const fallbackXAxisTitle = firstMeta.xKey || 'X';
+    const fallbackYAxisTitle = firstMeta.yKey || 'Y';
+    const xAxisTitle = xyAxisTitleXInput && xyAxisTitleXInput.value ? xyAxisTitleXInput.value.trim() : '';
+    const yAxisTitle = xyAxisTitleYInput && xyAxisTitleYInput.value ? xyAxisTitleYInput.value.trim() : '';
     const lines = Object.keys(nextStaged).map((key) => {
       const meta = nextStaged[key] || {};
+      const style = Object.assign({
+        lineType: 'solid',
+        lineWidth: 2,
+        lineColor: '#007bff'
+      }, meta.style || {});
+
+      if(activePlotType === 'xy') {
+        style.xyChartType = activeXYChartType;
+      }
+
       return {
         key,
         suffix: meta.suffix || key,
@@ -286,16 +366,14 @@ startPollingLatestValues();
         xSuffix: meta.xSuffix || '',
         ySuffix: meta.ySuffix || '',
         label: meta.label || '',
-        style: Object.assign({
-          lineType: 'solid',
-          lineWidth: 2,
-          lineColor: '#007bff'
-        }, meta.style || {})
+        style
       };
     });
     return {
       name: nameOverride || '',
-      plotType: plotTypeSelect && plotTypeSelect.value ? plotTypeSelect.value : 'line',
+      plotType: activePlotType,
+      xAxisTitle: activePlotType === 'xy' ? (xAxisTitle || fallbackXAxisTitle) : '',
+      yAxisTitle: activePlotType === 'xy' ? (yAxisTitle || fallbackYAxisTitle) : '',
       lines,
       savedAt: new Date().toISOString()
     };
@@ -322,12 +400,18 @@ startPollingLatestValues();
       if(isXYPlotType(config.plotType)) {
         if(xyCurveXSelect) xyCurveXSelect.value = firstLine.xKey || '';
         if(xyCurveYSelect) xyCurveYSelect.value = firstLine.yKey || '';
+        if(xyAxisTitleXInput) xyAxisTitleXInput.value = config.xAxisTitle || firstLine.xKey || '';
+        if(xyAxisTitleYInput) xyAxisTitleYInput.value = config.yAxisTitle || firstLine.yKey || '';
       } else if(deviceParamsSelect) {
         deviceParamsSelect.value = firstLine.key;
       }
       if(curveLineTypeSelect && firstLine.style && firstLine.style.lineType) curveLineTypeSelect.value = firstLine.style.lineType;
       if(curveLineWidthSelect && firstLine.style && firstLine.style.lineWidth) curveLineWidthSelect.value = String(firstLine.style.lineWidth);
       if(curveLineColorInput && firstLine.style && firstLine.style.lineColor) curveLineColorInput.value = firstLine.style.lineColor;
+      if(xyChartTypeSelect && firstLine.style && firstLine.style.xyChartType) xyChartTypeSelect.value = firstLine.style.xyChartType;
+    } else {
+      if(xyAxisTitleXInput) xyAxisTitleXInput.value = config.xAxisTitle || '';
+      if(xyAxisTitleYInput) xyAxisTitleYInput.value = config.yAxisTitle || '';
     }
     refreshPlot();
   }
@@ -569,6 +653,10 @@ startPollingLatestValues();
     try { Plotly.Plots.resize(entry.plotDiv); } catch (e) {}
   }
 
+  function arePlotPanelsMovable() {
+    return !(typeof window.isConfigurationModeActive === 'function' && !window.isConfigurationModeActive());
+  }
+
   function loadPlotConfigByName(name, callback){
     const configs = getStoredPlotConfigs();
     const cachedConfig = configs[name];
@@ -627,6 +715,8 @@ startPollingLatestValues();
     const layoutConfig = {
       name: savedPlot.configName || savedPlot.title || `Plot ${plotCounter + 1}`,
       plotType: savedPlot.plotType || 'line',
+      xAxisTitle: savedPlot.xAxisTitle || '',
+      yAxisTitle: savedPlot.yAxisTitle || '',
       lines: Array.isArray(savedPlot.traces)
         ? savedPlot.traces.map((key) => ({
             key,
@@ -657,14 +747,20 @@ startPollingLatestValues();
       plotEntry.containerDiv.style.height = savedPlot.height;
       plotEntry.plotDiv.style.height = savedPlot.height;
     }
-    plotEntry.containerDiv.style.transform = '';
-    plotEntry.containerDiv.removeAttribute('data-x');
-    plotEntry.containerDiv.removeAttribute('data-y');
+    applyPlotPanelGeometry(plotEntry, {
+      left: savedPlot.left || '',
+      top: savedPlot.top || '',
+      width: savedPlot.width || '',
+      height: savedPlot.height || '',
+      transform: savedPlot.transform || '',
+      zIndex: savedPlot.zIndex || plotEntry.containerDiv.style.zIndex || '5',
+      dataX: savedPlot.dataX || '',
+      dataY: savedPlot.dataY || ''
+    });
     if(isConfigureLayout){
       try { makeDraggable(plotEntry.containerDiv); } catch (e) {}
       try { makeResizable(plotEntry.containerDiv); } catch (e) {}
     }
-    try { Plotly.Plots.resize(plotEntry.plotDiv); } catch (e) {}
     setPlotConfigSelection(plotEntry.configName || '');
     return plotEntry;
   }
@@ -727,7 +823,16 @@ startPollingLatestValues();
       console.debug('plot is not moveable');
     }
 
-    const plotEntry = { id, containerDiv: container, plotDiv: plotDiv, traces: {}, plotType: config.plotType || 'line', configName: plotName };
+    const plotEntry = {
+      id,
+      containerDiv: container,
+      plotDiv: plotDiv,
+      traces: {},
+      plotType: config.plotType || 'line',
+      configName: plotName,
+      xAxisTitle: config.xAxisTitle || '',
+      yAxisTitle: config.yAxisTitle || ''
+    };
     const savedPlotControl = document.createElement('div');
     savedPlotControl.className = 'plot-saved-control';
     const savedPlotSelect = document.createElement('select');
@@ -756,7 +861,7 @@ startPollingLatestValues();
         plotEntry.traces[key] = { isArrayParent: true, suffix: prepared.suffix, children: {}, name: key, style: prepared.style };
       } else if(plotEntry.plotType === 'xy') {
         const traceLabel = line.label || `${prepared.yKey || line.yKey || key} vs ${prepared.xKey || line.xKey || key}`;
-        const trace = { x: [], y: [], mode: 'lines+markers', name: traceLabel };
+        const trace = { x: [], y: [], name: traceLabel };
         applyTraceStyle(trace, prepared.style);
         plotEntry.traces[key] = {
           x: trace.x,
@@ -769,8 +874,11 @@ startPollingLatestValues();
           ySuffix: prepared.ySuffix || line.ySuffix || prepared.yKey || line.yKey || '',
           latestX: undefined,
           latestY: undefined,
+          latestXSeries: undefined,
+          latestYSeries: undefined,
           lastPushedX: undefined,
           lastPushedY: undefined,
+          lastPushedSignature: undefined,
           _traceIndex: undefined,
           _lastSent: 0,
           style: prepared.style
@@ -785,7 +893,7 @@ startPollingLatestValues();
 
     plotsMap[id] = plotEntry;
     const initTraceMetas = Object.values(plotEntry.traces).filter(t => t && t.traceObj);
-    Plotly.newPlot(plotDiv, initTraceMetas.map(t=>t.traceObj), layoutForType(plotEntry.plotType)).then(()=>{
+    Plotly.newPlot(plotDiv, initTraceMetas.map(t=>t.traceObj), layoutForType(plotEntry.plotType, plotEntry)).then(()=>{
       initTraceMetas.forEach((t,i)=>{ t._traceIndex = i; if (Array.isArray(t.x)) t._lastSent = t.x.length; });
       Plotly.relayout(plotDiv, { title: '' });
       if (titleDiv.parentNode !== container) {
@@ -804,6 +912,7 @@ startPollingLatestValues();
           inertia: true,
           listeners: {
             move (event) {
+              if (!arePlotPanelsMovable()) return;
               const x = (parseFloat(container.getAttribute('data-x')) || 0) + event.dx;
               const y = (parseFloat(container.getAttribute('data-y')) || 0) + event.dy;
               container.style.transform = `translate(${x}px, ${y}px)`;
@@ -847,16 +956,44 @@ startPollingLatestValues();
   }
 
   function getSelectedCurveStyle(){
-    return {
+    const style = {
       lineType: curveLineTypeSelect && curveLineTypeSelect.value ? curveLineTypeSelect.value : 'solid',
       lineWidth: curveLineWidthSelect && curveLineWidthSelect.value ? parseInt(curveLineWidthSelect.value, 10) : 2,
       lineColor: curveLineColorInput && curveLineColorInput.value ? curveLineColorInput.value : '#007bff'
     };
+    if(isXYPlotType()) {
+      style.xyChartType = xyChartTypeSelect && xyChartTypeSelect.value ? xyChartTypeSelect.value : 'area';
+    }
+    return style;
   }
 
   function applyTraceStyle(traceObj, style){
     if(!traceObj) return;
     const nextStyle = style || {};
+    const xyChartType = nextStyle.xyChartType;
+
+    if(xyChartType === 'bar') {
+      traceObj.type = 'bar';
+      traceObj.orientation = 'v';
+      delete traceObj.mode;
+      delete traceObj.fill;
+      delete traceObj.line;
+      traceObj.marker = Object.assign({}, traceObj.marker || {}, {
+        color: nextStyle.lineColor || '#007bff',
+        line: {
+          width: nextStyle.lineWidth || 1,
+          color: nextStyle.lineColor || '#007bff'
+        }
+      });
+      return;
+    }
+
+    if(xyChartType === 'area') {
+      traceObj.type = 'scatter';
+      delete traceObj.orientation;
+      traceObj.mode = 'lines';
+      traceObj.fill = 'tozeroy';
+    }
     traceObj.line = Object.assign({}, traceObj.line || {}, {
       width: nextStyle.lineWidth || 2,
       color: nextStyle.lineColor || '#007bff',
@@ -987,6 +1124,7 @@ startPollingLatestValues();
   }
 
   function populateDeviceParams(data){
+    currentDeviceParamsData = data || {};
     populateParamSelect(deviceParamsSelect, data, '-- select device.param --');
     populateParamSelect(xyCurveXSelect, data, '-- select x device.param --');
     populateParamSelect(xyCurveYSelect, data, '-- select y device.param --');
@@ -994,15 +1132,15 @@ startPollingLatestValues();
 
  
 
-  function layoutForType(typeOverride){
+  function layoutForType(typeOverride, plotMeta){
 
     const type = typeOverride || (plotTypeSelect ? plotTypeSelect.value : 'line');
 
     const layout = { title: '', xaxis:{type:'date'}, margin:{t:30} };
 
     if(type === 'xy') {
-      layout.xaxis = { title: 'X', type: 'linear' };
-      layout.yaxis = { title: 'Y', type: 'linear' };
+      layout.xaxis = { title: (plotMeta && plotMeta.xAxisTitle) ? plotMeta.xAxisTitle : 'X', type: 'linear' };
+      layout.yaxis = { title: (plotMeta && plotMeta.yAxisTitle) ? plotMeta.yAxisTitle : 'Y', type: 'linear' };
     }
 
     return withTimeRangeControls(layout);
@@ -1018,7 +1156,7 @@ startPollingLatestValues();
       const data = traceMetas.map(t => t.traceObj);
 
       // update the whole plot with only the real traces
-      Plotly.react(p.plotDiv, data, layoutForType(p.plotType), {responsive:true}).then(()=>{
+      Plotly.react(p.plotDiv, data, layoutForType(p.plotType, p), {responsive:true}).then(()=>{
         traceMetas.forEach((t,i)=> t._traceIndex = i);
       }).catch(e=>{ });
   
@@ -1035,6 +1173,7 @@ startPollingLatestValues();
           inertia: true,
           listeners: {
             move (event) {
+              if (!arePlotPanelsMovable()) return;
               const x = (parseFloat(container.getAttribute('data-x')) || 0) + event.dx;
               const y = (parseFloat(container.getAttribute('data-y')) || 0) + event.dy;
               container.style.transform = `translate(${x}px, ${y}px)`;
@@ -1132,6 +1271,56 @@ startPollingLatestValues();
   
     });
   
+  }
+
+  function normalizeXYSeriesValues(value){
+    if (Array.isArray(value)) {
+      return value.map((item) => (typeof item === 'number' ? item : parseFloat(item)));
+    }
+
+    const numericValue = (typeof value === 'number') ? value : parseFloat(value);
+    return Number.isFinite(numericValue) ? [numericValue] : [];
+  }
+
+  function appendXYSeriesPoints(plotEntry, meta){
+    if (!meta || !meta.traceObj) return false;
+
+    const xValues = Array.isArray(meta.latestXSeries) ? meta.latestXSeries : [];
+    const yValues = Array.isArray(meta.latestYSeries) ? meta.latestYSeries : [];
+    const pairCount = Math.min(xValues.length, yValues.length);
+    if (!pairCount) return false;
+
+    const nextX = [];
+    const nextY = [];
+    for (let i = 0; i < pairCount; i += 1) {
+      const xValue = xValues[i];
+      const yValue = yValues[i];
+      if (!Number.isFinite(xValue) || !Number.isFinite(yValue)) continue;
+      nextX.push(xValue);
+      nextY.push(yValue);
+    }
+
+    if (!nextX.length || !nextY.length) return false;
+
+    const batchSignature = JSON.stringify({ x: nextX, y: nextY });
+    if (meta.lastPushedSignature === batchSignature) return false;
+
+    meta.traceObj.x.push(...nextX);
+    meta.traceObj.y.push(...nextY);
+    meta.lastPushedX = nextX[nextX.length - 1];
+    meta.lastPushedY = nextY[nextY.length - 1];
+    meta.lastPushedSignature = batchSignature;
+
+    if(typeof meta._traceIndex === 'number') {
+      try {
+        Plotly.extendTraces(plotEntry.plotDiv, { x: [nextX], y: [nextY] }, [meta._traceIndex]);
+      }
+      catch(e)
+      {
+      }
+    }
+
+    return true;
   }
 
   // Flush buffered points to the visible Plotly plots every interval (append new points)
@@ -1279,6 +1468,9 @@ startPollingLatestValues();
   window.addEventListener('spinupdate', function(ev){
   
     try{
+      if (typeof window.isConfigurationModeActive === 'function' && window.isConfigurationModeActive()) {
+        return;
+      }
    
       lastSpinupdateTime = new Date();
    
@@ -1311,10 +1503,10 @@ startPollingLatestValues();
    
             const meta = p.traces[k];
    
-            const xyMatchX = p.plotType === 'xy' && meta && meta.xSuffix && (emittedKey === meta.xKey || emittedKey.endsWith(meta.xSuffix));
-            const xyMatchY = p.plotType === 'xy' && meta && meta.ySuffix && (emittedKey === meta.yKey || emittedKey.endsWith(meta.ySuffix));
+            const xyMatchX = p.plotType === 'xy' && meta && meta.xSuffix && (plotKeyMatches(emittedKey, meta.xKey) || plotKeyMatches(emittedKey, meta.xSuffix));
+            const xyMatchY = p.plotType === 'xy' && meta && meta.ySuffix && (plotKeyMatches(emittedKey, meta.yKey) || plotKeyMatches(emittedKey, meta.ySuffix));
 
-            if(xyMatchX || xyMatchY || emittedKey === k || (meta && meta.suffix && emittedKey.endsWith(meta.suffix))){
+            if(xyMatchX || xyMatchY || plotKeyMatches(emittedKey, k) || (meta && plotKeyMatches(emittedKey, meta.suffix))){
    
               matched = true;
     
@@ -1337,28 +1529,19 @@ startPollingLatestValues();
                 });
                 updatedPlots.add(p.id);
               } else if (p.plotType === 'xy' && meta && meta.traceObj && (xyMatchX || xyMatchY)) {
-                const numericVal = (typeof val === 'number') ? val : parseFloat(val);
-                if(Number.isFinite(numericVal)) {
-                  if(xyMatchX) meta.latestX = numericVal;
-                  if(xyMatchY) meta.latestY = numericVal;
+                const numericSeries = normalizeXYSeriesValues(val);
+                if(numericSeries.length) {
+                  if(xyMatchX) {
+                    meta.latestXSeries = numericSeries;
+                    meta.latestX = numericSeries[numericSeries.length - 1];
+                  }
+                  if(xyMatchY) {
+                    meta.latestYSeries = numericSeries;
+                    meta.latestY = numericSeries[numericSeries.length - 1];
+                  }
 
-                  if(Number.isFinite(meta.latestX) && Number.isFinite(meta.latestY)) {
-                    const isDuplicatePoint = meta.lastPushedX === meta.latestX && meta.lastPushedY === meta.latestY;
-                    if(!isDuplicatePoint) {
-                      meta.traceObj.x.push(meta.latestX);
-                      meta.traceObj.y.push(meta.latestY);
-                      meta.lastPushedX = meta.latestX;
-                      meta.lastPushedY = meta.latestY;
-                      if(typeof meta._traceIndex === 'number') {
-                        try {
-                          Plotly.extendTraces(p.plotDiv, { x: [[meta.latestX]], y: [[meta.latestY]] }, [meta._traceIndex]);
-                        }
-                        catch(e)
-                        {
-                        }
-                      }
-                      updatedPlots.add(p.id);
-                    }
+                  if(appendXYSeriesPoints(p, meta)) {
+                    updatedPlots.add(p.id);
                   }
                 }
               } else {
@@ -1420,6 +1603,8 @@ startPollingLatestValues();
         refreshPlot();
       });
 
+      xyChartTypeSelect && xyChartTypeSelect.addEventListener('change', refreshPlot);
+
       createBtn && createBtn.addEventListener('click', ()=>{
         const enteredName = prompt('Enter a name for this plot:', activeSavedPlotName || `Plot ${plotCounter + 1}`);
         if(!enteredName) return;
@@ -1450,7 +1635,13 @@ startPollingLatestValues();
   }
   // Periodically trim old points only. Avoid forcing full redraws here because
   // they can replace the Plotly state and clear trace indices used for extendTraces.
-  setInterval(()=>{ trimTraces(); flushBufferedPoints(); }, 2000);
+  setInterval(()=>{
+    if (typeof window.isConfigurationModeActive === 'function' && window.isConfigurationModeActive()) {
+      return;
+    }
+    trimTraces();
+    flushBufferedPoints();
+  }, 2000);
 
   // --- Auto-plot creation from data-spin-plot attributes / SVG inkscape:label ---
   // Lightweight parser for `data-spin-plot` specs. Syntax supported:
@@ -1625,7 +1816,7 @@ startPollingLatestValues();
   setTimeout(scanDataSpinPlots, 500);
 
   // expose minimal API for debugging
-  window._plots = { plotsMap: plotsMap, staged: staged, restorePlotPanelFromLayout: restorePlotPanelFromLayout };
+  window._plots = { plotsMap: plotsMap, staged: staged, restorePlotPanelFromLayout: restorePlotPanelFromLayout, capturePlotPanelGeometry: capturePlotPanelGeometry, applyPlotPanelGeometry: applyPlotPanelGeometry };
 
 
 })();

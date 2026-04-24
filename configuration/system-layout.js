@@ -1,6 +1,197 @@
 // ===== Decoration Logic =====
 let selectedDeco = null;
 let selectedTextDeco = null;
+let selectedDecorationLine = null;
+const DECORATION_LINE_MIN_LENGTH_PX = 38;
+const SWITCH_SVG_DATA_URI = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=';
+
+function getDecorationLineType(box) {
+  return (box && box.dataset && box.dataset.lineType) || 'solid';
+}
+
+function getDecorationLineWidth(box) {
+  const value = parseFloat((box && box.dataset && box.dataset.lineWidth) || '2');
+  return Number.isFinite(value) ? value : 2;
+}
+
+function getDecorationLineColor(box) {
+  return (box && box.dataset && box.dataset.lineColor) || '#007bff';
+}
+
+function getDecorationLineRotationDegrees(box) {
+  const value = parseFloat((box && box.dataset && box.dataset.rotationDegrees) || '0');
+  return Number.isFinite(value) ? value : 0;
+}
+
+function getDecorationSwitchRotationDegrees(box) {
+  const value = parseFloat((box && box.dataset && box.dataset.rotationDegrees) || '0');
+  return Number.isFinite(value) ? value : 0;
+}
+
+function applyDecorationSwitchRotation(box, degrees) {
+  if (!box) return;
+  const img = box.querySelector('.deco-visual img');
+  if (!img) return;
+
+  const parsedDegrees = parseFloat(degrees);
+  const rotationDegrees = Number.isFinite(parsedDegrees) ? parsedDegrees : 0;
+  box.dataset.rotationDegrees = String(rotationDegrees);
+  img.style.transform = `rotate(${rotationDegrees}deg)`;
+}
+
+function rotateDecorationSwitch(box, deltaDegrees) {
+  applyDecorationSwitchRotation(box, getDecorationSwitchRotationDegrees(box) + deltaDegrees);
+}
+
+function applyDecorationLineRotation(box, degrees) {
+  if (!box) return;
+  const visual = box.querySelector('.deco-visual');
+  if (!visual) return;
+
+  const parsedDegrees = parseFloat(degrees);
+  const rotationDegrees = Number.isFinite(parsedDegrees) ? parsedDegrees : 0;
+  box.dataset.rotationDegrees = String(rotationDegrees);
+  visual.style.transform = `translateY(-50%) rotate(${rotationDegrees}deg)`;
+}
+
+function applyDecorationLineStyle(box, style = {}) {
+  if (!box) return;
+  const visual = box.querySelector('.deco-visual');
+  if (!visual) return;
+
+  const lineColor = style.lineColor || getDecorationLineColor(box);
+  const lineWidth = style.lineWidth || getDecorationLineWidth(box);
+  const lineType = style.lineType || getDecorationLineType(box);
+
+  box.dataset.lineColor = lineColor;
+  box.dataset.lineWidth = String(lineWidth);
+  box.dataset.lineType = lineType;
+
+  visual.style.height = '0';
+  visual.style.backgroundColor = 'transparent';
+  visual.style.borderTop = `${lineWidth}px ${lineType} ${lineColor}`;
+  visual.style.top = '50%';
+  visual.style.width = '100%';
+  visual.style.left = '0';
+  visual.style.borderRadius = `${Math.max(1, Number(lineWidth))}px`;
+
+  applyDecorationLineRotation(box, getDecorationLineRotationDegrees(box));
+}
+
+function clearDecorationLineSelection() {
+  selectedDecorationLine = null;
+}
+
+function showDecorationLineContextMenu(box, clientX, clientY) {
+  const menu = document.getElementById('context-menu');
+  const colorPicker = document.getElementById('line-color-picker');
+  if (!menu || !box) return;
+
+  selectedDecorationLine = box;
+  selectDeco(box);
+  menu.style.display = 'block';
+  menu.style.left = `${clientX}px`;
+  menu.style.top = `${clientY}px`;
+
+  if (typeof hideLineSubmenus === 'function') {
+    hideLineSubmenus();
+  }
+  if (colorPicker) {
+    colorPicker.value = getDecorationLineColor(box);
+  }
+}
+
+function hideDecorationLineContextMenu() {
+  const menu = document.getElementById('context-menu');
+  if (!menu) return;
+  menu.style.display = 'none';
+  if (typeof hideLineSubmenus === 'function') {
+    hideLineSubmenus();
+  }
+}
+
+function setupDecorationLineContextMenu() {
+  const menu = document.getElementById('context-menu');
+  if (!menu || menu.dataset.decorationLineMenuReady === 'true') return;
+
+  menu.dataset.decorationLineMenuReady = 'true';
+
+  document.addEventListener('mousedown', (event) => {
+    const lineBox = event.target && event.target.closest ? event.target.closest('.deco-type-line') : null;
+    if (lineBox) {
+      selectedDecorationLine = lineBox;
+      return;
+    }
+
+    if (!menu.contains(event.target)) {
+      clearDecorationLineSelection();
+    }
+  });
+
+  document.addEventListener('contextmenu', (event) => {
+    const lineBox = event.target && event.target.closest ? event.target.closest('.deco-type-line') : null;
+    if (!lineBox) {
+      return;
+    }
+
+    event.preventDefault();
+    showDecorationLineContextMenu(lineBox, event.clientX, event.clientY);
+  });
+
+  menu.querySelectorAll('.line-width-option').forEach((button) => {
+    if (button.dataset.decorationLineReady === 'true') return;
+    button.dataset.decorationLineReady = 'true';
+    button.addEventListener('click', () => {
+      if (!selectedDecorationLine) return;
+      applyDecorationLineStyle(selectedDecorationLine, { lineWidth: button.dataset.lineWidth });
+      hideDecorationLineContextMenu();
+    });
+  });
+
+  menu.querySelectorAll('.line-type-option').forEach((button) => {
+    if (button.dataset.decorationLineReady === 'true') return;
+    button.dataset.decorationLineReady = 'true';
+    button.addEventListener('click', () => {
+      if (!selectedDecorationLine) return;
+      applyDecorationLineStyle(selectedDecorationLine, { lineType: button.dataset.lineType });
+      hideDecorationLineContextMenu();
+    });
+  });
+
+  const colorPicker = document.getElementById('line-color-picker');
+  if (colorPicker && colorPicker.dataset.decorationLineReady !== 'true') {
+    colorPicker.dataset.decorationLineReady = 'true';
+    colorPicker.addEventListener('input', () => {
+      if (!selectedDecorationLine) return;
+      applyDecorationLineStyle(selectedDecorationLine, { lineColor: colorPicker.value });
+    });
+    colorPicker.addEventListener('change', () => {
+      if (!selectedDecorationLine) return;
+      hideDecorationLineContextMenu();
+    });
+  }
+
+  const rotationAction = document.getElementById('line-rotation-action');
+  if (rotationAction && rotationAction.dataset.decorationLineRotationReady !== 'true') {
+    rotationAction.dataset.decorationLineRotationReady = 'true';
+    rotationAction.addEventListener('click', async () => {
+      const targetLine = selectedDecorationLine;
+      if (!targetLine) return;
+
+      hideDecorationLineContextMenu();
+      const response = await showAppPrompt('Enter line rotation in degrees', String(getDecorationLineRotationDegrees(targetLine)), 'Rotate Line');
+      if (response === null) return;
+
+      const nextDegrees = parseFloat(String(response).trim());
+      if (!Number.isFinite(nextDegrees)) {
+        await showAppAlert('Please enter a valid number of degrees.', 'Rotate Line');
+        return;
+      }
+
+      applyDecorationLineRotation(targetLine, nextDegrees);
+    });
+  }
+}
 
 function getLabelTextNode(el) {
   return Array.from(el.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
@@ -107,6 +298,8 @@ function selectDeco(el) {
       let color;
       if (el.dataset.type === 'label') {
         color = el.style.color;
+      } else if (el.dataset.type === 'line') {
+        color = getDecorationLineColor(el);
       } else {
         const visual = el.querySelector('.deco-visual');
         if (visual) color = visual.style.backgroundColor;
@@ -178,6 +371,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const color = e.target.value;
                 if (selectedDeco.dataset.type === 'label') {
                     selectedDeco.style.color = color;
+               } 
+                else if (selectedDeco.dataset.type === 'line') 
+                {
+                applyDecorationLineStyle(selectedDeco, { lineColor: color });
                 } else {
                     const visual = selectedDeco.querySelector('.deco-visual');
                     if (visual) visual.style.backgroundColor = color;
@@ -187,7 +384,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-  document.addEventListener('DOMContentLoaded', setupTextContextMenu, { once: true });
+  document.addEventListener('DOMContentLoaded', () => {
+    setupTextContextMenu();
+    setupDecorationLineContextMenu();
+  }, { once: true });
 
 function makeDraggable(el) 
 {
@@ -198,6 +398,9 @@ function makeDraggable(el)
 
   // Make the whole element draggable on mousedown (simple, immediate behavior)
   el.addEventListener('mousedown', (e) => {
+    if (el.classList && el.classList.contains('plot-panel') && typeof window.isConfigurationModeActive === 'function' && !window.isConfigurationModeActive()) {
+      return;
+    }
     
     // Ignore non-left clicks
     if (e.button !== 0) return;
@@ -296,6 +499,14 @@ function makeDraggable(el)
 function makeResizable(el) {
   const resizeHandle = el.querySelector('.resize-handle');
   if (!resizeHandle) return;
+
+  const isLineDecoration = el.dataset.type === 'line';
+  if (isLineDecoration) {
+    resizeHandle.style.right = '-6px';
+    resizeHandle.style.bottom = '50%';
+    resizeHandle.style.transform = 'translateY(50%)';
+    resizeHandle.style.cursor = 'ew-resize';
+  }
   
   let isResizing = false;
   let startX, startY, initialWidth, initialHeight;
@@ -320,7 +531,13 @@ function makeResizable(el) {
     
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
-    
+
+    if (isLineDecoration) {
+      el.style.width = `${Math.max(DECORATION_LINE_MIN_LENGTH_PX, initialWidth + dx)}px`;
+      el.style.height = `${Math.max(12, initialHeight + dy)}px`;
+      return;
+    }
+
     el.style.width = `${Math.max(150, initialWidth + dx)}px`;
     el.style.height = `${Math.max(80, initialHeight + dy)}px`;
   };
@@ -357,6 +574,13 @@ function createDecoration(isConfigurelayout)
       selectDeco(wrapper);
   });
 
+  wrapper.addEventListener('click', (e) => {
+    if (wrapper.dataset.type !== 'switch') return;
+    e.preventDefault();
+    e.stopPropagation();
+    rotateDecorationSwitch(wrapper, 90);
+  });
+
   if (type === 'contact') 
   {
     wrapper.classList.add('deco-type-contact');
@@ -365,6 +589,42 @@ function createDecoration(isConfigurelayout)
     wrapper.style.minWidth = '20px';
     wrapper.style.minHeight = '20px';
     appendSingleContactPoint(wrapper);
+  }
+
+  else if (type === 'line')
+  {
+    wrapper.classList.add('deco-type-line');
+    wrapper.style.width = '120px';
+    wrapper.style.height = '12px';
+    wrapper.style.minWidth = '1cm';
+    wrapper.style.minHeight = '12px';
+
+    const visual = document.createElement('div');
+    visual.className = 'deco-visual';
+    wrapper.appendChild(visual);
+    applyDecorationLineStyle(wrapper, {
+      lineColor: color,
+      lineWidth: 2,
+      lineType: 'solid'
+    });
+  }
+
+  else if (type === 'switch')
+  {
+    wrapper.classList.add('deco-type-switch');
+    wrapper.style.width = '80px';
+    wrapper.style.height = '80px';
+    wrapper.style.minWidth = '40px';
+    wrapper.style.minHeight = '40px';
+
+    const visual = document.createElement('div');
+    visual.className = 'deco-visual';
+    const img = document.createElement('img');
+    img.src = SWITCH_SVG_DATA_URI;
+    img.alt = 'Valve switch';
+    visual.appendChild(img);
+    wrapper.appendChild(visual);
+    applyDecorationSwitchRotation(wrapper, 0);
   }
   
   else if (type === 'label') 
@@ -613,6 +873,9 @@ function sendCommand(device, cmd) {
 // Cache values for extra panel
 window.addEventListener('spinupdate', function(event) {
   try {
+    if (typeof window.isConfigurationModeActive === 'function' && window.isConfigurationModeActive()) {
+      return;
+    }
     const key = event.detail.key;
     if (!key) return;
     const parts = key.split('.');
@@ -936,6 +1199,9 @@ function getCurrentLayoutData() {
       // find traces from plotsMap if available
       let traces = [];
       let configName = '';
+      let xAxisTitle = '';
+      let yAxisTitle = '';
+      let geometry = null;
       if (plotsMap) {
         Object.keys(plotsMap).forEach(pid => {
           const p = plotsMap[pid];
@@ -943,25 +1209,36 @@ function getCurrentLayoutData() {
             if (p && p.containerDiv && p.containerDiv.id === plotId) {
               traces = Object.keys(p.traces || {}).map(k => k);
               configName = p.configName || '';
+              xAxisTitle = p.xAxisTitle || '';
+              yAxisTitle = p.yAxisTitle || '';
+              if (typeof window._plots.capturePlotPanelGeometry === 'function') {
+                geometry = window._plots.capturePlotPanelGeometry(p);
+              }
             }
           } catch (e) { }
         });
       }
       // compute fallback from bounding rect relative to device-grid
       const rect = box.getBoundingClientRect();
-      const leftVal = box.style.left && box.style.left.trim() ? box.style.left : Math.round(rect.left - gridRect.left) + 'px';
-      const topVal = box.style.top && box.style.top.trim() ? box.style.top : Math.round(rect.top - gridRect.top) + 'px';
-      const widthVal = box.style.width && box.style.width.trim() ? box.style.width : Math.round(rect.width) + 'px';
-      const heightVal = box.style.height && box.style.height.trim() ? box.style.height : Math.round(rect.height) + 'px';
+      const leftVal = geometry && geometry.left ? geometry.left : (box.style.left && box.style.left.trim() ? box.style.left : Math.round(rect.left - gridRect.left) + 'px');
+      const topVal = geometry && geometry.top ? geometry.top : (box.style.top && box.style.top.trim() ? box.style.top : Math.round(rect.top - gridRect.top) + 'px');
+      const widthVal = geometry && geometry.width ? geometry.width : (box.style.width && box.style.width.trim() ? box.style.width : Math.round(rect.width) + 'px');
+      const heightVal = geometry && geometry.height ? geometry.height : (box.style.height && box.style.height.trim() ? box.style.height : Math.round(rect.height) + 'px');
 
       layout.plots.push({
         id: plotId,
         title: title,
         configName: configName,
+        xAxisTitle: xAxisTitle,
+        yAxisTitle: yAxisTitle,
         left: leftVal,
         top: topVal,
         width: widthVal,
         height: heightVal,
+        transform: geometry && geometry.transform ? geometry.transform : (box.style.transform || ''),
+        zIndex: geometry && geometry.zIndex ? geometry.zIndex : (box.style.zIndex || ''),
+        dataX: geometry && geometry.dataX ? geometry.dataX : (box.getAttribute('data-x') || ''),
+        dataY: geometry && geometry.dataY ? geometry.dataY : (box.getAttribute('data-y') || ''),
         traces: traces
       });
     });
@@ -1027,7 +1304,11 @@ function getCurrentLayoutData() {
       color: color,
       text: text,
       fontFamily: fontFamily,
-      fontSize: fontSize
+      fontSize: fontSize,
+      lineColor: type === 'line' ? getDecorationLineColor(box) : '',
+      lineWidth: type === 'line' ? String(getDecorationLineWidth(box)) : '',
+      lineType: type === 'line' ? getDecorationLineType(box) : '',
+      rotationDegrees: (type === 'line' || type === 'switch') ? String(box.dataset.rotationDegrees || '0') : ''
     });
   });
 
@@ -1473,6 +1754,15 @@ function create_decoration(d,isConfigurelayout)
                 if (d.color) newBox.style.color = d.color;
                 if (d.fontFamily) newBox.style.fontFamily = d.fontFamily;
                 if (d.fontSize) newBox.style.fontSize = d.fontSize;
+              } else if (d.type === 'line') {
+                applyDecorationLineStyle(newBox, {
+                  lineColor: d.lineColor || d.color || '#007bff',
+                  lineWidth: d.lineWidth || '2',
+                  lineType: d.lineType || 'solid'
+                });
+                applyDecorationLineRotation(newBox, d.rotationDegrees || '0');
+              } else if (d.type === 'switch') {
+                applyDecorationSwitchRotation(newBox, d.rotationDegrees || '0');
               }
               
               if (d.type === 'label' && d.text) {

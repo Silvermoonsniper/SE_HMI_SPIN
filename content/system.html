@@ -122,6 +122,10 @@
                 <option value="xy">XY plot</option>
                 <option value="array">Array plot</option>
               </select>
+                <select id="xy-chart-type" class="ctrl xy-chart-type-select" title="XY chart type" style="display:none;">
+                  <option value="area" selected>Area chart</option>
+                  <option value="bar">Bar chart</option>
+                </select>
               <select id="curve-line-type" class="ctrl" title="Line type">
                 <option value="solid">Solid</option>
                 <option value="dashed">Dashed</option>
@@ -150,6 +154,12 @@
                   <option value="">-- select y device.param --</option>
                 </select>
               </div>
+            </div>
+            <div id="xy-axis-title-group" class="xy-axis-title-group" style="display:none; gap:6px; align-items:center;">
+              <span class="xy-axis-tag">X</span>
+              <input id="xy-axis-title-x" class="ctrl xy-axis-title-input" type="text" placeholder="X axis name" title="X axis name">
+              <span class="xy-axis-tag">Y</span>
+              <input id="xy-axis-title-y" class="ctrl xy-axis-title-input" type="text" placeholder="Y axis name" title="Y axis name">
             </div>
             <label for="added-lines" style="font-weight:600;">Staged lines</label>
             <div class="staged-lines-row" style="display:flex; gap:6px; align-items:center;">
@@ -194,7 +204,8 @@
   <label for="deco-select" style="font-weight: bold; font-size: 12px;">Add customized display:</label>
   <select id="deco-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; min-width: 150px;">
     <option value="">-- Select Decoration --</option>
-    <option value="contact">Single Contact</option>
+    <option value="line">Line</option>
+    <option value="switch">Valve Switch</option>
     <option value="label">Text Label</option>
     <option value="control-panel">Control Panel</option>
   </select>
@@ -346,6 +357,7 @@
   <button type="button" class="line-context-item" data-line-submenu="width">Line Width</button>
   <button type="button" class="line-context-item" data-line-submenu="color">Line Color</button>
   <button type="button" class="line-context-item" data-line-submenu="type">Line Type</button>
+  <button type="button" class="line-context-item" id="line-rotation-action">Rotation...</button>
 
   <div id="line-submenu-width" class="line-context-submenu" style="display:none;">
     <button type="button" class="line-width-option" data-line-width="1"><span class="line-width-preview line-width-preview-1"></span>1 px</button>

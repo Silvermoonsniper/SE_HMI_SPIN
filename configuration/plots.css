@@ -52,6 +52,12 @@ body {
   font-size: 11px; /* as small as readable */
 }
 
+#xy-chart-type.xy-chart-type-select {
+  min-width: 96px;
+  width: 96px;
+  max-width: 96px;
+}
+
 /* Ensure control elements don't force extra rows by allowing them to shrink */
 .ctrl { flex: 0 0 auto }
 .spacer{ flex:1; min-width:0 }
@@ -103,6 +109,7 @@ body {
 
 .plot-config-row,
 .plot-parameter-row,
+.xy-axis-title-group,
 .staged-lines-row {
   width: 100%;
 }
@@ -115,11 +122,22 @@ body {
   flex-wrap: nowrap;
 }
 
+.xy-axis-title-group {
+  display: none;
+  flex-wrap: nowrap;
+}
+
 .xy-curve-key-group {
   display: none;
   align-items: center;
   gap: 6px;
   flex: 0 1 auto;
+}
+
+.xy-axis-title-input {
+  min-width: 120px;
+  width: 160px;
+  max-width: 220px;
 }
 
 .xy-axis-tag {

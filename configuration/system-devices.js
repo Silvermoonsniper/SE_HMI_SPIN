@@ -111,19 +111,6 @@ function createDeviceDisplay(isConfigurelayout)
   const labelDiv = newBox.querySelector('.device-field > div:first-child');
   const targetSpan = newBox.querySelector(`#target-${domId}`);
   const gasSpan = newBox.querySelector(`#gas-${domId}`);
-  if (device.toLowerCase().includes('massflow'))
-    {
-     targetSpan.style.display = 'inline';     
-     gasSpan.style.display = 'inline';     
-    } 
-  else 
-    {
-        if (isSample_position_device)
-      {
-       labelDiv.textContent = 'current sample';    
-      }       
-
-    } 
   const sep1 = newBox.querySelector('.sep-1');
   const sep2 = newBox.querySelector('.sep-2');
   
@@ -134,30 +121,32 @@ function createDeviceDisplay(isConfigurelayout)
   }
   
   
-  let isReadable = false;
-  if (WRITABLE_PARAMS && WRITABLE_PARAMS[device] && WRITABLE_PARAMS[device].interface_classes) {
-      if (WRITABLE_PARAMS[device].interface_classes.includes('Readable')) {
-          isReadable = true;
-      }
+  const interfaceClasses = WRITABLE_PARAMS && WRITABLE_PARAMS[device] && Array.isArray(WRITABLE_PARAMS[device].interface_classes)
+    ? WRITABLE_PARAMS[device].interface_classes
+    : [];
+  const isDrivable = interfaceClasses.includes('Drivable');
+
+  if (isSample_position_device) {
+    if (labelDiv) labelDiv.textContent = 'current sample';
+  } else if (labelDiv) {
+    labelDiv.textContent = 'Val';
   }
 
-  if (isReadable) 
-  {
-      // Show only Value
-      if (labelDiv) labelDiv.textContent = 'Val';
-      if (targetSpan) targetSpan.style.display = 'none';
-      if (gasSpan) gasSpan.style.display = 'none';
-      if (sep1) sep1.style.display = 'none';
-      if (sep2) sep2.style.display = 'none';
-  }
-  else if (lowerDev.includes('backpress') || lowerDev.includes('temp')) 
-  {   
-     
-      // Show only Value and Target
-      if (labelDiv) labelDiv.textContent = 'Val / Target';
-      if (targetSpan) targetSpan.style.display = 'inline';
-      if (gasSpan) gasSpan.style.display = 'none';
-      if (sep2) sep2.style.display = 'none';
+  if (targetSpan) targetSpan.style.display = 'none';
+  if (gasSpan) gasSpan.style.display = 'none';
+  if (sep1) sep1.style.display = 'none';
+  if (sep2) sep2.style.display = 'none';
+
+  if (isDrivable && lowerDev.includes('massflow')) {
+    if (labelDiv) labelDiv.textContent = 'Val / Target / Gas';
+    if (targetSpan) targetSpan.style.display = 'inline';
+    if (gasSpan) gasSpan.style.display = 'inline';
+    if (sep1) sep1.style.display = 'inline';
+    if (sep2) sep2.style.display = 'inline';
+  } else if (isDrivable && (lowerDev.includes('backpress') || lowerDev.includes('temp'))) {
+    if (labelDiv) labelDiv.textContent = 'Val / Target';
+    if (targetSpan) targetSpan.style.display = 'inline';
+    if (sep1) sep1.style.display = 'inline';
   }
   
   // Populate params/commands
@@ -846,6 +835,9 @@ function setupValveImageListeners(device, domId) {
   // Listen for updates and update image states
   window.addEventListener('spinupdate', function(event) {
     try {
+      if (typeof window.isConfigurationModeActive === 'function' && window.isConfigurationModeActive()) {
+        return;
+      }
       const key = event.detail.key || '';
       if (!key.startsWith(device)) return;
       
