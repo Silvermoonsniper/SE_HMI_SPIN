@@ -178,6 +178,440 @@ const API_BASE = (function(){
   try { return `${location.protocol}//${location.hostname}:8001`; } catch (e) { return 'http://127.0.0.1:8001'; }
 })();
 
+async function refreshNexusExportStatus() {
+  const statusLabel = document.getElementById('nexus-export-status');
+  const startBtn = document.getElementById('start-export-btn');
+  const stopBtn = document.getElementById('stop-export-btn');
+  if (!statusLabel || !startBtn || !stopBtn) return;
+
+  try {
+    const resp = await fetch(API_BASE + '/api/nexus_export/status', { method: 'GET' });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const payload = await resp.json();
+    const exportState = payload && payload.export ? payload.export : {};
+    const isRunning = !!exportState.running;
+
+    statusLabel.textContent = isRunning
+      ? `Exporting: ${exportState.run_name || 'run'}`
+      : 'Export idle';
+    statusLabel.title = isRunning && exportState.file_path ? exportState.file_path : '';
+    startBtn.disabled = isRunning;
+    stopBtn.disabled = !isRunning;
+  } catch (e) {
+    statusLabel.textContent = 'Export unavailable';
+    statusLabel.title = '';
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+  }
+}
+
+async function startNexusExport() {
+  const runName = await showAppPrompt('Enter a run name for the NeXus export', '', 'Start NeXus Export');
+  if (runName === null) return;
+
+  try {
+    const resp = await fetch(API_BASE + '/api/nexus_export/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ run_name: String(runName || '').trim() })
+    });
+    const payload = await resp.json();
+    if (!resp.ok || payload.status !== 'ok') {
+      throw new Error(payload.error || `HTTP ${resp.status}`);
+    }
+
+    await refreshNexusExportStatus();
+    await showAppAlert(`NeXus export started.\n${payload.file_path || ''}`, 'NeXus Export');
+  } catch (e) {
+    await showAppAlert(`Failed to start NeXus export.\n${e.message || e}`, 'NeXus Export');
+  }
+}
+
+async function stopNexusExport() {
+  try {
+    const resp = await fetch(API_BASE + '/api/nexus_export/stop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const payload = await resp.json();
+    if (!resp.ok || payload.status !== 'ok') {
+      throw new Error(payload.error || `HTTP ${resp.status}`);
+    }
+
+    await refreshNexusExportStatus();
+    await showAppAlert(`NeXus export stopped.\n${payload.file_path || ''}`, 'NeXus Export');
+  } catch (e) {
+    await showAppAlert(`Failed to stop NeXus export.\n${e.message || e}`, 'NeXus Export');
+  }
+}
+
+const nexusBrowserState = {
+  fileName: '',
+  path: '/',
+  files: []
+};
+
+function formatNexusExportSize(bytes) {
+  const value = Number(bytes || 0);
+  if (!Number.isFinite(value) || value < 1024) return `${value || 0} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  if (value < 1024 * 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(value / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+function formatNexusPreview(value) {
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch (e) {
+    return String(value);
+  }
+}
+
+function formatNexusNodeLabel(path) {
+  const text = String(path || '/').trim();
+  if (!text || text === '/') return '/';
+  return text.replace(/^\//, '');
+}
+
+function ensureNexusBrowserModal() {
+  let overlay = document.getElementById('nexus-browser-overlay');
+  if (overlay) return overlay;
+
+  overlay = document.createElement('div');
+  overlay.id = 'nexus-browser-overlay';
+  Object.assign(overlay.style, {
+    position: 'fixed',
+    inset: '0',
+    background: 'rgba(15, 23, 42, 0.38)',
+    display: 'none',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: '100001',
+    padding: '16px',
+    boxSizing: 'border-box'
+  });
+
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) {
+      closeNexusBrowser();
+    }
+  });
+
+  const dialog = document.createElement('div');
+  Object.assign(dialog.style, {
+    width: 'min(1100px, 100%)',
+    maxHeight: '88vh',
+    background: '#ffffff',
+    borderRadius: '10px',
+    boxShadow: '0 18px 40px rgba(15, 23, 42, 0.24)',
+    border: '1px solid rgba(148, 163, 184, 0.35)',
+    color: '#0f172a',
+    fontFamily: 'Arial, sans-serif',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden'
+  });
+
+  dialog.innerHTML = `
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #e2e8f0; background:#f8fafc; gap:12px; flex-wrap:wrap;">
+      <div>
+        <div style="font-size:16px; font-weight:700;">NeXus Export Browser</div>
+        <div id="nexus-browser-subtitle" style="font-size:12px; color:#64748b; margin-top:4px;">Browse exported .nxs files directly in the app.</div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button id="nexus-browser-refresh-btn" style="padding:6px 10px; border:none; border-radius:6px; background:#e2e8f0; cursor:pointer;">Refresh</button>
+        <button id="nexus-browser-close-btn" style="padding:6px 10px; border:none; border-radius:6px; background:#0f172a; color:white; cursor:pointer;">Close</button>
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns:260px minmax(280px, 1fr) minmax(300px, 1fr); gap:0; min-height:0; flex:1;">
+      <div style="border-right:1px solid #e2e8f0; display:flex; flex-direction:column; min-height:0;">
+        <div style="padding:12px 14px; font-size:12px; font-weight:700; border-bottom:1px solid #e2e8f0; background:#f8fafc;">Export Files</div>
+        <div id="nexus-browser-files" style="padding:10px; overflow:auto; min-height:0;"></div>
+      </div>
+      <div style="border-right:1px solid #e2e8f0; display:flex; flex-direction:column; min-height:0;">
+        <div style="padding:12px 14px; border-bottom:1px solid #e2e8f0; background:#f8fafc;">
+          <div id="nexus-browser-file-label" style="font-size:12px; color:#64748b; margin-bottom:4px;">No file selected</div>
+          <div id="nexus-browser-path-label" style="font-size:13px; font-weight:700; word-break:break-all;">/</div>
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <button id="nexus-browser-root-btn" style="padding:5px 8px; border:none; border-radius:6px; background:#e2e8f0; cursor:pointer;">Root</button>
+            <button id="nexus-browser-parent-btn" style="padding:5px 8px; border:none; border-radius:6px; background:#e2e8f0; cursor:pointer;">Up</button>
+          </div>
+        </div>
+        <div id="nexus-browser-node-list" style="padding:10px; overflow:auto; min-height:0;"></div>
+      </div>
+      <div style="display:flex; flex-direction:column; min-height:0;">
+        <div style="padding:12px 14px; font-size:12px; font-weight:700; border-bottom:1px solid #e2e8f0; background:#f8fafc;">Details</div>
+        <div id="nexus-browser-details" style="padding:14px; overflow:auto; min-height:0; font-size:12px; line-height:1.5;"></div>
+      </div>
+    </div>
+  `;
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  document.getElementById('nexus-browser-close-btn').addEventListener('click', closeNexusBrowser);
+  document.getElementById('nexus-browser-refresh-btn').addEventListener('click', () => refreshNexusBrowserFiles(nexusBrowserState.fileName));
+  document.getElementById('nexus-browser-root-btn').addEventListener('click', () => {
+    if (nexusBrowserState.fileName) loadNexusBrowserNode(nexusBrowserState.fileName, '/');
+  });
+  document.getElementById('nexus-browser-parent-btn').addEventListener('click', () => {
+    if (!nexusBrowserState.fileName) return;
+    const currentPath = nexusBrowserState.path || '/';
+    if (currentPath === '/') return;
+    const parts = currentPath.split('/').filter(Boolean);
+    parts.pop();
+    const parentPath = parts.length ? `/${parts.join('/')}` : '/';
+    loadNexusBrowserNode(nexusBrowserState.fileName, parentPath);
+  });
+
+  return overlay;
+}
+
+function closeNexusBrowser() {
+  const overlay = document.getElementById('nexus-browser-overlay');
+  if (overlay) {
+    overlay.style.display = 'none';
+  }
+}
+
+async function openNexusBrowser() {
+  const overlay = ensureNexusBrowserModal();
+  overlay.style.display = 'flex';
+  await refreshNexusBrowserFiles(nexusBrowserState.fileName);
+}
+
+async function refreshNexusBrowserFiles(preferredFileName) {
+  const fileContainer = document.getElementById('nexus-browser-files');
+  const detailContainer = document.getElementById('nexus-browser-details');
+  const nodeList = document.getElementById('nexus-browser-node-list');
+  if (!fileContainer || !detailContainer || !nodeList) return;
+
+  fileContainer.textContent = 'Loading export files...';
+  nodeList.textContent = '';
+  detailContainer.textContent = '';
+
+  try {
+    const resp = await fetch(API_BASE + '/api/nexus_export/files', { method: 'GET' });
+    const payload = await resp.json();
+    if (!resp.ok || payload.status !== 'ok') {
+      throw new Error(payload.error || `HTTP ${resp.status}`);
+    }
+
+    nexusBrowserState.files = Array.isArray(payload.files) ? payload.files : [];
+    renderNexusBrowserFiles();
+
+    if (!nexusBrowserState.files.length) {
+      detailContainer.textContent = 'No NeXus export files found yet.';
+      return;
+    }
+
+    const targetFile = preferredFileName && nexusBrowserState.files.some(file => file.name === preferredFileName)
+      ? preferredFileName
+      : nexusBrowserState.files[0].name;
+    await loadNexusBrowserNode(targetFile, '/');
+  } catch (e) {
+    fileContainer.textContent = 'Failed to load export files.';
+    detailContainer.textContent = e.message || String(e);
+  }
+}
+
+function renderNexusBrowserFiles() {
+  const fileContainer = document.getElementById('nexus-browser-files');
+  if (!fileContainer) return;
+  fileContainer.innerHTML = '';
+
+  if (!nexusBrowserState.files.length) {
+    fileContainer.textContent = 'No export files available.';
+    return;
+  }
+
+  nexusBrowserState.files.forEach((fileInfo) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    Object.assign(button.style, {
+      width: '100%',
+      textAlign: 'left',
+      padding: '10px',
+      borderRadius: '8px',
+      border: fileInfo.name === nexusBrowserState.fileName ? '1px solid #0f766e' : '1px solid #cbd5e1',
+      background: fileInfo.name === nexusBrowserState.fileName ? '#ecfdf5' : '#ffffff',
+      cursor: 'pointer',
+      marginBottom: '8px'
+    });
+
+    const title = document.createElement('div');
+    title.textContent = fileInfo.name;
+    title.style.fontSize = '12px';
+    title.style.fontWeight = '700';
+
+    const meta = document.createElement('div');
+    meta.textContent = formatNexusExportSize(fileInfo.size);
+    meta.style.fontSize = '11px';
+    meta.style.color = '#64748b';
+    meta.style.marginTop = '4px';
+
+    button.appendChild(title);
+    button.appendChild(meta);
+    button.addEventListener('click', () => loadNexusBrowserNode(fileInfo.name, '/'));
+    fileContainer.appendChild(button);
+  });
+}
+
+async function loadNexusBrowserNode(fileName, objectPath) {
+  const nodeList = document.getElementById('nexus-browser-node-list');
+  const detailContainer = document.getElementById('nexus-browser-details');
+  const fileLabel = document.getElementById('nexus-browser-file-label');
+  const pathLabel = document.getElementById('nexus-browser-path-label');
+  if (!nodeList || !detailContainer || !fileLabel || !pathLabel) return;
+
+  nexusBrowserState.fileName = fileName;
+  nexusBrowserState.path = objectPath || '/';
+  renderNexusBrowserFiles();
+
+  fileLabel.textContent = fileName;
+  pathLabel.textContent = nexusBrowserState.path;
+  nodeList.textContent = 'Loading node...';
+  detailContainer.textContent = 'Loading details...';
+
+  try {
+    const url = `${API_BASE}/api/nexus_export/inspect?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent(nexusBrowserState.path)}`;
+    const resp = await fetch(url, { method: 'GET' });
+    const payload = await resp.json();
+    if (!resp.ok || payload.status !== 'ok') {
+      throw new Error(payload.error || `HTTP ${resp.status}`);
+    }
+
+    renderNexusBrowserNode(payload.node);
+  } catch (e) {
+    nodeList.textContent = 'Failed to load node.';
+    detailContainer.textContent = e.message || String(e);
+  }
+}
+
+function renderNexusBrowserNode(node) {
+  const nodeList = document.getElementById('nexus-browser-node-list');
+  const detailContainer = document.getElementById('nexus-browser-details');
+  const parentBtn = document.getElementById('nexus-browser-parent-btn');
+  if (!nodeList || !detailContainer || !parentBtn) return;
+
+  parentBtn.disabled = node.path === '/';
+  parentBtn.style.opacity = node.path === '/' ? '0.5' : '1';
+  parentBtn.style.cursor = node.path === '/' ? 'default' : 'pointer';
+
+  nodeList.innerHTML = '';
+  detailContainer.innerHTML = '';
+
+  const summary = document.createElement('div');
+  summary.style.marginBottom = '12px';
+  summary.innerHTML = `<div style="font-weight:700; font-size:13px; margin-bottom:6px;">${node.kind === 'group' ? 'Group' : 'Dataset'}</div>`;
+  nodeList.appendChild(summary);
+
+  if (node.kind === 'group') {
+    const children = Array.isArray(node.children) ? node.children : [];
+    if (!children.length) {
+      const empty = document.createElement('div');
+      empty.textContent = 'This group has no children.';
+      empty.style.fontSize = '12px';
+      empty.style.color = '#64748b';
+      nodeList.appendChild(empty);
+    } else {
+      children.forEach((child) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        Object.assign(button.style, {
+          width: '100%',
+          textAlign: 'left',
+          padding: '8px 10px',
+          borderRadius: '8px',
+          border: '1px solid #cbd5e1',
+          background: '#ffffff',
+          cursor: 'pointer',
+          marginBottom: '8px'
+        });
+
+        const label = document.createElement('div');
+        label.textContent = formatNexusNodeLabel(child.path);
+        Object.assign(label.style, {
+          fontSize: '12px',
+          fontWeight: '700',
+          color: '#0f172a',
+          wordBreak: 'break-word'
+        });
+
+        const meta = document.createElement('div');
+        meta.textContent = child.kind === 'group' ? 'Folder' : 'Dataset';
+        Object.assign(meta.style, {
+          fontSize: '11px',
+          color: '#64748b',
+          marginTop: '4px'
+        });
+
+        button.appendChild(label);
+        button.appendChild(meta);
+        button.title = child.path || child.name || '';
+        button.addEventListener('click', () => loadNexusBrowserNode(node.file_name, child.path));
+        nodeList.appendChild(button);
+      });
+    }
+  } else {
+    const preview = document.createElement('pre');
+    preview.textContent = formatNexusPreview(node.preview);
+    Object.assign(preview.style, {
+      whiteSpace: 'pre-wrap',
+      wordBreak: 'break-word',
+      background: '#f8fafc',
+      border: '1px solid #e2e8f0',
+      borderRadius: '8px',
+      padding: '10px',
+      margin: '0',
+      fontSize: '12px'
+    });
+    nodeList.appendChild(preview);
+  }
+
+  const sections = [
+    ['Path', node.path],
+    ['Attributes', formatNexusPreview(node.attrs || {})]
+  ];
+
+  if (node.kind === 'dataset') {
+    sections.push(['Shape', formatNexusPreview(node.shape || [])]);
+    sections.push(['DType', node.dtype || '']);
+    sections.push(['Entries', String(node.size || 0)]);
+    sections.push(['Preview', formatNexusPreview(node.preview)]);
+  } else {
+    sections.push(['Children', String((node.children || []).length)]);
+  }
+
+  sections.forEach(([label, value]) => {
+    const block = document.createElement('div');
+    block.style.marginBottom = '14px';
+
+    const title = document.createElement('div');
+    title.textContent = label;
+    title.style.fontWeight = '700';
+    title.style.marginBottom = '5px';
+
+    const content = document.createElement(label === 'DType' || label === 'Entries' ? 'div' : 'pre');
+    content.textContent = value;
+    Object.assign(content.style, {
+      margin: '0',
+      whiteSpace: 'pre-wrap',
+      wordBreak: 'break-word',
+      background: '#f8fafc',
+      border: '1px solid #e2e8f0',
+      borderRadius: '8px',
+      padding: '10px',
+      fontSize: '12px'
+    });
+
+    block.appendChild(title);
+    block.appendChild(content);
+    detailContainer.appendChild(block);
+  });
+}
+
 // Optionally request backend restart when the page loads. This is controlled
 // by a localStorage flag 'restart_on_refresh'. To enable, run in browser console:
 //   localStorage.setItem('restart_on_refresh', 'true')
@@ -278,10 +712,33 @@ async function hydrateDeviceFromNode(device) {
   }
 
   const requestPromise = (async () => {
-    const addr = getKnownNodeAddrForDevice(device);
     const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
-    const moduleName = deviceInfo && deviceInfo.original_name ? deviceInfo.original_name : null;
-    if (!addr || !deviceInfo || !moduleName) return;
+    const moduleName = deviceInfo && (deviceInfo.module_name || deviceInfo.original_name)
+      ? (deviceInfo.module_name || deviceInfo.original_name)
+      : null;
+    if (!deviceInfo || !moduleName) return;
+
+    let addr = getKnownNodeAddrForDevice(device);
+    if (!addr) {
+      try {
+        const resolveResp = await fetch(API_BASE + '/api/node_for_device', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ device: device })
+        });
+        if (resolveResp.ok) {
+          const payload = await resolveResp.json();
+          if (payload && payload.status === 'ok' && payload.addr) {
+            addr = payload.addr;
+            runtimeDeviceNodeAddrs[device] = addr;
+            saveRuntimeDeviceNodeAddrs();
+          }
+        }
+      } catch (e) {
+        console.debug('Failed to resolve runtime node address for', device, e);
+      }
+    }
+    if (!addr) return;
 
     const commands = new Set(deviceInfo.commands || []);
     const params = Array.from(new Set(['status', 'value', 'target', ...(deviceInfo.all_params || [])]))
@@ -1339,6 +1796,7 @@ function fetchNodesList()
 // Call fetchNodesList on load and display nodes info
 document.addEventListener('DOMContentLoaded', () => {
   // Wait for Spin to initialize before fetching nodes
+  refreshNexusExportStatus().catch(() => {});
   waitForSpin(() => {
     
     loadNodesInfo();

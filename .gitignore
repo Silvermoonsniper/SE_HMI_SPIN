@@ -13,3 +13,5 @@ configuration/device_params.json
 configuration/nodes.json
 
 spin.log
+
+nexus_exports

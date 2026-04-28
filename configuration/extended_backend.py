@@ -1,9 +1,12 @@
 from spin.backend import Backend, Update, State, Reply, fixup_params
 from spin.config import Device as ConfigDevice, Param
 import asyncio
+from collections import deque
 import enum
 import os, json
+import sys
 import threading
+import time
 import importlib
 from urllib.parse import urlparse
 import mlzlog
@@ -12,6 +15,8 @@ from frappy.client import SecopClient
 from frappy.lib.enum import EnumMember
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+
+from configuration.nexus_export import NexusRunExporter, inspect_export_object, list_export_files
 
 
 def is_running_in_docker():
@@ -97,12 +102,16 @@ class Device(spin_secop.Device):
         value = self.cache.get(param)
         unit = getattr(self, '_units', {}).get(param, '') if hasattr(self, '_units') else ''
         state, state_str = self.cache.get('status', (State.UNKNOWN, ''))
-        ExtendedBackend.latest_values[f'{self._name}.{param}'] = {
-            'value': _json_safe_value(value),
-            'unit': str(unit),
-            'state': str(state),
-            'state_str': str(state_str),
-        }
+        if hasattr(self, '_backend') and hasattr(self._backend, '_ensure_runtime_storage'):
+            self._backend._ensure_runtime_storage()
+            self._backend._record_latest_value(f'{self._name}.{param}', unit, state, state_str, value)
+        else:
+            ExtendedBackend.latest_values[f'{self._name}.{param}'] = {
+                'value': _json_safe_value(value),
+                'unit': str(unit),
+                'state': str(state),
+                'state_str': str(state_str),
+            }
 
 
 def _json_safe_value(value):
@@ -192,6 +201,83 @@ class ExtendedBackend(Backend):
             self._runtime_node_tasks = {}
         if not hasattr(self, '_runtime_device_addrs'):
             self._runtime_device_addrs = {}
+        if not hasattr(self, '_plot_history'):
+            self._plot_history = {}
+        if not hasattr(self, '_plot_history_lock'):
+            self._plot_history_lock = threading.Lock()
+        if not hasattr(self, '_plot_history_limit'):
+            self._plot_history_limit = 7200
+        if not hasattr(self, '_nexus_exporter'):
+            self._nexus_exporter = NexusRunExporter()
+
+    def _append_plot_history_sample(self, key, payload, timestamp_ms):
+        self._ensure_runtime_storage()
+
+        sample = {
+            'timestamp_ms': int(timestamp_ms),
+            'value': payload.get('value'),
+            'unit': payload.get('unit', ''),
+            'state': payload.get('state', ''),
+            'state_str': payload.get('state_str', ''),
+        }
+
+        with self._plot_history_lock:
+            history = self._plot_history.get(key)
+            if history is None:
+                history = deque(maxlen=self._plot_history_limit)
+                self._plot_history[key] = history
+            history.append(sample)
+
+    def _record_latest_value(self, key, unit, state, state_str, value):
+        safe_value = _json_safe_value(value)
+        timestamp_ms = int(time.time() * 1000)
+        payload = {
+            'value': safe_value,
+            'unit': str(unit),
+            'state': str(state),
+            'state_str': str(state_str),
+        }
+        ExtendedBackend.latest_values[key] = payload
+        self._append_plot_history_sample(key, payload, timestamp_ms)
+        if hasattr(self, '_nexus_exporter') and self._nexus_exporter.is_running:
+            try:
+                self._nexus_exporter.append_update(key, payload)
+            except Exception as exc:
+                self.log.warning(f'Failed to append NeXus export for {key}: {exc}')
+        return safe_value, payload
+
+    def get_plot_updates(self, since_ms=None):
+        self._ensure_runtime_storage()
+        server_time_ms = int(time.time() * 1000)
+
+        if not since_ms or since_ms <= 0:
+            snapshot = {}
+            for key, payload in ExtendedBackend.latest_values.items():
+                snapshot[key] = {
+                    'timestamp_ms': server_time_ms,
+                    'value': payload.get('value'),
+                    'unit': payload.get('unit', ''),
+                    'state': payload.get('state', ''),
+                    'state_str': payload.get('state_str', ''),
+                }
+            return {
+                'mode': 'snapshot',
+                'server_time_ms': server_time_ms,
+                'values': snapshot,
+            }
+
+        with self._plot_history_lock:
+            samples = {}
+            for key, history in self._plot_history.items():
+                pending = [sample.copy() for sample in history if sample.get('timestamp_ms', 0) > since_ms]
+                if pending:
+                    samples[key] = pending
+
+        return {
+            'mode': 'history',
+            'server_time_ms': server_time_ms,
+            'samples': samples,
+        }
 
     def _recover_runtime_nodes_from_files(self):
         self._ensure_runtime_storage()
@@ -325,13 +411,7 @@ class ExtendedBackend(Backend):
 
     async def _publish_runtime_snapshot(self, snapshot_updates):
         for key, unit, state, state_str, value, is_main in snapshot_updates:
-            safe_value = _json_safe_value(value)
-            ExtendedBackend.latest_values[key] = {
-                'value': safe_value,
-                'unit': unit,
-                'state': str(state),
-                'state_str': str(state_str),
-            }
+            safe_value, _ = self._record_latest_value(key, unit, state, state_str, value)
             await self.send_update(Update(key, unit, state, state_str, safe_value))
             if is_main:
                 device_name = key.split('.', 1)[0]
@@ -348,12 +428,7 @@ class ExtendedBackend(Backend):
                 continue
 
             for key, unit, state, state_str, value, _ in snapshot_updates:
-                ExtendedBackend.latest_values[key] = {
-                    'value': _json_safe_value(value),
-                    'unit': unit,
-                    'state': str(state),
-                    'state_str': str(state_str),
-                }
+                self._record_latest_value(key, unit, state, state_str, value)
 
     def _collect_runtime_snapshot(self, addr):
         node_cfg = getattr(self, '_runtime_node_configs', {}).get(addr)
@@ -471,18 +546,7 @@ class ExtendedBackend(Backend):
                         except Exception:
                             pass
                         
-                        # Store for API
-                        try:
-                            safe_val = _json_safe_value(val)
-                          
-                            ExtendedBackend.latest_values[key] = {
-                                    "value": safe_val,
-                                    "unit": str(unit),
-                                    "state": str(state),
-                                    "state_str": str(state_str)
-                                }
-                        except Exception:
-                            pass
+                        safe_val, _ = self._record_latest_value(key, unit, state, state_str, val)
                       
                         await self.send_update(Update(key, unit, state, state_str, safe_val))
                        
@@ -498,6 +562,7 @@ class ExtendedBackend(Backend):
         if 'nodemanager' not in self.protos:
             self.protos['nodemanager'] = 'configuration.node_manager'
         super().start(conf, asset_list)
+        self._ensure_runtime_storage()
 
     # Set all_params for each device from device_params.json
        
@@ -542,6 +607,107 @@ def start_api_server(backend=None):
             backend.refresh_runtime_latest_values()
 
         return jsonify(_json_safe_value(ExtendedBackend.latest_values))
+
+    @app.route('/api/plot_updates')
+    def get_plot_updates():
+        if backend and hasattr(backend, 'refresh_runtime_latest_values'):
+            backend.refresh_runtime_latest_values()
+
+        since_raw = request.args.get('since')
+        try:
+            since_ms = int(since_raw) if since_raw not in (None, '') else None
+        except (TypeError, ValueError):
+            since_ms = None
+
+        if backend and hasattr(backend, 'get_plot_updates'):
+            payload = backend.get_plot_updates(since_ms)
+        else:
+            server_time_ms = int(time.time() * 1000)
+            payload = {
+                'mode': 'snapshot',
+                'server_time_ms': server_time_ms,
+                'values': {
+                    key: {
+                        'timestamp_ms': server_time_ms,
+                        'value': value.get('value') if isinstance(value, dict) else value,
+                        'unit': value.get('unit', '') if isinstance(value, dict) else '',
+                        'state': value.get('state', '') if isinstance(value, dict) else '',
+                        'state_str': value.get('state_str', '') if isinstance(value, dict) else '',
+                    }
+                    for key, value in ExtendedBackend.latest_values.items()
+                },
+            }
+
+        payload['status'] = 'ok'
+        return jsonify(_json_safe_value(payload))
+
+    @app.route('/api/nexus_export/status', methods=['GET'])
+    def api_nexus_export_status():
+        try:
+            if backend and hasattr(backend, '_ensure_runtime_storage'):
+                backend._ensure_runtime_storage()
+            status = backend._nexus_exporter.status() if backend and hasattr(backend, '_nexus_exporter') else {
+                'running': False,
+                'file_path': None,
+                'run_name': None,
+                'start_time': None,
+            }
+            return jsonify({'status': 'ok', 'export': status})
+        except Exception as exc:
+            app.logger.exception('api_nexus_export_status failed')
+            return jsonify({'status': 'error', 'error': str(exc)}), 500
+
+    @app.route('/api/nexus_export/files', methods=['GET'])
+    def api_nexus_export_files():
+        try:
+            return jsonify({'status': 'ok', 'files': list_export_files()})
+        except Exception as exc:
+            app.logger.exception('api_nexus_export_files failed')
+            return jsonify({'status': 'error', 'error': str(exc)}), 500
+
+    @app.route('/api/nexus_export/inspect', methods=['GET'])
+    def api_nexus_export_inspect():
+        file_name = request.args.get('file')
+        object_path = request.args.get('path') or '/'
+        if not file_name:
+            return jsonify({'status': 'error', 'error': 'missing file'}), 400
+
+        try:
+            payload = inspect_export_object(file_name, object_path)
+            return jsonify({'status': 'ok', 'node': payload})
+        except FileNotFoundError:
+            return jsonify({'status': 'not_found'}), 404
+        except KeyError:
+            return jsonify({'status': 'not_found'}), 404
+        except Exception as exc:
+            app.logger.exception('api_nexus_export_inspect failed')
+            return jsonify({'status': 'error', 'error': str(exc)}), 500
+
+    @app.route('/api/nexus_export/start', methods=['POST'])
+    def api_nexus_export_start():
+        try:
+            if not backend:
+                return jsonify({'status': 'error', 'error': 'backend unavailable'}), 500
+            backend._ensure_runtime_storage()
+            data = request.get_json(force=False, silent=True) or {}
+            run_name = data.get('run_name')
+            file_path = backend._nexus_exporter.start(run_name)
+            return jsonify({'status': 'ok', 'file_path': file_path, 'export': backend._nexus_exporter.status()})
+        except Exception as exc:
+            app.logger.exception('api_nexus_export_start failed')
+            return jsonify({'status': 'error', 'error': str(exc)}), 500
+
+    @app.route('/api/nexus_export/stop', methods=['POST'])
+    def api_nexus_export_stop():
+        try:
+            if not backend:
+                return jsonify({'status': 'error', 'error': 'backend unavailable'}), 500
+            backend._ensure_runtime_storage()
+            file_path = backend._nexus_exporter.stop()
+            return jsonify({'status': 'ok', 'file_path': file_path, 'export': backend._nexus_exporter.status()})
+        except Exception as exc:
+            app.logger.exception('api_nexus_export_stop failed')
+            return jsonify({'status': 'error', 'error': str(exc)}), 500
 
     @app.route('/api/node_for_device', methods=['GET', 'POST'])
     def api_node_for_device():
@@ -673,21 +839,21 @@ def start_api_server(backend=None):
                     return jsonify({'status': 'ok', 'method': 'nodemanager'}), 202
                 except Exception:
                     app.logger.exception('Failed to schedule nodemanager restart')
-            # Fallback: exit process after short delay so external supervisor restarts it
-            def _delayed_exit():
+            # Fallback: restart the current process directly.
+            def _delayed_restart_process():
                 try:
                     import time
                     time.sleep(1.0)
                 except Exception:
                     pass
                 try:
-                    os._exit(0)
+                    os.execv(sys.executable, [sys.executable] + sys.argv)
                 except Exception:
-                    pass
+                    os._exit(0)
 
-            threading.Thread(target=_delayed_exit, daemon=True).start()
+            threading.Thread(target=_delayed_restart_process, daemon=True).start()
             
-            return jsonify({'status': 'ok', 'method': 'process_exit'}), 202
+            return jsonify({'status': 'ok', 'method': 'process_restart'}), 202
         
         except Exception as e:
         

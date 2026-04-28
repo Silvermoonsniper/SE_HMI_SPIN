@@ -19,6 +19,7 @@ dependencies = [
   "flask",
   "flask_cors",
   "waitress",
+  "h5py",
 ]
 
 [project.optional-dependencies]

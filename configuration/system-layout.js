@@ -454,6 +454,9 @@ function makeDraggable(el)
     el.appendChild(resizeHandle);
 
     resizeHandle.addEventListener('mousedown', (e) => {
+      if (el.classList && el.classList.contains('plot-panel') && typeof window.isConfigurationModeActive === 'function' && !window.isConfigurationModeActive()) {
+        return;
+      }
       e.stopPropagation();
       if (e.button !== 0) return;
 
@@ -477,6 +480,10 @@ function makeDraggable(el)
       el.style.left = `${initialLeft + dx}px`;
       el.style.top = `${initialTop + dy}px`;
     } else if (isResizing) {
+      if (el.classList && el.classList.contains('plot-panel') && typeof window.isConfigurationModeActive === 'function' && !window.isConfigurationModeActive()) {
+        isResizing = false;
+        return;
+      }
       e.preventDefault();
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
@@ -512,6 +519,9 @@ function makeResizable(el) {
   let startX, startY, initialWidth, initialHeight;
   
   resizeHandle.addEventListener('mousedown', (e) => {
+    if (el.classList && el.classList.contains('plot-panel') && typeof window.isConfigurationModeActive === 'function' && !window.isConfigurationModeActive()) {
+      return;
+    }
     e.stopPropagation();
     e.preventDefault();
     if (e.button !== 0) return; // Only left click
@@ -527,6 +537,10 @@ function makeResizable(el) {
   
   const onMouseMove = (e) => {
     if (!isResizing) return;
+    if (el.classList && el.classList.contains('plot-panel') && typeof window.isConfigurationModeActive === 'function' && !window.isConfigurationModeActive()) {
+      isResizing = false;
+      return;
+    }
     e.preventDefault();
     
     const dx = e.clientX - startX;

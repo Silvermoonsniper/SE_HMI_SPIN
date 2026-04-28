@@ -12,6 +12,10 @@ services:
       - ./configuration:/app/configuration
       # Mount content directory for live updates during development
       - ./content:/app/content
+      # Persist server-side layout JSON files created at runtime
+      - ./layout:/app/layout
+      # Persist server-side plot configuration JSON files created at runtime
+      - ./plot_config:/app/plot_config
     environment:
       - PYTHONUNBUFFERED=1
 
