@@ -14,7 +14,7 @@ function dispatchSpinUpdateFromPolling(key, meta) {
     state_str: meta && meta.state_str,
     timestamp_ms: meta && meta.timestamp_ms ? meta.timestamp_ms : Date.now()
   };
-  const ev = new CustomEvent('spinupdate', { detail: evDetail });
+  const ev = new CustomEvent('plotupdate', { detail: evDetail });
   window.dispatchEvent(ev);
 }
 
@@ -154,6 +154,7 @@ startPollingLatestValues();
   const storedLinePlotHistories = {};
   const warmingPlotConfigNames = new Set();
   const latestPlotValues = {};
+  const MAX_STORED_PLOT_HISTORY_POINTS = 1000;
   let currentDeviceParamsData = {};
   let plotCounter = 0;
 
@@ -869,6 +870,10 @@ startPollingLatestValues();
         const yValue = normalizeTimeSeriesValue(value);
         trace.x.push(now);
         trace.y.push(yValue);
+        while(trace.x.length > MAX_STORED_PLOT_HISTORY_POINTS) {
+          trace.x.shift();
+          trace.y.shift();
+        }
       });
     });
   }
@@ -1704,7 +1709,9 @@ startPollingLatestValues();
         ySuffix: yKey,
         label: `${yKey} vs ${xKey}`
       });
-    } else {
+    } 
+    else 
+    {
       key = deviceParamsSelect && deviceParamsSelect.value ? deviceParamsSelect.value.trim() : '';
       if(!key) return alert('Select a device parameter to add');
       preparedLine = getPreparedStagedLine(key, style, key);
@@ -1894,8 +1901,7 @@ startPollingLatestValues();
     }
   }
 
-  // Handle incoming Spin updates
-  window.addEventListener('spinupdate', function(ev){
+  function handlePlotUpdateEvent(ev){
   
     try{
       if (typeof window.isConfigurationModeActive === 'function' && window.isConfigurationModeActive()) {
@@ -2008,7 +2014,12 @@ startPollingLatestValues();
     {
       console.error('plot update error', e);
     }
-  });
+  }
+
+  // Handle live Spin updates and polled plot-history updates separately so
+  // non-plot UI listeners do not rerun for the polling path.
+  window.addEventListener('spinupdate', handlePlotUpdateEvent);
+  window.addEventListener('plotupdate', handlePlotUpdateEvent);
 
       addBtn && addBtn.addEventListener('click', addLine);
 

@@ -13,13 +13,14 @@ readme = "README.md"
 requires-python = ">=3.11"
 
 dependencies = [
-  "spin-hmi",
+  "spin-hmi==1.0.1",
   "frappy-core==0.20.4",
   "ipykernel",
   "flask",
   "flask_cors",
   "waitress",
   "h5py",
+  "psycopg[binary]",
 ]
 
 [project.optional-dependencies]

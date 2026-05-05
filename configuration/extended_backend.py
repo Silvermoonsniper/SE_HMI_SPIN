@@ -4,6 +4,7 @@ import asyncio
 from collections import deque
 import enum
 import os, json
+import psycopg
 import sys
 import threading
 import time
@@ -17,6 +18,33 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 from configuration.nexus_export import NexusRunExporter, inspect_export_object, list_export_files
+
+
+def _history_db_connection_settings():
+    database_url = os.environ.get('HISTORY_DATABASE_URL') or os.environ.get('POSTGRES_URL')
+    if database_url:
+        return {
+            'dsn': database_url,
+            'backend': 'postgresql',
+            'host': os.environ.get('POSTGRES_HOST', ''),
+            'port': os.environ.get('POSTGRES_PORT', ''),
+            'database': os.environ.get('POSTGRES_DB', ''),
+        }
+
+    host = os.environ.get('POSTGRES_HOST', 'postgres')
+    port = os.environ.get('POSTGRES_PORT', '5432')
+    database = os.environ.get('POSTGRES_DB', 'spin_history')
+    user = os.environ.get('POSTGRES_USER', 'spin')
+    password = os.environ.get('POSTGRES_PASSWORD', 'spin')
+    sslmode = os.environ.get('POSTGRES_SSLMODE', 'prefer')
+    dsn = f'postgresql://{user}:{password}@{host}:{port}/{database}?sslmode={sslmode}'
+    return {
+        'dsn': dsn,
+        'backend': 'postgresql',
+        'host': host,
+        'port': port,
+        'database': database,
+    }
 
 
 def is_running_in_docker():
@@ -207,8 +235,127 @@ class ExtendedBackend(Backend):
             self._plot_history_lock = threading.Lock()
         if not hasattr(self, '_plot_history_limit'):
             self._plot_history_limit = 7200
+        if not hasattr(self, '_last_recorded_payloads'):
+            self._last_recorded_payloads = {}
+        if not hasattr(self, '_history_db_info'):
+            self._history_db_info = _history_db_connection_settings()
+        if not hasattr(self, '_history_db_lock'):
+            self._history_db_lock = threading.Lock()
+        if not hasattr(self, '_history_write_queue'):
+            self._history_write_queue = deque()
+        if not hasattr(self, '_history_writer_event'):
+            self._history_writer_event = threading.Event()
+        if not hasattr(self, '_history_writer_stop'):
+            self._history_writer_stop = threading.Event()
+        if not hasattr(self, '_history_db_initialized'):
+            self._init_history_db()
+            self._history_db_initialized = True
+        if not hasattr(self, '_history_writer_thread'):
+            self._history_writer_thread = self._start_history_writer()
         if not hasattr(self, '_nexus_exporter'):
             self._nexus_exporter = NexusRunExporter()
+
+    def _open_history_db_connection(self):
+        db_info = getattr(self, '_history_db_info', None) or _history_db_connection_settings()
+        return psycopg.connect(db_info['dsn'], autocommit=True)
+
+    def _init_history_db(self):
+        with self._open_history_db_connection() as connection:
+            connection.execute(
+                '''
+                CREATE TABLE IF NOT EXISTS device_history (
+                    id BIGSERIAL PRIMARY KEY,
+                    key TEXT NOT NULL,
+                    timestamp_ms BIGINT NOT NULL,
+                    value_json JSONB,
+                    unit TEXT,
+                    state TEXT,
+                    state_str TEXT
+                )
+                '''
+            )
+            connection.execute(
+                'CREATE INDEX IF NOT EXISTS idx_device_history_key_time ON device_history(key, timestamp_ms)'
+            )
+            connection.execute(
+                'CREATE INDEX IF NOT EXISTS idx_device_history_time ON device_history(timestamp_ms)'
+            )
+
+    def _start_history_writer(self):
+        writer = threading.Thread(target=self._history_writer_loop, name='device-history-writer', daemon=True)
+        writer.start()
+        return writer
+
+    def _dequeue_history_samples(self, max_items=1000):
+        batch = []
+        with self._history_db_lock:
+            while self._history_write_queue and len(batch) < max_items:
+                batch.append(self._history_write_queue.popleft())
+        return batch
+
+    def _requeue_history_samples(self, samples):
+        if not samples:
+            return
+        with self._history_db_lock:
+            for sample in reversed(samples):
+                self._history_write_queue.appendleft(sample)
+
+    def _history_writer_loop(self):
+        connection = None
+        while not self._history_writer_stop.is_set():
+            self._history_writer_event.wait(timeout=1.0)
+            self._history_writer_event.clear()
+
+            batch = self._dequeue_history_samples()
+            if not batch:
+                continue
+
+            try:
+                if connection is None or connection.closed:
+                    connection = self._open_history_db_connection()
+
+                with connection.cursor() as cursor:
+                    cursor.executemany(
+                        '''
+                        INSERT INTO device_history (key, timestamp_ms, value_json, unit, state, state_str)
+                        VALUES (%s, %s, %s::jsonb, %s, %s, %s)
+                        ''',
+                        batch,
+                    )
+            except Exception as exc:
+                self._requeue_history_samples(batch)
+                try:
+                    if getattr(self, 'log', None):
+                        self.log.warning(f'Failed to flush device history batch to PostgreSQL: {exc}')
+                except Exception:
+                    pass
+                try:
+                    if connection is not None:
+                        connection.close()
+                except Exception:
+                    pass
+                connection = None
+                time.sleep(2.0)
+
+        try:
+            if connection is not None:
+                connection.close()
+        except Exception:
+            pass
+
+    def _append_persistent_history_sample(self, key, payload, timestamp_ms):
+        self._ensure_runtime_storage()
+        record = (
+            key,
+            int(timestamp_ms),
+            json.dumps(payload.get('value')),
+            payload.get('unit', ''),
+            payload.get('state', ''),
+            payload.get('state_str', ''),
+        )
+        with self._history_db_lock:
+            self._history_write_queue.append(record)
+        self._history_writer_event.set()
 
     def _append_plot_history_sample(self, key, payload, timestamp_ms):
         self._ensure_runtime_storage()
@@ -237,14 +384,153 @@ class ExtendedBackend(Backend):
             'state': str(state),
             'state_str': str(state_str),
         }
+        previous_payload = self._last_recorded_payloads.get(key)
+        is_changed = previous_payload != payload
+        self._last_recorded_payloads[key] = payload.copy()
         ExtendedBackend.latest_values[key] = payload
-        self._append_plot_history_sample(key, payload, timestamp_ms)
-        if hasattr(self, '_nexus_exporter') and self._nexus_exporter.is_running:
+        if is_changed:
+            self._append_plot_history_sample(key, payload, timestamp_ms)
+            self._append_persistent_history_sample(key, payload, timestamp_ms)
+        if is_changed and hasattr(self, '_nexus_exporter') and self._nexus_exporter.is_running:
             try:
                 self._nexus_exporter.append_update(key, payload)
             except Exception as exc:
                 self.log.warning(f'Failed to append NeXus export for {key}: {exc}')
-        return safe_value, payload
+        return safe_value, payload, is_changed
+
+    def get_device_history(self, keys=None, start_ms=None, end_ms=None, limit=10000, offset=0, cursor_timestamp_ms=None, cursor_id=None):
+        self._ensure_runtime_storage()
+        clauses = []
+        params = []
+
+        if keys:
+            normalized_keys = [str(key).strip() for key in keys if str(key).strip()]
+            if normalized_keys:
+                clauses.append('key = ANY(%s)')
+                params.append(normalized_keys)
+
+        if start_ms is not None:
+            clauses.append('timestamp_ms >= %s')
+            params.append(int(start_ms))
+
+        if end_ms is not None:
+            clauses.append('timestamp_ms <= %s')
+            params.append(int(end_ms))
+
+        cursor_active = cursor_timestamp_ms is not None
+        if cursor_active:
+            safe_cursor_timestamp_ms = int(cursor_timestamp_ms)
+            safe_cursor_id = max(0, int(cursor_id or 0))
+            clauses.append('(timestamp_ms > %s OR (timestamp_ms = %s AND id > %s))')
+            params.extend([safe_cursor_timestamp_ms, safe_cursor_timestamp_ms, safe_cursor_id])
+
+        where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ''
+        safe_limit = max(1, min(int(limit or 10000), 50000))
+        safe_offset = max(0, int(offset or 0))
+        query = f'''
+            SELECT id, key, timestamp_ms, value_json, unit, state, state_str
+            FROM device_history
+            {where_clause}
+            ORDER BY timestamp_ms ASC, id ASC
+            LIMIT %s
+        '''
+        query_params = list(params)
+        query_params.append(safe_limit + 1)
+        if not cursor_active and safe_offset:
+            query += '\n            OFFSET %s\n        '
+            query_params.append(safe_offset)
+
+        with self._open_history_db_connection() as connection:
+            rows = connection.execute(query, query_params).fetchall()
+
+        has_more = len(rows) > safe_limit
+        page_rows = rows[:safe_limit]
+
+        samples = {}
+        next_cursor = None
+        if has_more and page_rows:
+            last_row = page_rows[-1]
+            next_cursor = {
+                'timestamp_ms': int(last_row[2]),
+                'id': int(last_row[0]),
+            }
+
+        for row_id, key, timestamp_ms, value_json, unit, state, state_str in page_rows:
+            samples.setdefault(key, []).append({
+                'id': int(row_id),
+                'timestamp_ms': int(timestamp_ms),
+                'value': value_json,
+                'unit': unit or '',
+                'state': state or '',
+                'state_str': state_str or '',
+            })
+
+        return {
+            'backend': self._history_db_info['backend'],
+            'host': self._history_db_info['host'],
+            'port': self._history_db_info['port'],
+            'database': self._history_db_info['database'],
+            'samples': samples,
+            'returned_rows': len(page_rows),
+            'limit': safe_limit,
+            'offset': safe_offset,
+            'has_more': has_more,
+            'next_cursor': next_cursor,
+            'paging_mode': 'cursor' if cursor_active else 'offset',
+        }
+
+    def get_device_history_stats(self):
+        self._ensure_runtime_storage()
+        with self._open_history_db_connection() as connection:
+            row = connection.execute(
+                '''
+                SELECT COUNT(*), MIN(timestamp_ms), MAX(timestamp_ms)
+                FROM device_history
+                '''
+            ).fetchone()
+
+        total_rows, min_ts, max_ts = row or (0, None, None)
+        return {
+            'backend': self._history_db_info['backend'],
+            'host': self._history_db_info['host'],
+            'port': self._history_db_info['port'],
+            'database': self._history_db_info['database'],
+            'total_rows': int(total_rows or 0),
+            'oldest_timestamp_ms': int(min_ts) if min_ts is not None else None,
+            'newest_timestamp_ms': int(max_ts) if max_ts is not None else None,
+        }
+
+    def get_device_history_keys(self, limit=2000):
+        self._ensure_runtime_storage()
+        safe_limit = max(1, min(int(limit or 2000), 10000))
+        with self._open_history_db_connection() as connection:
+            rows = connection.execute(
+                '''
+                SELECT key, MAX(timestamp_ms) AS newest_timestamp_ms
+                FROM device_history
+                GROUP BY key
+                ORDER BY key ASC
+                LIMIT %s
+                ''',
+                (safe_limit,),
+            ).fetchall()
+
+        keys = []
+        for key, newest_timestamp_ms in rows:
+            keys.append({
+                'key': key,
+                'newest_timestamp_ms': int(newest_timestamp_ms) if newest_timestamp_ms is not None else None,
+            })
+
+        return {
+            'backend': self._history_db_info['backend'],
+            'host': self._history_db_info['host'],
+            'port': self._history_db_info['port'],
+            'database': self._history_db_info['database'],
+            'keys': keys,
+            'returned_keys': len(keys),
+            'limit': safe_limit,
+        }
 
     def get_plot_updates(self, since_ms=None):
         self._ensure_runtime_storage()
@@ -411,7 +697,9 @@ class ExtendedBackend(Backend):
 
     async def _publish_runtime_snapshot(self, snapshot_updates):
         for key, unit, state, state_str, value, is_main in snapshot_updates:
-            safe_value, _ = self._record_latest_value(key, unit, state, state_str, value)
+            safe_value, _, changed = self._record_latest_value(key, unit, state, state_str, value)
+            if not changed:
+                continue
             await self.send_update(Update(key, unit, state, state_str, safe_value))
             if is_main:
                 device_name = key.split('.', 1)[0]
@@ -546,8 +834,10 @@ class ExtendedBackend(Backend):
                         except Exception:
                             pass
                         
-                        safe_val, _ = self._record_latest_value(key, unit, state, state_str, val)
-                      
+                        safe_val, _, changed = self._record_latest_value(key, unit, state, state_str, val)
+                        if not changed:
+                            continue
+
                         await self.send_update(Update(key, unit, state, state_str, safe_val))
                        
                     except Exception as e:
@@ -636,6 +926,122 @@ def start_api_server(backend=None):
                     }
                     for key, value in ExtendedBackend.latest_values.items()
                 },
+            }
+
+        payload['status'] = 'ok'
+        return jsonify(_json_safe_value(payload))
+
+    @app.route('/api/device_history')
+    def get_device_history():
+        keys_raw = request.args.get('keys', '')
+        keys = [item for item in keys_raw.split(',') if item.strip()]
+
+        start_raw = request.args.get('start_ms')
+        end_raw = request.args.get('end_ms')
+        limit_raw = request.args.get('limit')
+        offset_raw = request.args.get('offset')
+        cursor_timestamp_raw = request.args.get('cursor_timestamp_ms')
+        cursor_id_raw = request.args.get('cursor_id')
+
+        try:
+            start_ms = int(start_raw) if start_raw not in (None, '') else None
+        except (TypeError, ValueError):
+            start_ms = None
+
+        try:
+            end_ms = int(end_raw) if end_raw not in (None, '') else None
+        except (TypeError, ValueError):
+            end_ms = None
+
+        try:
+            limit = int(limit_raw) if limit_raw not in (None, '') else 10000
+        except (TypeError, ValueError):
+            limit = 10000
+
+        try:
+            offset = int(offset_raw) if offset_raw not in (None, '') else 0
+        except (TypeError, ValueError):
+            offset = 0
+
+        try:
+            cursor_timestamp_ms = int(cursor_timestamp_raw) if cursor_timestamp_raw not in (None, '') else None
+        except (TypeError, ValueError):
+            cursor_timestamp_ms = None
+
+        try:
+            cursor_id = int(cursor_id_raw) if cursor_id_raw not in (None, '') else None
+        except (TypeError, ValueError):
+            cursor_id = None
+
+        if backend and hasattr(backend, 'get_device_history'):
+            payload = backend.get_device_history(
+                keys=keys,
+                start_ms=start_ms,
+                end_ms=end_ms,
+                limit=limit,
+                offset=offset,
+                cursor_timestamp_ms=cursor_timestamp_ms,
+                cursor_id=cursor_id,
+            )
+        else:
+            info = _history_db_connection_settings()
+            payload = {
+                'backend': info['backend'],
+                'host': info['host'],
+                'port': info['port'],
+                'database': info['database'],
+                'samples': {},
+                'returned_rows': 0,
+                'limit': limit,
+                'offset': offset,
+                'has_more': False,
+                'next_cursor': None,
+                'paging_mode': 'cursor' if cursor_timestamp_ms is not None else 'offset',
+            }
+
+        payload['status'] = 'ok'
+        return jsonify(_json_safe_value(payload))
+
+    @app.route('/api/device_history/stats')
+    def get_device_history_stats():
+        if backend and hasattr(backend, 'get_device_history_stats'):
+            payload = backend.get_device_history_stats()
+        else:
+            info = _history_db_connection_settings()
+            payload = {
+                'backend': info['backend'],
+                'host': info['host'],
+                'port': info['port'],
+                'database': info['database'],
+                'total_rows': 0,
+                'oldest_timestamp_ms': None,
+                'newest_timestamp_ms': None,
+            }
+
+        payload['status'] = 'ok'
+        return jsonify(_json_safe_value(payload))
+
+    @app.route('/api/device_history/keys')
+    def get_device_history_keys():
+        limit_raw = request.args.get('limit')
+
+        try:
+            limit = int(limit_raw) if limit_raw not in (None, '') else 2000
+        except (TypeError, ValueError):
+            limit = 2000
+
+        if backend and hasattr(backend, 'get_device_history_keys'):
+            payload = backend.get_device_history_keys(limit=limit)
+        else:
+            info = _history_db_connection_settings()
+            payload = {
+                'backend': info['backend'],
+                'host': info['host'],
+                'port': info['port'],
+                'database': info['database'],
+                'keys': [],
+                'returned_keys': 0,
+                'limit': limit,
             }
 
         payload['status'] = 'ok'

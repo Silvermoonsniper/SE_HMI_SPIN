@@ -381,6 +381,10 @@ async function openNexusBrowser() {
   await refreshNexusBrowserFiles(nexusBrowserState.fileName);
 }
 
+function openHistoryBrowser() {
+  window.open('/history', '_blank', 'noopener');
+}
+
 async function refreshNexusBrowserFiles(preferredFileName) {
   const fileContainer = document.getElementById('nexus-browser-files');
   const detailContainer = document.getElementById('nexus-browser-details');

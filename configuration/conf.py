@@ -323,6 +323,7 @@ class SpinConfigManager:
             config.pages = {
                 'default': Page('../content/system.html', readonly=False),
                 'plots': Page('../content/plots.html', readonly=False),
+                'history': Page('../content/history.html', readonly=False),
             }
             dev_config['nodemanager'] = Device('nodemanager://localhost', pollinterval=1.0)
    

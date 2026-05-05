@@ -6,17 +6,14 @@ window.addEventListener('spinupdate', function(event)
       return;
     }
     var key = event.detail.key || '';
-    
-       fetchNodesList(); 
-       loadNodesInfo();
-       
-     
 
     if (key === 'nodemanager.nodes') {
         var nodes = event.detail.value;
         if (nodes && Array.isArray(nodes)) {
             displayNodesInfo(nodes);
         }
+        fetchNodesList();
+        loadNodesInfo();
         return;
     }
 

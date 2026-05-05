@@ -15,3 +15,5 @@ configuration/nodes.json
 spin.log
 
 nexus_exports
+
+postgres_data
