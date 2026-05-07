@@ -296,18 +296,27 @@ function selectDeco(el) {
     const picker = document.getElementById('deco-color');
     if (picker) {
       let color;
-      if (el.dataset.type === 'label') {
+      if (el.dataset.type === 'label') 
+      {
         color = el.style.color;
-      } else if (el.dataset.type === 'line') {
+      } 
+      else if (el.dataset.type === 'line') 
+      {
         color = getDecorationLineColor(el);
-      } else {
+      } 
+      else 
+      {
         const visual = el.querySelector('.deco-visual');
         if (visual) color = visual.style.backgroundColor;
       }
-      if (color) {
-        if (color.startsWith('#')) {
+      if (color) 
+        {
+        if (color.startsWith('#')) 
+          {
           picker.value = color;
-        } else {
+          } 
+        else 
+        {
           // try to convert rgb(...) to hex
           const m = color.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
           if (m) {
@@ -419,7 +428,9 @@ function makeDraggable(el)
       // if the wrapper is contentEditable. Otherwise, clicks inside the
       // editable text should not start a drag.
       if (e.target.isContentEditable && !(e.target.classList && e.target.classList.contains('deco-drag-handle'))) return;
-    } catch (err) { /* ignore */ }
+    } 
+    catch (err) 
+    { /* ignore */ }
 
     const style = window.getComputedStyle(el);
     initialLeft = parseInt(style.left, 10) || 0;
@@ -454,6 +465,9 @@ function makeDraggable(el)
     el.appendChild(resizeHandle);
 
     resizeHandle.addEventListener('mousedown', (e) => {
+      if (el.classList && el.classList.contains('plot-panel') && typeof window.isConfigurationModeActive === 'function' && !window.isConfigurationModeActive()) {
+        return;
+      }
       e.stopPropagation();
       if (e.button !== 0) return;
 
@@ -477,6 +491,10 @@ function makeDraggable(el)
       el.style.left = `${initialLeft + dx}px`;
       el.style.top = `${initialTop + dy}px`;
     } else if (isResizing) {
+      if (el.classList && el.classList.contains('plot-panel') && typeof window.isConfigurationModeActive === 'function' && !window.isConfigurationModeActive()) {
+        isResizing = false;
+        return;
+      }
       e.preventDefault();
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
@@ -512,6 +530,9 @@ function makeResizable(el) {
   let startX, startY, initialWidth, initialHeight;
   
   resizeHandle.addEventListener('mousedown', (e) => {
+    if (el.classList && el.classList.contains('plot-panel') && typeof window.isConfigurationModeActive === 'function' && !window.isConfigurationModeActive()) {
+      return;
+    }
     e.stopPropagation();
     e.preventDefault();
     if (e.button !== 0) return; // Only left click
@@ -527,6 +548,10 @@ function makeResizable(el) {
   
   const onMouseMove = (e) => {
     if (!isResizing) return;
+    if (el.classList && el.classList.contains('plot-panel') && typeof window.isConfigurationModeActive === 'function' && !window.isConfigurationModeActive()) {
+      isResizing = false;
+      return;
+    }
     e.preventDefault();
     
     const dx = e.clientX - startX;

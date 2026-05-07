@@ -3,6 +3,7 @@ from spin.device import BaseDevice
 from spin.backend import Reply
 import json
 import os
+import sys
 import asyncio
 from frappy.client import SecopClient
 import time
@@ -96,7 +97,7 @@ def extract_modules_and_parameters(data, prefix=""):
  
         command_list = []
  
-        param_info_map = {}
+        param_info_list = []
 
         for param_name, param_info in params.items():
  
@@ -106,31 +107,7 @@ def extract_modules_and_parameters(data, prefix=""):
         
             parameter_list.append(param_name)
             
-            # Extract datainfo for enum parameters
-            if datainfo:
- 
-                param_metadata = {}
- 
-                # Check if it's an enum type
-                if "members" in datainfo:
- 
-                    param_metadata["members"] = datainfo["members"]
-                # Store type info
- 
-                if "type" in datainfo:
- 
-                    param_metadata["type"] = datainfo["type"]
-                # Store min/max for numeric types
-                if "min" in datainfo:
- 
-                    param_metadata["min"] = datainfo["min"]
-                if "max" in datainfo:
- 
-                    param_metadata["max"] = datainfo["max"]
-                
-                if param_metadata:
- 
-                    param_info_map[param_name] = param_metadata
+            param_info_list.append({param_name: param_info})
             
             if dtype == 'command':
  
@@ -151,10 +128,12 @@ def extract_modules_and_parameters(data, prefix=""):
             "commands": command_list,
  
             "original_name": module_name,
+
+            "module_name": module_name,
  
             "interface_classes": module_info.get("interface_classes", []),
  
-            "param_info": param_info_map,
+            "param_info": list(param_info_list),
  
             "accessibles": params  # include full accessibles dict for later use
         }
@@ -287,10 +266,11 @@ class NodeManagerDevice(BaseDevice):
         await self.send_param('status', '', '')
 
     async def _delayed_restart(self, delay=2):
-        """Delay a short time and then exit the process so the container restarts it.
+        """Delay a short time and then restart the current process.
 
-        We use os._exit to ensure the process terminates even if other tasks are running.
-        Docker's restart policy (unless-stopped) will bring the container back up.
+        When running under Docker, re-exec keeps the container alive while still
+        restarting Spin. When running locally (for example via `make demo_GUI`),
+        this avoids terminating the server without bringing it back up.
         """
         try:
             await asyncio.sleep(delay)
@@ -300,8 +280,10 @@ class NodeManagerDevice(BaseDevice):
             self.log.info("NodeManager requested restart to pick up new node configuration")
         except Exception:
             pass
-        # Force exit; allow container runtime to restart the service
-        os._exit(0)
+        try:
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+        except Exception:
+            os._exit(0)
 
     async def handle_request(self, request):
         # request.key is 'nodemanager.something'
@@ -366,8 +348,8 @@ class NodeManagerDevice(BaseDevice):
                     # Merge new_dev_data into all_data to avoid losing fields
                     for dev, info in new_dev_data.items():
                         # Ensure shapes
-                        if 'param_info' not in info or not isinstance(info.get('param_info'), dict):
-                            info['param_info'] = info.get('param_info', {}) or {}
+                        if 'param_info' not in info or not isinstance(info.get('param_info'), list):
+                            info['param_info'] = info.get('param_info', []) or []
 
                         existing = all_data.get(dev, {}) or {}
 
@@ -383,10 +365,25 @@ class NodeManagerDevice(BaseDevice):
                         new_cmds = info.get('commands') or []
                         merged_cmds = sorted(list({*existing_cmds, *new_cmds}))
 
-                        # Merge param_info dictionaries
-                        merged_param_info = {}
-                        merged_param_info.update(existing.get('param_info') or {})
-                        merged_param_info.update(info.get('param_info') or {})
+                        # Merge param_info while keeping the startup-compatible
+                        # list-of-single-entry-dicts shape used by the frontend.
+                        merged_param_info_map = {}
+                        existing_param_info = existing.get('param_info') or []
+                        if isinstance(existing_param_info, dict):
+                            merged_param_info_map.update(existing_param_info)
+                        else:
+                            for entry in existing_param_info:
+                                if isinstance(entry, dict):
+                                    merged_param_info_map.update(entry)
+
+                        incoming_param_info = info.get('param_info') or []
+                        if isinstance(incoming_param_info, dict):
+                            merged_param_info_map.update(incoming_param_info)
+                        else:
+                            for entry in incoming_param_info:
+                                if isinstance(entry, dict):
+                                    merged_param_info_map.update(entry)
+                        merged_param_info = [{param_name: param_info} for param_name, param_info in merged_param_info_map.items()]
 
                         # Interface classes, original_name
                         interface_classes = existing.get('interface_classes') or []
@@ -403,7 +400,7 @@ class NodeManagerDevice(BaseDevice):
                             ap_set = set()
                             ap_set.update(merged_params)
                             ap_set.update(merged_cmds)
-                            ap_set.update(merged_param_info.keys())
+                            ap_set.update(merged_param_info_map.keys())
                             all_params = sorted(list(ap_set))
 
                         # Build merged info
@@ -412,6 +409,7 @@ class NodeManagerDevice(BaseDevice):
                             'all_params': all_params,
                             'commands': merged_cmds,
                             'original_name': original_name,
+                            'module_name': info.get('module_name') or existing.get('module_name') or original_name,
                             'interface_classes': interface_classes,
                             'param_info': merged_param_info,
                         }
@@ -445,12 +443,16 @@ class NodeManagerDevice(BaseDevice):
                 self.update_nodes_param()
                 self.update_device_params_param()
                    
+                should_restart = bool(mod_list)
+
                 if mod_list and not added_runtime_devices:
-                    msg = "Node already present in runtime"
+                    msg = "Node already present in runtime. Restarting server..."
                 else:
-                    msg = "Node added successfully"
+                    msg = "Node added successfully. Restarting server..."
                 
                 self.run_task(self.send_param('status', msg, ''))
+                if should_restart:
+                    self.run_task(self._delayed_restart())
               
                 self.run_task(self._clear_status())
                

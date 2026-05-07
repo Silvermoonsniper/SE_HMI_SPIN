@@ -6,17 +6,14 @@ window.addEventListener('spinupdate', function(event)
       return;
     }
     var key = event.detail.key || '';
-    
-       fetchNodesList(); 
-       loadNodesInfo();
-       
-     
 
     if (key === 'nodemanager.nodes') {
         var nodes = event.detail.value;
         if (nodes && Array.isArray(nodes)) {
             displayNodesInfo(nodes);
         }
+        fetchNodesList();
+        loadNodesInfo();
         return;
     }
 
@@ -279,12 +276,92 @@ async function sendSelectedParam(device, domId) {
     
     let finalValue = isNaN(value) ? value : parseFloat(value);
     const key = device + '.' + param;
-    Spin.send_request(key, "", "input", "", finalValue);
+
+    const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
+    const moduleName = deviceInfo && (deviceInfo.module_name || deviceInfo.original_name)
+      ? (deviceInfo.module_name || deviceInfo.original_name)
+      : null;
+
+    let addr = null;
+    try {
+      if (typeof getKnownNodeAddrForDevice === 'function') {
+        addr = getKnownNodeAddrForDevice(device);
+      }
+    } catch (e) {
+      addr = null;
+    }
+
+    if (!addr && typeof fetch === 'function' && typeof API_BASE !== 'undefined') {
+      try {
+        const resp = await fetch(API_BASE + '/api/node_for_device', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ device: device })
+        });
+        if (resp.ok) {
+          const payload = await resp.json();
+          if (payload && payload.status === 'ok' && payload.addr) {
+            addr = payload.addr;
+          }
+        }
+      } catch (e) {
+        addr = null;
+      }
+    }
+
+    let sentDirectly = false;
+    if (addr && moduleName && typeof fetch === 'function' && typeof API_BASE !== 'undefined') {
+      try {
+        const command = `change ${moduleName}:${param} ${JSON.stringify(finalValue)}`;
+        const resp = await fetch(API_BASE + '/api/send_request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ addr: addr, command: command })
+        });
+        if (resp.ok) {
+          const payload = await resp.json();
+          if (payload && payload.status === 'sent' && /^changed\s|^reply\s/i.test(String(payload.response || ''))) {
+            sentDirectly = true;
+          }
+        }
+      } catch (e) {
+        sentDirectly = false;
+      }
+    }
+
+    if (!sentDirectly) {
+      Spin.send_request(key, "", "input", "", finalValue);
+    }
+
+    fetchAndMergeLatestValuesOnce()
+      .then(() => applyCachedDeviceState(device, domId))
+      .catch(() => {});
    
     valueInput.value = '';
-  } catch(e) {
+  } catch(e) 
+  {
     console.error('sendSelectedParam failed', e);
   }
+}
+
+function getParamInfoMap(deviceInfo) {
+  if (!deviceInfo || !deviceInfo.param_info) return {};
+
+  if (Array.isArray(deviceInfo.param_info)) {
+    const merged = {};
+    deviceInfo.param_info.forEach((entry) => {
+      if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+        Object.assign(merged, entry);
+      }
+    });
+    return merged;
+  }
+
+  if (typeof deviceInfo.param_info === 'object') {
+    return deviceInfo.param_info;
+  }
+
+  return {};
 }
 
 function onParamSelectChange(device, domId) {
@@ -349,16 +426,8 @@ function updateParamDisplay(device, domId, param)
   
   // Check if parameter has enum values in WRITABLE_PARAMS
   const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
-  if (!deviceInfo || !deviceInfo.param_info) return;
-
-  const paramInfo = deviceInfo.param_info;
-
-  // Find the param definition
-  let found = null;
-  for (let i = 0; i < paramInfo.length; i++) {
-    const item = paramInfo[i];
-    if (item[param]) { found = item[param]; break; }
-  }
+  const paramInfo = getParamInfoMap(deviceInfo);
+  const found = paramInfo[param] || null;
   if (!found) {
     // default to text input if we don't know the type
     let existing = inputContainer.querySelector('#param-value-' + domId);
@@ -588,7 +657,11 @@ function renderExtra(device)
     
     // Format value based on type
     let displayValue;
-    if (Array.isArray(v)) 
+    if (v === null || v === undefined || v === 'None')
+    {
+      displayValue = '—';
+    }
+    else if (Array.isArray(v)) 
     
     {
       displayValue = '[' + v.join(', ') + ']';
@@ -681,7 +754,23 @@ function toggleExtra(device) {
   const originalHeight = box.offsetHeight;
   
   if (isOpening) {
-    renderExtra(device);
+    panel.dataset.loading = 'true';
+    panel.innerHTML = '<div class="extra-row"><em>Refreshing parameters...</em></div>';
+    Promise.resolve()
+      .then(() => fetchAndMergeLatestValuesOnce())
+      .then(() => {
+        if (typeof hydrateDeviceFromNode === 'function') {
+          return hydrateDeviceFromNode(device);
+        }
+        return null;
+      })
+      .catch(() => {})
+      .finally(() => {
+        delete panel.dataset.loading;
+        if (panel.classList.contains('open')) {
+          renderExtra(device);
+        }
+      });
   }
   
   panel.classList.toggle('open');

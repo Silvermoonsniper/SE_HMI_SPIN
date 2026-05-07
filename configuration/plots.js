@@ -1,39 +1,97 @@
 // --- Polling API for live updates ---
-//Polls /api/latest_values every 2s and dispatches spinupdate events for each key/value
+// Polls /api/plot_updates every 2s so the frontend can replay samples missed
+// while the screen or browser was asleep.
+
+let latestValuesPollCursorMs = 0;
+let latestValuesPollInFlight = false;
+
+function dispatchSpinUpdateFromPolling(key, meta) {
+  const evDetail = {
+    key: key,
+    value: meta && (meta.value !== undefined ? meta.value : meta),
+    unit: meta && meta.unit,
+    state: meta && meta.state,
+    state_str: meta && meta.state_str,
+    timestamp_ms: meta && meta.timestamp_ms ? meta.timestamp_ms : Date.now()
+  };
+  const ev = new CustomEvent('plotupdate', { detail: evDetail });
+  window.dispatchEvent(ev);
+}
+
+function processLatestValuesPollingPayload(payload) {
+  if (!payload || payload.status !== 'ok') return;
+
+  let maxTimestampMs = 0;
+
+  if (payload.mode === 'history') {
+    const pendingEvents = [];
+    Object.entries(payload.samples || {}).forEach(([key, samples]) => {
+      (samples || []).forEach((sample) => {
+        pendingEvents.push({ key, sample });
+        maxTimestampMs = Math.max(maxTimestampMs, Number(sample && sample.timestamp_ms) || 0);
+      });
+    });
+
+    pendingEvents
+      .sort((left, right) => (left.sample.timestamp_ms || 0) - (right.sample.timestamp_ms || 0))
+      .forEach(({ key, sample }) => dispatchSpinUpdateFromPolling(key, sample));
+    return maxTimestampMs;
+  }
+
+  Object.entries(payload.values || {}).forEach(([key, meta]) => {
+    maxTimestampMs = Math.max(maxTimestampMs, Number(meta && meta.timestamp_ms) || 0);
+    dispatchSpinUpdateFromPolling(key, meta);
+  });
+
+  return maxTimestampMs;
+}
+
+async function pollLatestValuesOnce() {
+  if (latestValuesPollInFlight) return;
+  if (typeof window.isConfigurationModeActive === 'function' && window.isConfigurationModeActive()) {
+    return;
+  }
+
+  latestValuesPollInFlight = true;
+  try {
+    const host = window.location.hostname || 'localhost';
+    const baseUrl = `${window.location.protocol}//${host}:8001/api/plot_updates`;
+    const url = latestValuesPollCursorMs > 0
+      ? `${baseUrl}?since=${encodeURIComponent(latestValuesPollCursorMs)}`
+      : baseUrl;
+
+    const response = await fetch(url);
+    const payload = await response.json();
+    if (!response.ok || payload.status !== 'ok') {
+      throw new Error((payload && payload.error) || `HTTP ${response.status}`);
+    }
+
+    const latestDeliveredTimestampMs = processLatestValuesPollingPayload(payload);
+    latestValuesPollCursorMs = Math.max(
+      latestValuesPollCursorMs,
+      Number(latestDeliveredTimestampMs || 0),
+      Number(payload.server_time_ms || Date.now())
+    );
+  } catch (e) {
+    console.warn('[Polling] Failed to fetch plot updates', e);
+  } finally {
+    latestValuesPollInFlight = false;
+  }
+}
 
 function startPollingLatestValues() {
+  pollLatestValuesOnce();
+  setInterval(pollLatestValuesOnce, 2000);
 
-  setInterval(() => {
-    if (typeof window.isConfigurationModeActive === 'function' && window.isConfigurationModeActive()) {
-      return;
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      pollLatestValuesOnce();
     }
-    // Use the current page host so requests work when UI is served from a different host
-    // (e.g. container/host mappings). Port 8001 is where the backend Flask API serves latest values.
+  });
 
-    const host = window.location.hostname || 'localhost';
-
-    const url = `${window.location.protocol}//${host}:8001/api/latest_values`;
-
-    fetch(url)
-
-    .then(r => r.json())
-
-    .then(data => {
-        Object.entries(data).forEach(([key, meta]) => {
-          // `meta` is expected to be an object like { value, unit, state, state_str }
-          const evDetail = {
-            key: key,
-            value: meta && (meta.value !== undefined ? meta.value : meta),
-            unit: meta && meta.unit,
-            state: meta && meta.state,
-            state_str: meta && meta.state_str
-          };
-          const ev = new CustomEvent('spinupdate', { detail: evDetail });
-          window.dispatchEvent(ev);
-        });
-      })
-      .catch(e => console.warn('[Polling] Failed to fetch latest values from', url, e));
-  }, 2000);
+  window.addEventListener('focus', () => {
+    pollLatestValuesOnce();
+  });
 }
 
 // Start polling for live updates from polling API
@@ -96,6 +154,7 @@ startPollingLatestValues();
   const storedLinePlotHistories = {};
   const warmingPlotConfigNames = new Set();
   const latestPlotValues = {};
+  const MAX_STORED_PLOT_HISTORY_POINTS = 1000;
   let currentDeviceParamsData = {};
   let plotCounter = 0;
 
@@ -343,18 +402,35 @@ startPollingLatestValues();
     return null;
   }
 
+  function getParamInfoMap(deviceInfo){
+    if(!deviceInfo || !deviceInfo.param_info) return {};
+
+    if(Array.isArray(deviceInfo.param_info)) {
+      const merged = {};
+      deviceInfo.param_info.forEach((entry) => {
+        if(entry && typeof entry === 'object' && !Array.isArray(entry)) {
+          Object.assign(merged, entry);
+        }
+      });
+      return merged;
+    }
+
+    if(typeof deviceInfo.param_info === 'object') {
+      return deviceInfo.param_info;
+    }
+
+    return {};
+  }
+
   function getUnitForPlotKey(key){
     const parts = splitPlotKey(key);
     if(!parts.device || !parts.param) return '';
 
     const deviceInfo = getDeviceInfoForPlotDevice(parts.device);
-    const paramInfo = Array.isArray(deviceInfo && deviceInfo.param_info) ? deviceInfo.param_info : [];
-    for(const entry of paramInfo) {
-      if(!entry || !entry[parts.param]) continue;
-      const datainfo = entry[parts.param].datainfo || {};
-      if(typeof datainfo.unit === 'string' && datainfo.unit.trim()) {
-        return datainfo.unit.trim();
-      }
+    const paramMeta = getParamInfoMap(deviceInfo)[parts.param] || null;
+    const datainfo = paramMeta && paramMeta.datainfo ? paramMeta.datainfo : {};
+    if(typeof datainfo.unit === 'string' && datainfo.unit.trim()) {
+      return datainfo.unit.trim();
     }
 
     return '';
@@ -378,11 +454,7 @@ startPollingLatestValues();
     if(!parts.device || !parts.param) return null;
 
     const deviceInfo = getDeviceInfoForPlotDevice(parts.device);
-    const paramInfo = Array.isArray(deviceInfo && deviceInfo.param_info) ? deviceInfo.param_info : [];
-    for(const entry of paramInfo) {
-      if(entry && entry[parts.param]) return entry[parts.param];
-    }
-    return null;
+    return getParamInfoMap(deviceInfo)[parts.param] || null;
   }
 
   function getLatestArrayValueForPlotKey(key){
@@ -798,6 +870,10 @@ startPollingLatestValues();
         const yValue = normalizeTimeSeriesValue(value);
         trace.x.push(now);
         trace.y.push(yValue);
+        while(trace.x.length > MAX_STORED_PLOT_HISTORY_POINTS) {
+          trace.x.shift();
+          trace.y.shift();
+        }
       });
     });
   }
@@ -1331,6 +1407,7 @@ startPollingLatestValues();
           edges: { left: true, right: true, bottom: true, top: true },
           listeners: {
             move (event) {
+              if (!arePlotPanelsMovable()) return;
               let { x, y } = event.target.dataset;
               x = (parseFloat(x) || 0) + event.deltaRect.left;
               y = (parseFloat(y) || 0) + event.deltaRect.top;
@@ -1592,6 +1669,7 @@ startPollingLatestValues();
           edges: { left: true, right: true, bottom: true, top: true },
           listeners: {
             move (event) {
+              if (!arePlotPanelsMovable()) return;
               let { x, y } = event.target.dataset;
               x = (parseFloat(x) || 0) + event.deltaRect.left;
               y = (parseFloat(y) || 0) + event.deltaRect.top;
@@ -1631,7 +1709,9 @@ startPollingLatestValues();
         ySuffix: yKey,
         label: `${yKey} vs ${xKey}`
       });
-    } else {
+    } 
+    else 
+    {
       key = deviceParamsSelect && deviceParamsSelect.value ? deviceParamsSelect.value.trim() : '';
       if(!key) return alert('Select a device parameter to add');
       preparedLine = getPreparedStagedLine(key, style, key);
@@ -1821,58 +1901,12 @@ startPollingLatestValues();
     }
   }
 
-  // Add a visible indicator for last spinupdate event
-  let lastSpinupdateTime = null;
-  
-  function updateSpinupdateIndicator(){
-  
-    let el = document.getElementById('spinupdate-indicator');
-  
-    if(!el){
-  
-      el = document.createElement('div');
-  
-      el.id = 'spinupdate-indicator';
-  
-      el.style.position = 'fixed';
-      
-      el.style.top = '8px';
-      
-  // center the indicator horizontally
-      el.style.left = '50%';
-      el.style.transform = 'translateX(-50%)';
-  
-      el.style.background = '#e0ffe0';
-  
-      el.style.color = '#222';
-  
-      el.style.fontSize = '14px';
-  
-      el.style.padding = '4px 10px';
-  
-      el.style.borderRadius = '6px';
-  
-      el.style.zIndex = '1000';
-  
-      document.body.appendChild(el);
-  
-    }
-  
-    el.textContent = lastSpinupdateTime ? `Last update: ${lastSpinupdateTime.toLocaleTimeString()}` : 'No spinupdate yet';
-  
-  }
-
-  // Handle incoming Spin updates
-  window.addEventListener('spinupdate', function(ev){
+  function handlePlotUpdateEvent(ev){
   
     try{
       if (typeof window.isConfigurationModeActive === 'function' && window.isConfigurationModeActive()) {
         return;
       }
-   
-      lastSpinupdateTime = new Date();
-   
-      updateSpinupdateIndicator();
    
       const emittedKey = ev.detail.key || '';
 
@@ -1890,7 +1924,8 @@ startPollingLatestValues();
         refreshArrayElementStylePanel();
       }
    
-      const now = new Date();
+      const eventTimestampMs = Number(ev.detail.timestamp_ms || Date.now());
+      const now = new Date(eventTimestampMs);
       appendToStoredLinePlotHistories(emittedKey, val, now);
       // route update to all created plot traces that match
       // mark plots that received updates so we only redraw those
@@ -1979,7 +2014,12 @@ startPollingLatestValues();
     {
       console.error('plot update error', e);
     }
-  });
+  }
+
+  // Handle live Spin updates and polled plot-history updates separately so
+  // non-plot UI listeners do not rerun for the polling path.
+  window.addEventListener('spinupdate', handlePlotUpdateEvent);
+  window.addEventListener('plotupdate', handlePlotUpdateEvent);
 
       addBtn && addBtn.addEventListener('click', addLine);
 
