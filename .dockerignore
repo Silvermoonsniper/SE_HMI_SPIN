@@ -26,3 +26,8 @@ Thumbs.db
 # Don't ignore configuration files (we want to keep them)
 !configuration/nodes.json
 !configuration/device_params.json
+
+postgres_data
+postgres_data/
+**/postgres_data
+**/postgres_data/

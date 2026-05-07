@@ -338,7 +338,8 @@ async function sendSelectedParam(device, domId) {
       .catch(() => {});
    
     valueInput.value = '';
-  } catch(e) {
+  } catch(e) 
+  {
     console.error('sendSelectedParam failed', e);
   }
 }

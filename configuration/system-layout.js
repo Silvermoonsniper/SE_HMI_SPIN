@@ -296,18 +296,27 @@ function selectDeco(el) {
     const picker = document.getElementById('deco-color');
     if (picker) {
       let color;
-      if (el.dataset.type === 'label') {
+      if (el.dataset.type === 'label') 
+      {
         color = el.style.color;
-      } else if (el.dataset.type === 'line') {
+      } 
+      else if (el.dataset.type === 'line') 
+      {
         color = getDecorationLineColor(el);
-      } else {
+      } 
+      else 
+      {
         const visual = el.querySelector('.deco-visual');
         if (visual) color = visual.style.backgroundColor;
       }
-      if (color) {
-        if (color.startsWith('#')) {
+      if (color) 
+        {
+        if (color.startsWith('#')) 
+          {
           picker.value = color;
-        } else {
+          } 
+        else 
+        {
           // try to convert rgb(...) to hex
           const m = color.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
           if (m) {
@@ -419,7 +428,9 @@ function makeDraggable(el)
       // if the wrapper is contentEditable. Otherwise, clicks inside the
       // editable text should not start a drag.
       if (e.target.isContentEditable && !(e.target.classList && e.target.classList.contains('deco-drag-handle'))) return;
-    } catch (err) { /* ignore */ }
+    } 
+    catch (err) 
+    { /* ignore */ }
 
     const style = window.getComputedStyle(el);
     initialLeft = parseInt(style.left, 10) || 0;
