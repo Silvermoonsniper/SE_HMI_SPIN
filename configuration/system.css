@@ -165,6 +165,83 @@ body[data-start-page-mode="night"] #main-panel-title-wrap {
   color: #e5eefb;
 }
 
+.main-config-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.topbar-action-btn {
+  min-height: 30px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.topbar-action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.topbar-action-btn-primary {
+  background: #2563eb;
+}
+
+.topbar-action-btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.topbar-action-btn-warn {
+  background: #b45309;
+}
+
+.topbar-action-btn-warn:hover:not(:disabled) {
+  background: #92400e;
+}
+
+.topbar-action-btn-muted {
+  background: #475569;
+}
+
+.topbar-action-btn-muted:hover:not(:disabled) {
+  background: #334155;
+}
+
+.topbar-action-btn-neutral {
+  background: #6c757d;
+}
+
+.topbar-action-btn-neutral:hover:not(:disabled) {
+  background: #495057;
+}
+
+.topbar-status-text {
+  min-width: 180px;
+  font-size: 11px;
+  color: #475569;
+}
+
+.topbar-status-text-accent {
+  min-width: 220px;
+  color: #1e40af;
+}
+
+@media (max-width: 1200px) {
+  .topbar-status-text {
+    min-width: 140px;
+  }
+}
+
 #main-panel.gui-fullscreen {
   padding: 0;
   height: 100vh;

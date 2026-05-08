@@ -202,8 +202,8 @@ class SpinConfigManager:
                     # get local ip 
                     local_ip = self.get_local_ip()  
                     # Ignore responses from localhost (127.0.0.1)
-                    if addr[0] != local_ip:
-                           return
+                    # if addr[0] != local_ip:
+                    #        return
                     try:
    
                         response = data.decode('utf-8').strip()
@@ -373,20 +373,20 @@ manager = SpinConfigManager()
 # Prefer an existing nodes.json (useful when running in Docker where UDP discovery fails).
 # If nodes.json exists, load it and use those entries; otherwise run discovery.
 nodes = []
-if os.path.exists(NODES_FILE):
-    try:
-        with open(NODES_FILE, 'r') as f:
-            loaded_nodes = json.load(f)
-        if isinstance(loaded_nodes, list):
-            nodes = loaded_nodes
-        else:
-            print(f"Ignoring invalid node list in {NODES_FILE}: expected list, got {type(loaded_nodes).__name__}")
-        print(f"Using nodes from {NODES_FILE}: {nodes}")
-    except Exception as e:
-        print(f"Failed to read {NODES_FILE}, falling back to discovery: {e}")
+# if os.path.exists(NODES_FILE):
+#     try:
+#         with open(NODES_FILE, 'r') as f:
+#             loaded_nodes = json.load(f)
+#         if isinstance(loaded_nodes, list):
+#             nodes = loaded_nodes
+#         else:
+#             print(f"Ignoring invalid node list in {NODES_FILE}: expected list, got {type(loaded_nodes).__name__}")
+#         print(f"Using nodes from {NODES_FILE}: {nodes}")
+#     except Exception as e:
+#         print(f"Failed to read {NODES_FILE}, falling back to discovery: {e}")
 
-if not nodes:
-    nodes = asyncio.get_event_loop().run_until_complete(manager.discover_and_save_nodes(timeout=1.0))
+# if not nodes:
+nodes = asyncio.get_event_loop().run_until_complete(manager.discover_and_save_nodes(timeout=1.0))
 
 
 config = manager.spin_server_start(nodes)

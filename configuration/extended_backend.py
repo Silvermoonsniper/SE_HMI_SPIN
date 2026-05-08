@@ -2,9 +2,12 @@ from spin.backend import Backend, Update, State, Reply, fixup_params
 from spin.config import Device as ConfigDevice, Param
 import asyncio
 from collections import deque
+import csv
+from datetime import datetime, timezone
 import enum
 import os, json
 import psycopg
+import shutil
 import sys
 import threading
 import time
@@ -18,6 +21,253 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 from configuration.nexus_export import NexusRunExporter, inspect_export_object, list_export_files
+
+
+DATA_EXPORT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data_exports'))
+DEFAULT_POSTGRES_STORAGE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'postgres_data'))
+
+
+def ensure_data_export_dir():
+    try:
+        os.makedirs(DATA_EXPORT_DIR, exist_ok=True)
+    except Exception as exc:
+        print(f'Failed to create data export dir {DATA_EXPORT_DIR}: {exc}')
+
+
+def _read_plot_history_limit():
+    raw_value = str(os.environ.get('PLOT_HISTORY_LIMIT', '')).strip()
+    if not raw_value:
+        return None
+    try:
+        parsed = int(raw_value)
+    except Exception:
+        return None
+    return parsed if parsed > 0 else None
+
+
+def _storage_alert_thresholds():
+    def _safe_percent(name, fallback):
+        raw_value = os.environ.get(name, fallback)
+        try:
+            value = float(raw_value)
+        except Exception:
+            value = float(fallback)
+        return max(1.0, min(value, 99.9))
+
+    warn_percent = _safe_percent('STORAGE_ALERT_WARN_PERCENT', 85)
+    critical_percent = _safe_percent('STORAGE_ALERT_CRITICAL_PERCENT', 95)
+    if critical_percent <= warn_percent:
+        critical_percent = min(99.9, warn_percent + 5.0)
+    return warn_percent, critical_percent
+
+
+def resolve_storage_monitor_path():
+    configured_path = str(os.environ.get('STORAGE_MONITOR_PATH') or os.environ.get('POSTGRES_STORAGE_PATH') or '').strip()
+    if configured_path:
+        return os.path.abspath(configured_path)
+    if is_running_in_docker():
+        return '/app/postgres_data'
+    return DEFAULT_POSTGRES_STORAGE_DIR
+
+
+def get_storage_monitor_status(backend=None):
+    monitor_path = resolve_storage_monitor_path()
+    if not os.path.exists(monitor_path):
+        monitor_path = DATA_EXPORT_DIR if os.path.exists(DATA_EXPORT_DIR) else os.path.abspath(os.path.dirname(__file__))
+
+    usage = shutil.disk_usage(monitor_path)
+    used_percent = (float(usage.used) / float(usage.total) * 100.0) if usage.total else 0.0
+    warn_percent, critical_percent = _storage_alert_thresholds()
+    level = 'normal'
+    if used_percent >= critical_percent:
+        level = 'critical'
+    elif used_percent >= warn_percent:
+        level = 'warning'
+
+    database_bytes = None
+    if backend and hasattr(backend, '_open_history_db_connection'):
+        try:
+            with backend._open_history_db_connection() as connection:
+                row = connection.execute(
+                    'SELECT pg_database_size(current_database())'
+                ).fetchone()
+            database_bytes = int(row[0]) if row and row[0] is not None else None
+        except Exception:
+            database_bytes = None
+
+    return {
+        'monitor_path': monitor_path,
+        'filesystem_total_bytes': int(usage.total),
+        'filesystem_used_bytes': int(usage.used),
+        'filesystem_free_bytes': int(usage.free),
+        'filesystem_used_percent': round(used_percent, 2),
+        'warning_percent': warn_percent,
+        'critical_percent': critical_percent,
+        'level': level,
+        'database_bytes': database_bytes,
+    }
+
+
+class CsvDataSaver:
+    def __init__(self, backend):
+        self._backend = backend
+        self._lock = threading.Lock()
+        self._thread = None
+        self._stop_event = threading.Event()
+        self._is_running = False
+        self._file_path = None
+        self._directory = None
+        self._file_name = None
+        self._interval_seconds = 10.0
+        self._started_at_ms = None
+        self._last_write_ms = None
+        self._write_cycles = 0
+        self._header_keys = []
+
+    def _resolve_file_path(self, directory, file_name):
+        ensure_data_export_dir()
+        raw_directory = str(directory or '').strip()
+        if not raw_directory:
+            target_directory = DATA_EXPORT_DIR
+        elif os.path.isabs(raw_directory):
+            target_directory = raw_directory
+        else:
+            target_directory = os.path.abspath(os.path.join(DATA_EXPORT_DIR, raw_directory))
+
+        os.makedirs(target_directory, exist_ok=True)
+
+        raw_file_name = str(file_name or '').strip() or f"data_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        if not raw_file_name.lower().endswith('.csv'):
+            raw_file_name += '.csv'
+
+        safe_file_name = os.path.basename(raw_file_name)
+        if not safe_file_name:
+            raise ValueError('invalid CSV file name')
+
+        return target_directory, safe_file_name, os.path.join(target_directory, safe_file_name)
+
+    def _format_csv_value(self, value):
+        if value is None:
+            return ''
+        safe_value = _json_safe_value(value)
+        if isinstance(safe_value, (str, int, float)):
+            return safe_value
+        if isinstance(safe_value, bool):
+            return 'true' if safe_value else 'false'
+        return json.dumps(safe_value)
+
+    def _snapshot_latest_values(self):
+        snapshot_timestamp_ms = int(time.time() * 1000)
+        values_by_key = {}
+        for key, payload in list(ExtendedBackend.latest_values.items()):
+            if not isinstance(payload, dict):
+                payload = {'value': payload}
+            values_by_key[key] = self._format_csv_value(payload.get('value'))
+        return snapshot_timestamp_ms, values_by_key
+
+    def _rewrite_with_headers(self, header_keys):
+        fieldnames = ['timestamp_iso', 'timestamp_ms', *header_keys]
+        existing_rows = []
+        if self._file_path and os.path.exists(self._file_path) and os.path.getsize(self._file_path) > 0:
+            with open(self._file_path, 'r', newline='') as handle:
+                reader = csv.DictReader(handle)
+                existing_rows = list(reader)
+
+        with open(self._file_path, 'w', newline='') as handle:
+            writer = csv.DictWriter(handle, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in existing_rows:
+                writer.writerow({field: row.get(field, '') for field in fieldnames})
+
+    def _writer_loop(self):
+        try:
+            while not self._stop_event.is_set():
+                snapshot_timestamp_ms, values_by_key = self._snapshot_latest_values()
+                if values_by_key and self._file_path:
+                    header_keys = sorted(values_by_key.keys())
+                    if header_keys != self._header_keys:
+                        self._rewrite_with_headers(header_keys)
+                        self._header_keys = header_keys
+
+                    row = {
+                        'timestamp_iso': datetime.fromtimestamp(snapshot_timestamp_ms / 1000, tz=timezone.utc).isoformat(),
+                        'timestamp_ms': snapshot_timestamp_ms,
+                    }
+                    for key in self._header_keys:
+                        row[key] = values_by_key.get(key, '')
+
+                    with open(self._file_path, 'a', newline='') as handle:
+                        writer = csv.DictWriter(handle, fieldnames=['timestamp_iso', 'timestamp_ms', *self._header_keys])
+                        writer.writerow(row)
+                    with self._lock:
+                        self._last_write_ms = snapshot_timestamp_ms
+                        self._write_cycles += 1
+
+                if self._stop_event.wait(self._interval_seconds):
+                    break
+        except Exception as exc:
+            try:
+                if getattr(self._backend, 'log', None):
+                    self._backend.log.warning(f'CSV data saver stopped after error: {exc}')
+            except Exception:
+                pass
+        finally:
+            with self._lock:
+                self._is_running = False
+                self._thread = None
+
+    def start(self, directory=None, file_name=None, interval_seconds=10):
+        with self._lock:
+            if self._is_running:
+                raise RuntimeError('CSV data saving is already running')
+
+            safe_interval = float(interval_seconds or 10)
+            if safe_interval <= 0:
+                raise ValueError('interval_seconds must be greater than 0')
+
+            target_directory, safe_file_name, file_path = self._resolve_file_path(directory, file_name)
+            self._stop_event = threading.Event()
+            self._directory = target_directory
+            self._file_name = safe_file_name
+            self._file_path = file_path
+            self._interval_seconds = safe_interval
+            self._started_at_ms = int(time.time() * 1000)
+            self._last_write_ms = None
+            self._write_cycles = 0
+            self._header_keys = []
+            self._is_running = True
+            self._thread = threading.Thread(target=self._writer_loop, name='csv-data-saver', daemon=True)
+            self._thread.start()
+            return self._file_path
+
+    def stop(self):
+        with self._lock:
+            if not self._is_running:
+                return self._file_path
+            self._stop_event.set()
+            thread = self._thread
+
+        if thread is not None:
+            thread.join(timeout=2.0)
+
+        with self._lock:
+            self._is_running = False
+            self._thread = None
+            return self._file_path
+
+    def status(self):
+        with self._lock:
+            return {
+                'running': bool(self._is_running),
+                'file_path': self._file_path,
+                'directory': self._directory,
+                'file_name': self._file_name,
+                'interval_seconds': self._interval_seconds,
+                'start_time_ms': self._started_at_ms,
+                'last_write_ms': self._last_write_ms,
+                'write_cycles': self._write_cycles,
+                'default_directory': DATA_EXPORT_DIR,
+            }
 
 
 def _history_db_connection_settings():
@@ -234,7 +484,7 @@ class ExtendedBackend(Backend):
         if not hasattr(self, '_plot_history_lock'):
             self._plot_history_lock = threading.Lock()
         if not hasattr(self, '_plot_history_limit'):
-            self._plot_history_limit = 7200
+            self._plot_history_limit = _read_plot_history_limit()
         if not hasattr(self, '_last_recorded_payloads'):
             self._last_recorded_payloads = {}
         if not hasattr(self, '_history_db_info'):
@@ -254,6 +504,8 @@ class ExtendedBackend(Backend):
             self._history_writer_thread = self._start_history_writer()
         if not hasattr(self, '_nexus_exporter'):
             self._nexus_exporter = NexusRunExporter()
+        if not hasattr(self, '_csv_data_saver'):
+            self._csv_data_saver = CsvDataSaver(self)
 
     def _open_history_db_connection(self):
         db_info = getattr(self, '_history_db_info', None) or _history_db_connection_settings()
@@ -1113,6 +1365,83 @@ def start_api_server(backend=None):
             return jsonify({'status': 'ok', 'file_path': file_path, 'export': backend._nexus_exporter.status()})
         except Exception as exc:
             app.logger.exception('api_nexus_export_stop failed')
+            return jsonify({'status': 'error', 'error': str(exc)}), 500
+
+    @app.route('/api/data_saving/status', methods=['GET'])
+    def api_data_saving_status():
+        try:
+            if backend and hasattr(backend, '_ensure_runtime_storage'):
+                backend._ensure_runtime_storage()
+            status = backend._csv_data_saver.status() if backend and hasattr(backend, '_csv_data_saver') else {
+                'running': False,
+                'file_path': None,
+                'directory': DATA_EXPORT_DIR,
+                'file_name': None,
+                'interval_seconds': 10.0,
+                'start_time_ms': None,
+                'last_write_ms': None,
+                'write_cycles': 0,
+                'default_directory': DATA_EXPORT_DIR,
+            }
+            nexus_status = backend._nexus_exporter.status() if backend and hasattr(backend, '_nexus_exporter') else {
+                'running': False,
+                'file_path': None,
+                'run_name': None,
+                'start_time': None,
+            }
+            status['nexus'] = nexus_status
+            return jsonify({'status': 'ok', 'export': status})
+        except Exception as exc:
+            app.logger.exception('api_data_saving_status failed')
+            return jsonify({'status': 'error', 'error': str(exc)}), 500
+
+    @app.route('/api/data_saving/start', methods=['POST'])
+    def api_data_saving_start():
+        try:
+            if not backend:
+                return jsonify({'status': 'error', 'error': 'backend unavailable'}), 500
+            backend._ensure_runtime_storage()
+            data = request.get_json(force=False, silent=True) or {}
+            directory = data.get('directory')
+            file_name = data.get('file_name')
+            interval_seconds = data.get('interval_seconds', 10)
+            save_nexus = bool(data.get('save_nexus', True))
+            file_path = backend._csv_data_saver.start(directory=directory, file_name=file_name, interval_seconds=interval_seconds)
+            nexus_file_path = None
+            if save_nexus:
+                base_name = os.path.splitext(os.path.basename(str(file_name or '').strip() or 'data_export'))[0]
+                nexus_file_name = f'{base_name}.nxs'
+                nexus_file_path = backend._nexus_exporter.start(run_name=base_name, directory=directory, file_name=nexus_file_name)
+            status = backend._csv_data_saver.status()
+            status['nexus'] = backend._nexus_exporter.status()
+            return jsonify({'status': 'ok', 'file_path': file_path, 'nexus_file_path': nexus_file_path, 'export': status})
+        
+        except Exception as exc:
+            app.logger.exception('api_data_saving_start failed')
+            return jsonify({'status': 'error', 'error': str(exc)}), 500
+
+    @app.route('/api/data_saving/stop', methods=['POST'])
+    def api_data_saving_stop():
+        try:
+            if not backend:
+                return jsonify({'status': 'error', 'error': 'backend unavailable'}), 500
+            backend._ensure_runtime_storage()
+            file_path = backend._csv_data_saver.stop()
+            nexus_file_path = backend._nexus_exporter.stop() if backend._nexus_exporter.is_running else None
+            status = backend._csv_data_saver.status()
+            status['nexus'] = backend._nexus_exporter.status()
+            return jsonify({'status': 'ok', 'file_path': file_path, 'nexus_file_path': nexus_file_path, 'export': status})
+        except Exception as exc:
+            app.logger.exception('api_data_saving_stop failed')
+            return jsonify({'status': 'error', 'error': str(exc)}), 500
+
+    @app.route('/api/storage/status', methods=['GET'])
+    def api_storage_status():
+        try:
+            payload = get_storage_monitor_status(backend=backend)
+            return jsonify({'status': 'ok', 'storage': payload})
+        except Exception as exc:
+            app.logger.exception('api_storage_status failed')
             return jsonify({'status': 'error', 'error': str(exc)}), 500
 
     @app.route('/api/node_for_device', methods=['GET', 'POST'])

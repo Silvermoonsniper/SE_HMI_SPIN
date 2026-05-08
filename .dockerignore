@@ -31,3 +31,5 @@ postgres_data
 postgres_data/
 **/postgres_data
 **/postgres_data/
+.env
+data_exports/

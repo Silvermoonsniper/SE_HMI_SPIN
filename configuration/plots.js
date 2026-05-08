@@ -154,7 +154,8 @@ startPollingLatestValues();
   const storedLinePlotHistories = {};
   const warmingPlotConfigNames = new Set();
   const latestPlotValues = {};
-  const MAX_STORED_PLOT_HISTORY_POINTS = 1000;
+  const MAX_STORED_PLOT_HISTORY_POINTS = Number.POSITIVE_INFINITY;
+  const MAX_RENDERED_PLOT_POINTS = 2000;
   let currentDeviceParamsData = {};
   let plotCounter = 0;
 
@@ -859,6 +860,155 @@ startPollingLatestValues();
     return Number.isFinite(numericValue) ? numericValue : null;
   }
 
+  function sampleTracePoints(xValues, yValues, maxPoints){
+    const xSource = Array.isArray(xValues) ? xValues : [];
+    const ySource = Array.isArray(yValues) ? yValues : [];
+    const totalPoints = Math.min(xSource.length, ySource.length);
+    const safeMaxPoints = Math.max(2, Number(maxPoints) || MAX_RENDERED_PLOT_POINTS);
+
+    if(totalPoints <= safeMaxPoints) {
+      return {
+        x: xSource.slice(0, totalPoints),
+        y: ySource.slice(0, totalPoints)
+      };
+    }
+
+    const nextX = [];
+    const nextY = [];
+    const maxIndex = totalPoints - 1;
+    for(let index = 0; index < safeMaxPoints; index += 1) {
+      const sampleIndex = Math.min(maxIndex, Math.round((index * maxIndex) / (safeMaxPoints - 1)));
+      if(nextX.length && nextX[nextX.length - 1] === xSource[sampleIndex] && nextY[nextY.length - 1] === ySource[sampleIndex]) {
+        continue;
+      }
+      nextX.push(xSource[sampleIndex]);
+      nextY.push(ySource[sampleIndex]);
+    }
+
+    if(nextX[nextX.length - 1] !== xSource[maxIndex] || nextY[nextY.length - 1] !== ySource[maxIndex]) {
+      nextX.push(xSource[maxIndex]);
+      nextY.push(ySource[maxIndex]);
+    }
+
+    return { x: nextX, y: nextY };
+  }
+
+  function syncRenderedLineTrace(meta){
+    if(!meta || !meta.traceObj) return;
+    const sampled = sampleTracePoints(meta.rawX, meta.rawY, MAX_RENDERED_PLOT_POINTS);
+    meta.traceObj.x = sampled.x;
+    meta.traceObj.y = sampled.y;
+    meta.x = meta.traceObj.x;
+    meta.y = meta.traceObj.y;
+  }
+
+  function mergeOrderedTimeSeries(baseX, baseY, tailX, tailY){
+    const mergedX = Array.isArray(baseX) ? baseX.slice() : [];
+    const mergedY = Array.isArray(baseY) ? baseY.slice() : [];
+    const sourceX = Array.isArray(tailX) ? tailX : [];
+    const sourceY = Array.isArray(tailY) ? tailY : [];
+
+    let lastTimestamp = mergedX.length ? Number(mergedX[mergedX.length - 1]) : Number.NEGATIVE_INFINITY;
+    let lastValue = mergedY.length ? mergedY[mergedY.length - 1] : undefined;
+
+    for(let index = 0; index < Math.min(sourceX.length, sourceY.length); index += 1) {
+      const nextX = sourceX[index];
+      const nextY = sourceY[index];
+      const nextTimestamp = Number(nextX);
+      if(!Number.isFinite(nextTimestamp)) continue;
+      if(nextTimestamp < lastTimestamp) continue;
+      if(nextTimestamp === lastTimestamp && nextY === lastValue) continue;
+      mergedX.push(nextX);
+      mergedY.push(nextY);
+      lastTimestamp = nextTimestamp;
+      lastValue = nextY;
+    }
+
+    return { x: mergedX, y: mergedY };
+  }
+
+  async function fetchDeviceHistoryForKeys(keys){
+    const normalizedKeys = Array.from(new Set((keys || []).map((key) => String(key || '').trim()).filter(Boolean)));
+    if(!normalizedKeys.length) return {};
+
+    const host = window.location.hostname || 'localhost';
+    const baseUrl = `${window.location.protocol}//${host}:8001/api/device_history`;
+    const allSamples = {};
+    let cursorTimestampMs = null;
+    let cursorId = null;
+    let hasMore = true;
+
+    while(hasMore) {
+      const params = new URLSearchParams();
+      params.set('keys', normalizedKeys.join(','));
+      params.set('limit', '50000');
+      if(cursorTimestampMs !== null) params.set('cursor_timestamp_ms', String(cursorTimestampMs));
+      if(cursorId !== null) params.set('cursor_id', String(cursorId));
+
+      const response = await fetch(`${baseUrl}?${params.toString()}`);
+      const payload = await response.json();
+      if(!response.ok || payload.status !== 'ok') {
+        throw new Error((payload && payload.error) || `HTTP ${response.status}`);
+      }
+
+      Object.entries((payload.samples || {})).forEach(([key, samples]) => {
+        if(!allSamples[key]) allSamples[key] = [];
+        allSamples[key].push(...(samples || []));
+      });
+
+      hasMore = !!payload.has_more;
+      cursorTimestampMs = payload.next_cursor && payload.next_cursor.timestamp_ms !== undefined ? payload.next_cursor.timestamp_ms : null;
+      cursorId = payload.next_cursor && payload.next_cursor.id !== undefined ? payload.next_cursor.id : null;
+    }
+
+    return allSamples;
+  }
+
+  async function hydrateLinePlotHistory(plotEntry){
+    if(!plotEntry || plotEntry.plotType !== 'line' || plotEntry._historyHydrated || plotEntry._historyHydrating) return;
+
+    const traceEntries = Object.entries(plotEntry.traces || {}).filter(([, meta]) => meta && meta.traceObj);
+    const historyKeys = traceEntries.map(([key, meta]) => meta.suffix || key);
+    if(!historyKeys.length) return;
+
+    plotEntry._historyHydrating = true;
+    try {
+      const samplesByKey = await fetchDeviceHistoryForKeys(historyKeys);
+      traceEntries.forEach(([key, meta]) => {
+        const matchedSamples = [];
+        Object.entries(samplesByKey).forEach(([sampleKey, samples]) => {
+          if(plotKeyMatches(sampleKey, key) || (meta.suffix && plotKeyMatches(sampleKey, meta.suffix))) {
+            matchedSamples.push(...(samples || []));
+          }
+        });
+
+        if(!matchedSamples.length) return;
+
+        const dbX = [];
+        const dbY = [];
+        matchedSamples.forEach((sample) => {
+          const timestampMs = Number(sample && sample.timestamp_ms);
+          if(!Number.isFinite(timestampMs)) return;
+          dbX.push(new Date(timestampMs));
+          dbY.push(normalizeTimeSeriesValue(sample.value));
+        });
+
+        const merged = mergeOrderedTimeSeries(dbX, dbY, meta.rawX, meta.rawY);
+        meta.rawX = merged.x;
+        meta.rawY = merged.y;
+        syncRenderedLineTrace(meta);
+      });
+
+      plotEntry._dirty = true;
+      refreshPlot();
+      plotEntry._historyHydrated = true;
+    } catch (e) {
+      console.warn('Failed to hydrate line plot history', e);
+    } finally {
+      plotEntry._historyHydrating = false;
+    }
+  }
+
   function appendToStoredLinePlotHistories(emittedKey, value, now){
     Object.values(storedLinePlotHistories).forEach((history) => {
       if(!history || history.plotType !== 'line' || !history.traces) return;
@@ -919,8 +1069,8 @@ startPollingLatestValues();
       if(!meta.traceObj) return;
 
       history.traces[key] = {
-        x: Array.isArray(meta.traceObj.x) ? meta.traceObj.x.slice() : [],
-        y: Array.isArray(meta.traceObj.y) ? meta.traceObj.y.slice() : [],
+        x: Array.isArray(meta.rawX) ? meta.rawX.slice() : (Array.isArray(meta.traceObj.x) ? meta.traceObj.x.slice() : []),
+        y: Array.isArray(meta.rawY) ? meta.rawY.slice() : (Array.isArray(meta.traceObj.y) ? meta.traceObj.y.slice() : []),
         name: meta.traceObj.name || meta.name || key,
         suffix: meta.suffix || key,
         style: meta.style || {},
@@ -1313,7 +1463,7 @@ startPollingLatestValues();
         const traceLabel = formatLegendLabelForKey(key, key || prepared.suffix || 'trace');
         const trace = { x: [], y: [], mode: 'lines+markers', name: traceLabel };
         applyTraceStyle(trace, prepared.style);
-        plotEntry.traces[key] = { x: trace.x, y: trace.y, traceObj: trace, name: traceLabel, suffix: prepared.suffix, _traceIndex: undefined, _lastSent: 0, style: prepared.style };
+        plotEntry.traces[key] = { x: trace.x, y: trace.y, rawX: [], rawY: [], traceObj: trace, name: traceLabel, suffix: prepared.suffix, _traceIndex: undefined, _lastSent: 0, style: prepared.style };
       }
     });
 
@@ -1327,10 +1477,9 @@ startPollingLatestValues();
 
         if(plotEntry.traces[key] && plotEntry.traces[key].traceObj) {
           const meta = plotEntry.traces[key];
-          meta.traceObj.x = Array.isArray(cachedTrace.x) ? cachedTrace.x.slice() : [];
-          meta.traceObj.y = Array.isArray(cachedTrace.y) ? cachedTrace.y.slice() : [];
-          meta.x = meta.traceObj.x;
-          meta.y = meta.traceObj.y;
+          meta.rawX = Array.isArray(cachedTrace.x) ? cachedTrace.x.slice() : [];
+          meta.rawY = Array.isArray(cachedTrace.y) ? cachedTrace.y.slice() : [];
+          syncRenderedLineTrace(meta);
           meta.latestX = cachedTrace.latestX;
           meta.latestY = cachedTrace.latestY;
           meta.latestXSeries = Array.isArray(cachedTrace.latestXSeries) ? cachedTrace.latestXSeries.slice() : undefined;
@@ -1366,10 +1515,9 @@ startPollingLatestValues();
         const storedTrace = storedLineHistory.traces[key];
         const meta = plotEntry.traces[key];
         if(!storedTrace || !meta || !meta.traceObj) return;
-        meta.traceObj.x = Array.isArray(storedTrace.x) ? storedTrace.x.slice() : [];
-        meta.traceObj.y = Array.isArray(storedTrace.y) ? storedTrace.y.slice() : [];
-        meta.x = meta.traceObj.x;
-        meta.y = meta.traceObj.y;
+        meta.rawX = Array.isArray(storedTrace.x) ? storedTrace.x.slice() : [];
+        meta.rawY = Array.isArray(storedTrace.y) ? storedTrace.y.slice() : [];
+        syncRenderedLineTrace(meta);
       });
     }
 
@@ -1384,6 +1532,9 @@ startPollingLatestValues();
       const next = titleDiv.nextSibling;
       if (next && next.className && (next.className.includes('plot-param-labels') || next.className.includes('plot-legend-labels'))) {
         container.removeChild(next);
+      }
+      if(plotEntry.plotType === 'line') {
+        hydrateLinePlotHistory(plotEntry).catch(() => {});
       }
     }).catch(e=>{ console.warn('Plotly.newPlot failed', e); });
 
@@ -1619,12 +1770,18 @@ startPollingLatestValues();
 
     const type = typeOverride || (plotTypeSelect ? plotTypeSelect.value : 'line');
 
-    const layout = { title: '', xaxis:{type:'date'}, margin:{t:30} };
+    const layout = { title: '', xaxis:{type:'date'}, margin:{t:30}, uirevision: (plotMeta && (plotMeta.id || plotMeta.configName)) ? `${plotMeta.id || plotMeta.configName}:yaxis` : 'plot-yaxis' };
 
     if(type === 'xy') {
       layout.xaxis = { title: (plotMeta && plotMeta.xAxisTitle) ? plotMeta.xAxisTitle : 'X', type: 'linear' };
       layout.yaxis = { title: (plotMeta && plotMeta.yAxisTitle) ? plotMeta.yAxisTitle : 'Y', type: 'linear' };
+    } else {
+      layout.yaxis = { title: (plotMeta && plotMeta.yAxisTitle) ? plotMeta.yAxisTitle : '', type: 'linear' };
     }
+
+    layout.yaxis = Object.assign({}, layout.yaxis || {}, {
+      autorange: true
+    });
 
     return withTimeRangeControls(layout);
 
@@ -1634,6 +1791,12 @@ startPollingLatestValues();
     // refresh all created plots
     Object.values(plotsMap).forEach(p => {
 
+      if(p.plotType === 'line') {
+        Object.values(p.traces).forEach((meta) => {
+          if(meta && meta.traceObj) syncRenderedLineTrace(meta);
+        });
+      }
+
       // Only include traces that have an actual Plotly trace object (skip placeholders)
       const traceMetas = Object.values(p.traces).filter(t => t && t.traceObj);
       const data = traceMetas.map(t => t.traceObj);
@@ -1641,6 +1804,7 @@ startPollingLatestValues();
       // update the whole plot with only the real traces
       Plotly.react(p.plotDiv, data, layoutForType(p.plotType, p), {responsive:true}).then(()=>{
         traceMetas.forEach((t,i)=> t._traceIndex = i);
+        Plotly.relayout(p.plotDiv, { 'yaxis.autorange': true }).catch(() => {});
       }).catch(e=>{ });
   
     });
@@ -1737,7 +1901,7 @@ startPollingLatestValues();
   
   }
 
-  // Trim old points to keep plot lightweight (last 1000 points)
+  // Keep all points for the current browser session.
   function trimTraces(){
   
     Object.values(plotsMap).forEach(p=>{
@@ -1746,7 +1910,7 @@ startPollingLatestValues();
         // skip placeholder/parent entries that don't have a traceObj
         if(!t || !t.traceObj) return;
         let removed = 0;
-        while(t.traceObj.x.length > 1000){ t.traceObj.x.shift(); t.traceObj.y.shift(); removed++; }
+        while(t.traceObj.x.length > MAX_STORED_PLOT_HISTORY_POINTS){ t.traceObj.x.shift(); t.traceObj.y.shift(); removed++; }
         if(removed && typeof t._lastSent === 'number'){
   
           t._lastSent = Math.max(0, t._lastSent - removed);
@@ -1804,6 +1968,27 @@ startPollingLatestValues();
   function flushBufferedPoints(){
   
     Object.values(plotsMap).forEach(p => {
+
+      if(p.plotType === 'line') {
+        if(!p._dirty) return;
+
+        try {
+          const traceMetas = Object.values(p.traces).filter(tt => tt && tt.traceObj);
+          traceMetas.forEach((tt) => syncRenderedLineTrace(tt));
+          const data = traceMetas.map(tt => tt.traceObj);
+          Plotly.react(p.plotDiv, data, layoutForType(p.plotType, p), {responsive:true}).then(()=>{
+            traceMetas.forEach((tt, i) => {
+              tt._traceIndex = i;
+              tt._lastSent = Array.isArray(tt.rawX) ? tt.rawX.length : tt.traceObj.x.length;
+            });
+            p._dirty = false;
+            Plotly.relayout(p.plotDiv, { 'yaxis.autorange': true }).catch(() => {});
+          }).catch(e=>{ console.error('Plotly.react failed during line flush', e); });
+        } catch (e) {
+          console.error('Line plot flush failed', e);
+        }
+        return;
+      }
   
       const traces = Object.values(p.traces);
   
@@ -1823,6 +2008,7 @@ startPollingLatestValues();
           try {
   
             Plotly.extendTraces(p.plotDiv, { x: [newX], y: [newY] }, [t._traceIndex]);
+            Plotly.relayout(p.plotDiv, { 'yaxis.autorange': true }).catch(() => {});
   
           } catch(e) {
   
@@ -1848,6 +2034,7 @@ startPollingLatestValues();
           Plotly.react(p.plotDiv, data, layoutForType(p.plotType, p), {responsive:true}).then(()=>{
             traceMetas.forEach((tt,i)=> tt._traceIndex = i);
             traceMetas.forEach(tt=> tt._lastSent = tt.traceObj.x.length);
+            Plotly.relayout(p.plotDiv, { 'yaxis.autorange': true }).catch(() => {});
           }).catch(e=>{ console.error('Plotly.react failed during flush', e); });
 
         }
@@ -1991,10 +2178,16 @@ startPollingLatestValues();
                 }
                 if (meta && meta.traceObj) 
                 {
-                  meta.traceObj.x.push(now);
-                  meta.traceObj.y.push(yval);
+                  if(Array.isArray(meta.rawX) && Array.isArray(meta.rawY)) {
+                    meta.rawX.push(now);
+                    meta.rawY.push(yval);
+                  } else {
+                    meta.traceObj.x.push(now);
+                    meta.traceObj.y.push(yval);
+                  }
                   // skip parent placeholders during per-trace restyle/extend; they don't have traceObj
                   if (meta && meta.isArrayParent) return;
+                  p._dirty = true;
                   updatedPlots.add(p.id);
                 }
               }

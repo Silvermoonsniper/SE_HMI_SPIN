@@ -8,10 +8,24 @@ import numpy as np
 
 EXPORT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'nexus_exports'))
 PREVIEW_LIMIT = 20
+EXTRA_EXPORT_DIRS = set()
 
 
 def ensure_export_dir():
     os.makedirs(EXPORT_DIR, exist_ok=True)
+
+
+def _all_export_dirs():
+    ensure_export_dir()
+    directories = {EXPORT_DIR}
+    directories.update(path for path in EXTRA_EXPORT_DIRS if path)
+    return sorted(directories)
+
+
+def register_export_dir(path):
+    if not path:
+        return
+    EXTRA_EXPORT_DIRS.add(os.path.abspath(path))
 
 
 def _sanitize_name(value):
@@ -36,30 +50,40 @@ def _safe_export_name(file_name):
 
 
 def resolve_export_file(file_name):
-    ensure_export_dir()
     safe_name = _safe_export_name(file_name)
-    file_path = os.path.join(EXPORT_DIR, safe_name)
-    if not os.path.isfile(file_path):
-        raise FileNotFoundError(safe_name)
-    return file_path
+    for directory in _all_export_dirs():
+        file_path = os.path.join(directory, safe_name)
+        if os.path.isfile(file_path):
+            return file_path
+    raise FileNotFoundError(safe_name)
 
 
 def list_export_files():
-    ensure_export_dir()
     exports = []
-    for entry in os.listdir(EXPORT_DIR):
-        if not entry.endswith('.nxs'):
-            continue
-        file_path = os.path.join(EXPORT_DIR, entry)
+    seen = set()
+    for directory in _all_export_dirs():
         try:
-            stat = os.stat(file_path)
+            entries = os.listdir(directory)
         except OSError:
             continue
-        exports.append({
-            'name': entry,
-            'size': stat.st_size,
-            'modified_time': datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
-        })
+        for entry in entries:
+            if not entry.endswith('.nxs'):
+                continue
+            file_path = os.path.join(directory, entry)
+            try:
+                stat = os.stat(file_path)
+            except OSError:
+                continue
+            key = (entry, os.path.abspath(file_path))
+            if key in seen:
+                continue
+            seen.add(key)
+            exports.append({
+                'name': entry,
+                'size': stat.st_size,
+                'modified_time': datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
+                'directory': os.path.abspath(directory),
+            })
     exports.sort(key=lambda item: item['modified_time'], reverse=True)
     return exports
 
@@ -151,21 +175,32 @@ class NexusRunExporter:
     def is_running(self):
         return self.file_handle is not None
 
-    def start(self, run_name=None):
+    def start(self, run_name=None, directory=None, file_name=None):
         if self.is_running:
             return self.file_path
 
-        ensure_export_dir()
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.run_name = _sanitize_name(run_name or f'run_{timestamp}')
-        file_name = f'{self.run_name}_{timestamp}.nxs'
-        self.file_path = os.path.join(EXPORT_DIR, file_name)
+        if directory:
+            export_dir = os.path.abspath(str(directory).strip())
+            os.makedirs(export_dir, exist_ok=True)
+            register_export_dir(export_dir)
+        else:
+            ensure_export_dir()
+            export_dir = EXPORT_DIR
+
+        if file_name:
+            safe_file_name = _safe_export_name(file_name)
+        else:
+            safe_file_name = f'{self.run_name}_{timestamp}.nxs'
+
+        self.file_path = os.path.join(export_dir, safe_file_name)
         self.start_time = _utc_now_iso()
         self.signal_groups = {}
 
         handle = h5py.File(self.file_path, 'w')
         handle.attrs['NX_class'] = 'NXroot'
-        handle.attrs['file_name'] = file_name
+        handle.attrs['file_name'] = safe_file_name
         handle.attrs['file_time'] = self.start_time
         handle.attrs['creator'] = 'spin-gui-SE'
 

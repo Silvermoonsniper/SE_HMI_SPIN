@@ -14,7 +14,7 @@
     <div class="conn-box-inner">
     <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:20px;">
       <h1 style="margin:0; color:#333; font-size:28px;">GSE-UI</h1>
-      <span style="color:#64748b; font-size:12px; font-weight:600;">V 1.0.5</span>
+      <span style="color:#64748b; font-size:12px; font-weight:600;">V 1.0.6</span>
     </div>
     
     <!-- Connect to Node Button -->
@@ -99,15 +99,17 @@
     <div id="main-panel-title-wrap" style="display:flex; align-items:center; min-width:0;">
       <h3 id="main-panel-title" style="margin:0;">Configure your system layout</h3>
     </div>
-    <div id="main-config-btns" style="display:flex; gap:8px; align-items:center;">
-      <button id="start-export-btn" onclick="startNexusExport()" style="padding:4px 8px; background:#0f766e; color:white; border:none; border-radius:4px; cursor:pointer;">Start Export</button>
-      <button id="stop-export-btn" onclick="stopNexusExport()" style="padding:4px 8px; background:#9a3412; color:white; border:none; border-radius:4px; cursor:pointer;" disabled>Stop Export</button>
-      <button id="browse-export-btn" onclick="openNexusBrowser()" style="padding:4px 8px; background:#475569; color:white; border:none; border-radius:4px; cursor:pointer;">Browse Exports</button>
-      <button id="browse-history-btn" onclick="openHistoryBrowser()" style="padding:4px 8px; background:#1d4ed8; color:white; border:none; border-radius:4px; cursor:pointer;">History Browser</button>
-      <span id="nexus-export-status" style="font-size:11px; color:#475569; min-width:140px;">Export idle</span>
-      <button onclick="disconnectNode()" style="padding:4px 8px; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer;">Back</button>
-      <button id="toggle-config-panels-btn" onclick="toggleConfigurationPanels()" style="padding:4px 8px; background:#495057; color:white; border:none; border-radius:4px; cursor:pointer;">Hide configuration panel</button>
-      <button id="toggle-gui-btn" onclick="toggleConfigView()" style="padding:4px 8px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">Show GUI</button>
+    <div id="main-config-btns" class="main-config-actions">
+      <button id="start-data-saving-btn" class="topbar-action-btn topbar-action-btn-primary" onclick="openDataSavingDialog()">Start Data Saving</button>
+      <button id="stop-data-saving-btn" class="topbar-action-btn topbar-action-btn-warn" onclick="stopDataSaving()" disabled>Stop Data Saving</button>
+      <button id="browse-export-btn" class="topbar-action-btn topbar-action-btn-muted" onclick="openNexusBrowser()">Browse Exports</button>
+      <button id="browse-history-btn" class="topbar-action-btn topbar-action-btn-primary" onclick="openHistoryBrowser()">History Browser</button>
+      <span id="nexus-export-status" class="topbar-status-text">NeXus idle</span>
+      <span id="data-saving-status" class="topbar-status-text topbar-status-text-accent">CSV saving idle</span>
+      <span id="storage-alert-status" class="topbar-status-text">Disk monitor idle</span>
+      <button onclick="disconnectNode()" class="topbar-action-btn topbar-action-btn-neutral">Back</button>
+      <button id="toggle-config-panels-btn" class="topbar-action-btn topbar-action-btn-neutral" onclick="toggleConfigurationPanels()">Hide configuration panel</button>
+      <button id="toggle-gui-btn" class="topbar-action-btn topbar-action-btn-primary" onclick="toggleConfigView()">Show GUI</button>
     </div>
   </div>
 

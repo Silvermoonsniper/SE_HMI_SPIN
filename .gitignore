@@ -17,3 +17,5 @@ spin.log
 nexus_exports
 
 postgres_data
+.env
+data_exports

@@ -178,11 +178,21 @@ const API_BASE = (function(){
   try { return `${location.protocol}//${location.hostname}:8001`; } catch (e) { return 'http://127.0.0.1:8001'; }
 })();
 
+let lastStorageAlertLevel = 'normal';
+
+function formatBytes(value) {
+  const bytes = Number(value);
+  if (!Number.isFinite(bytes) || bytes < 0) return 'unknown';
+  if (bytes === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const scaled = bytes / Math.pow(1024, exponent);
+  return `${scaled >= 10 || exponent === 0 ? scaled.toFixed(0) : scaled.toFixed(1)} ${units[exponent]}`;
+}
+
 async function refreshNexusExportStatus() {
   const statusLabel = document.getElementById('nexus-export-status');
-  const startBtn = document.getElementById('start-export-btn');
-  const stopBtn = document.getElementById('stop-export-btn');
-  if (!statusLabel || !startBtn || !stopBtn) return;
+  if (!statusLabel) return;
 
   try {
     const resp = await fetch(API_BASE + '/api/nexus_export/status', { method: 'GET' });
@@ -192,44 +202,215 @@ async function refreshNexusExportStatus() {
     const isRunning = !!exportState.running;
 
     statusLabel.textContent = isRunning
-      ? `Exporting: ${exportState.run_name || 'run'}`
-      : 'Export idle';
+      ? `NeXus: ${exportState.run_name || 'run'}`
+      : 'NeXus idle';
     statusLabel.title = isRunning && exportState.file_path ? exportState.file_path : '';
-    startBtn.disabled = isRunning;
-    stopBtn.disabled = !isRunning;
   } catch (e) {
-    statusLabel.textContent = 'Export unavailable';
+    statusLabel.textContent = 'NeXus unavailable';
     statusLabel.title = '';
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
   }
 }
 
-async function startNexusExport() {
-  const runName = await showAppPrompt('Enter a run name for the NeXus export', '', 'Start NeXus Export');
-  if (runName === null) return;
+async function refreshDataSavingStatus() {
+  const statusLabel = document.getElementById('data-saving-status');
+  const startBtn = document.getElementById('start-data-saving-btn');
+  const stopBtn = document.getElementById('stop-data-saving-btn');
+  if (!statusLabel || !startBtn || !stopBtn) return;
 
   try {
-    const resp = await fetch(API_BASE + '/api/nexus_export/start', {
+    const resp = await fetch(API_BASE + '/api/data_saving/status', { method: 'GET' });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const payload = await resp.json();
+    const exportState = payload && payload.export ? payload.export : {};
+    const isRunning = !!exportState.running;
+    const nexusState = exportState.nexus || {};
+
+    statusLabel.textContent = isRunning
+      ? `CSV saving: ${exportState.file_name || 'data.csv'} every ${exportState.interval_seconds || 0}s`
+      : 'CSV saving idle';
+    statusLabel.title = exportState.file_path || exportState.default_directory || '';
+    startBtn.disabled = isRunning;
+    stopBtn.disabled = !isRunning;
+
+    const nexusLabel = document.getElementById('nexus-export-status');
+    if (nexusLabel) {
+      nexusLabel.textContent = nexusState.running
+        ? `NeXus: ${nexusState.run_name || 'run'}`
+        : 'NeXus idle';
+      nexusLabel.title = nexusState.file_path || '';
+    }
+  } catch (e) {
+    statusLabel.textContent = 'CSV saving unavailable';
+    statusLabel.title = '';
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+
+    const nexusLabel = document.getElementById('nexus-export-status');
+    if (nexusLabel) {
+      nexusLabel.textContent = 'NeXus unavailable';
+      nexusLabel.title = '';
+    }
+  }
+}
+
+async function refreshStorageAlertStatus() {
+  const statusLabel = document.getElementById('storage-alert-status');
+  if (!statusLabel) return;
+
+  try {
+    const resp = await fetch(API_BASE + '/api/storage/status', { method: 'GET' });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const payload = await resp.json();
+    const storage = payload && payload.storage ? payload.storage : {};
+    const usedPercent = Number(storage.filesystem_used_percent || 0);
+    const freeBytes = Number(storage.filesystem_free_bytes || 0);
+    const dbBytes = Number(storage.database_bytes || 0);
+    const level = storage.level || 'normal';
+
+    statusLabel.textContent = level === 'critical'
+      ? `Disk critical: ${usedPercent.toFixed(1)}% used, ${formatBytes(freeBytes)} free`
+      : level === 'warning'
+        ? `Disk warning: ${usedPercent.toFixed(1)}% used, ${formatBytes(freeBytes)} free`
+        : `Disk: ${usedPercent.toFixed(1)}% used, ${formatBytes(freeBytes)} free`;
+    statusLabel.style.color = level === 'critical' ? '#b91c1c' : level === 'warning' ? '#b45309' : '#475569';
+    statusLabel.title = `Monitoring ${storage.monitor_path || ''}${dbBytes > 0 ? ` | PostgreSQL: ${formatBytes(dbBytes)}` : ''}`;
+
+    if (level !== 'normal' && level !== lastStorageAlertLevel) {
+      const threshold = level === 'critical' ? storage.critical_percent : storage.warning_percent;
+      lastStorageAlertLevel = level;
+      await showAppAlert(
+        `Disk usage reached ${usedPercent.toFixed(1)}% on the monitored storage path.${storage.monitor_path ? `\nPath: ${storage.monitor_path}` : ''}${Number.isFinite(threshold) ? `\nAlert threshold: ${threshold}%` : ''}${dbBytes > 0 ? `\nPostgreSQL size: ${formatBytes(dbBytes)}` : ''}${freeBytes >= 0 ? `\nFree space: ${formatBytes(freeBytes)}` : ''}`,
+        level === 'critical' ? 'Disk Critical' : 'Disk Warning'
+      );
+    } else if (level === 'normal') {
+      lastStorageAlertLevel = 'normal';
+    }
+  } catch (e) {
+    statusLabel.textContent = 'Disk monitor unavailable';
+    statusLabel.style.color = '#64748b';
+    statusLabel.title = '';
+  }
+}
+
+function ensureDataSavingModal() {
+  let overlay = document.getElementById('data-saving-overlay');
+  if (overlay) return overlay;
+
+  overlay = document.createElement('div');
+  overlay.id = 'data-saving-overlay';
+  overlay.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(15,23,42,0.42); z-index:3200; align-items:center; justify-content:center;';
+  overlay.innerHTML = `
+    <div style="width:min(520px, calc(100vw - 32px)); background:#fff; border-radius:12px; box-shadow:0 24px 48px rgba(15,23,42,0.28); padding:20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="margin:0; font-size:18px; color:#0f172a;">Start Data Saving</h3>
+        <button id="data-saving-close-btn" type="button" style="border:none; background:transparent; font-size:22px; cursor:pointer; line-height:1;">&times;</button>
+      </div>
+      <div style="display:grid; gap:12px;">
+        <label style="display:grid; gap:4px; font-size:13px; color:#334155;">
+          <span>Directory path on server</span>
+          <input id="data-saving-directory" type="text" style="padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px;" placeholder="/app/data_exports">
+        </label>
+        <label style="display:grid; gap:4px; font-size:13px; color:#334155;">
+          <span>Base file name</span>
+          <input id="data-saving-file-name" type="text" style="padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px;" placeholder="experiment_data.csv">
+        </label>
+        <label style="display:grid; gap:4px; font-size:13px; color:#334155;">
+          <span>Write interval in seconds</span>
+          <input id="data-saving-interval" type="number" min="1" step="1" value="10" style="padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px;">
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#334155;">
+          <input id="data-saving-write-nexus" type="checkbox" checked>
+          <span>Also write a NeXus report with the same directory and base name</span>
+        </label>
+        <div style="font-size:12px; color:#64748b; line-height:1.45;">
+          When running in Docker, use an absolute server-side directory such as <span style="font-family:monospace;">/app/data_exports</span>. That folder is mounted to the project <span style="font-family:monospace;">data_exports/</span> directory on the host and can be used for both CSV and NeXus output.
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:18px;">
+        <button id="data-saving-cancel-btn" type="button" style="padding:8px 12px; border:1px solid #cbd5e1; background:#fff; border-radius:8px; cursor:pointer;">Cancel</button>
+        <button id="data-saving-submit-btn" type="button" style="padding:8px 12px; border:none; background:#2563eb; color:#fff; border-radius:8px; cursor:pointer;">Start Saving</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const hide = () => { overlay.style.display = 'none'; };
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) hide();
+  });
+  overlay.querySelector('#data-saving-close-btn').addEventListener('click', hide);
+  overlay.querySelector('#data-saving-cancel-btn').addEventListener('click', hide);
+  overlay.querySelector('#data-saving-submit-btn').addEventListener('click', async () => {
+    const directory = overlay.querySelector('#data-saving-directory').value.trim();
+    const fileName = overlay.querySelector('#data-saving-file-name').value.trim();
+    const intervalSeconds = overlay.querySelector('#data-saving-interval').value;
+    const saveNexus = !!overlay.querySelector('#data-saving-write-nexus').checked;
+    await startDataSaving({ directory: directory, fileName: fileName, intervalSeconds: intervalSeconds, saveNexus: saveNexus });
+    hide();
+  });
+
+  return overlay;
+}
+
+async function openDataSavingDialog() {
+  const overlay = ensureDataSavingModal();
+  try {
+    const resp = await fetch(API_BASE + '/api/data_saving/status', { method: 'GET' });
+    const payload = await resp.json();
+    const exportState = payload && payload.export ? payload.export : {};
+    const directoryInput = overlay.querySelector('#data-saving-directory');
+    const fileNameInput = overlay.querySelector('#data-saving-file-name');
+    const intervalInput = overlay.querySelector('#data-saving-interval');
+    const nexusCheckbox = overlay.querySelector('#data-saving-write-nexus');
+    if (directoryInput) directoryInput.value = exportState.default_directory || exportState.directory || '/app/data_exports';
+    if (fileNameInput) fileNameInput.value = exportState.file_name || 'experiment_data.csv';
+    if (intervalInput) intervalInput.value = Math.max(1, Math.round(Number(exportState.interval_seconds || 10)));
+    if (nexusCheckbox) nexusCheckbox.checked = true;
+  } catch (e) {
+    const directoryInput = overlay.querySelector('#data-saving-directory');
+    if (directoryInput && !directoryInput.value) directoryInput.value = '/app/data_exports';
+  }
+  overlay.style.display = 'flex';
+}
+
+async function startDataSaving({ directory, fileName, intervalSeconds, saveNexus }) {
+  const parsedInterval = Number(intervalSeconds);
+  if (!Number.isFinite(parsedInterval) || parsedInterval <= 0) {
+    await showAppAlert('Please enter an interval greater than 0 seconds.', 'Start Data Saving');
+    return;
+  }
+
+  try {
+    const resp = await fetch(API_BASE + '/api/data_saving/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ run_name: String(runName || '').trim() })
+      body: JSON.stringify({
+        directory: String(directory || '').trim(),
+        file_name: String(fileName || '').trim(),
+        interval_seconds: parsedInterval,
+        save_nexus: !!saveNexus,
+      })
     });
     const payload = await resp.json();
     if (!resp.ok || payload.status !== 'ok') {
       throw new Error(payload.error || `HTTP ${resp.status}`);
     }
 
-    await refreshNexusExportStatus();
-    await showAppAlert(`NeXus export started.\n${payload.file_path || ''}`, 'NeXus Export');
+    await refreshDataSavingStatus();
+    const message = [
+      `CSV data saving started.`,
+      payload.file_path || '',
+      payload.nexus_file_path ? `NeXus report: ${payload.nexus_file_path}` : '',
+    ].filter(Boolean).join('\n');
+    await showAppAlert(message, 'Start Data Saving');
   } catch (e) {
-    await showAppAlert(`Failed to start NeXus export.\n${e.message || e}`, 'NeXus Export');
+    await showAppAlert(`Failed to start CSV data saving.\n${e.message || e}`, 'Start Data Saving');
   }
 }
 
-async function stopNexusExport() {
+async function stopDataSaving() {
   try {
-    const resp = await fetch(API_BASE + '/api/nexus_export/stop', {
+    const resp = await fetch(API_BASE + '/api/data_saving/stop', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -238,10 +419,15 @@ async function stopNexusExport() {
       throw new Error(payload.error || `HTTP ${resp.status}`);
     }
 
-    await refreshNexusExportStatus();
-    await showAppAlert(`NeXus export stopped.\n${payload.file_path || ''}`, 'NeXus Export');
+    await refreshDataSavingStatus();
+    const message = [
+      `CSV data saving stopped.`,
+      payload.file_path || '',
+      payload.nexus_file_path ? `NeXus report: ${payload.nexus_file_path}` : '',
+    ].filter(Boolean).join('\n');
+    await showAppAlert(message, 'Stop Data Saving');
   } catch (e) {
-    await showAppAlert(`Failed to stop NeXus export.\n${e.message || e}`, 'NeXus Export');
+    await showAppAlert(`Failed to stop CSV data saving.\n${e.message || e}`, 'Stop Data Saving');
   }
 }
 
@@ -1801,6 +1987,8 @@ function fetchNodesList()
 document.addEventListener('DOMContentLoaded', () => {
   // Wait for Spin to initialize before fetching nodes
   refreshNexusExportStatus().catch(() => {});
+  refreshDataSavingStatus().catch(() => {});
+  refreshStorageAlertStatus().catch(() => {});
   waitForSpin(() => {
     
     loadNodesInfo();
@@ -1820,6 +2008,12 @@ document.addEventListener('DOMContentLoaded', () => {
      apply_previous_layout();
    
   });
+
+  window.setInterval(() => {
+    refreshNexusExportStatus().catch(() => {});
+    refreshDataSavingStatus().catch(() => {});
+    refreshStorageAlertStatus().catch(() => {});
+  }, 10000);
 });
 
 function apply_previous_layout()

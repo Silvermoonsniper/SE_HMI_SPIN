@@ -66,9 +66,25 @@ window.addEventListener('spinupdate', function(event)
       const list = (event.detail.value || []).slice().sort();
       const select = document.getElementById('layout-select');
       if (select) {
-        // Remove existing options (keep first placeholder) and replace with server list
+        // Merge server-discovered layouts with local browser-stored layouts so the
+        // dropdown stays complete even if one source is temporarily missing entries.
+        let localNames = [];
+        try 
+        {
+          const raw = localStorage.getItem(typeof STORAGE_KEY !== 'undefined' ? STORAGE_KEY : 'gas_system_layouts');
+          const localLayouts = raw ? JSON.parse(raw) : {};
+          localNames = Object.keys(localLayouts || {});
+        } 
+        catch (storageError)
+        {
+          console.error('Failed to read local layout names', storageError);
+        }
+
+        const mergedList = Array.from(new Set([...(localNames || []), ...list])).sort();
+
+        // Remove existing options (keep first placeholder) and replace with merged list.
         while (select.options.length > 1) select.remove(1);
-        list.forEach(name => {
+        mergedList.forEach(name => {
           const option = document.createElement('option');
           option.value = name;
           option.text = name;
@@ -76,7 +92,7 @@ window.addEventListener('spinupdate', function(event)
         });
         // If a previously selected layout no longer exists on server, clear it
         const sel = sessionStorage.getItem('selectedLayout');
-        if (sel && !list.includes(sel)) {
+        if (sel && !mergedList.includes(sel)) {
           sessionStorage.removeItem('selectedLayout');
           if (select.value === sel) select.value = '';
         }
