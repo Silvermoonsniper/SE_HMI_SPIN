@@ -8,6 +8,7 @@ import enum
 import os, json
 import psycopg
 import shutil
+import shutil
 import sys
 import threading
 import time
@@ -19,6 +20,7 @@ from frappy.client import SecopClient
 from frappy.lib.enum import EnumMember
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from werkzeug.serving import make_server
 
 from configuration.nexus_export import NexusRunExporter, inspect_export_object, list_export_files
 
@@ -309,6 +311,26 @@ def resolve_host(host):
     return 'host.docker.internal'
 
 
+def _restart_process():
+    original_argv = list(getattr(sys, 'orig_argv', []) or [])
+    if original_argv:
+        executable = original_argv[0]
+        if not os.path.isabs(executable):
+            executable = shutil.which(executable) or executable
+            original_argv[0] = executable
+        os.execvpe(executable, original_argv, os.environ)
+
+    launcher = sys.argv[0] if sys.argv else ''
+    if launcher and not os.path.isabs(launcher):
+        launcher = shutil.which(launcher) or os.path.abspath(launcher)
+
+    restart_argv = [sys.executable]
+    if launcher:
+        restart_argv.append(launcher)
+    restart_argv.extend(sys.argv[1:])
+    os.execvpe(sys.executable, restart_argv, os.environ)
+
+
 class RuntimeSECNode(spin_secop.SECNode):
     def __init__(self, addr, log):
         super().__init__(addr, log)
@@ -471,6 +493,29 @@ for frontend spin updates
 class ExtendedBackend(Backend):
     # Store latest values for API
     latest_values = {}
+
+    def stop_api_server(self):
+        server = getattr(self, '_api_server', None)
+        thread = getattr(self, '_api_server_thread', None)
+
+        if server is not None:
+            try:
+                server.shutdown()
+            except Exception:
+                pass
+            try:
+                server.server_close()
+            except Exception:
+                pass
+
+        if thread is not None and thread.is_alive() and thread is not threading.current_thread():
+            try:
+                thread.join(timeout=2.0)
+            except Exception:
+                pass
+
+        self._api_server = None
+        self._api_server_thread = None
 
     def _ensure_runtime_storage(self):
         if not hasattr(self, '_runtime_node_configs'):
@@ -866,8 +911,9 @@ class ExtendedBackend(Backend):
             if not filtered_mod_list:
                 continue
 
+            filtered_para_map = {name: (para_map or {}).get(name, []) for _, name in filtered_mod_list}
             filtered_dev_data = {name: (dev_data or {}).get(name, {}) for _, name in filtered_mod_list}
-            self.register_runtime_secop_node(host, port, filtered_mod_list, filtered_dev_data)
+            self.add_runtime_secop_node(host, port, filtered_mod_list, filtered_para_map, filtered_dev_data)
 
             for _, unique_name in filtered_mod_list:
                 candidate_devices.discard(unique_name)
@@ -886,6 +932,8 @@ class ExtendedBackend(Backend):
         dev = devcls(name, device_conf, parsed, self, log)
         self._devices[name] = dev
         dev.init()
+        if self.is_initialized:
+            dev.run_task(self._activate_device(dev))
         return dev
 
     def add_runtime_secop_node(self, host, port, mod_list, para_map, device_data=None):
@@ -1128,6 +1176,11 @@ class ExtendedBackend(Backend):
    
             print(f"[ExtendedBackend] Could not set all_params from device_params.json: {e}")
 
+        try:
+            self.refresh_runtime_latest_values()
+        except Exception as exc:
+            self.log.warning(f'Failed to recover runtime nodes during startup: {exc}')
+
         self.run_task(self.poll_all_parameters())
         # Start Flask API server for latest values in a thread, pass self so
         # the API can inspect device->connection mappings.
@@ -1141,6 +1194,41 @@ def start_api_server(backend=None):
     app = Flask(__name__)
    
     CORS(app)
+
+    @app.route('/api/runtime_node_ready')
+    def get_runtime_node_ready():
+        addr = (request.args.get('addr') or '').strip()
+        if not addr:
+            return jsonify({'status': 'error', 'error': 'missing addr'}), 400
+
+        if backend and hasattr(backend, 'refresh_runtime_latest_values'):
+            backend.refresh_runtime_latest_values()
+
+        candidate_addrs = {addr}
+        try:
+            host, port = addr.rsplit(':', 1)
+            candidate_addrs.add(f'{resolve_host(host)}:{port}')
+        except ValueError:
+            pass
+
+        runtime_addrs = getattr(backend, '_runtime_device_addrs', {}) if backend else {}
+        matched_devices = sorted(
+            device_name for device_name, device_addr in runtime_addrs.items()
+            if device_addr in candidate_addrs
+        )
+
+        latest_keys = []
+        for device_name in matched_devices:
+            prefix = f'{device_name}.'
+            if any(key.startswith(prefix) for key in ExtendedBackend.latest_values.keys()):
+                latest_keys.append(device_name)
+
+        return jsonify({
+            'status': 'ok',
+            'ready': bool(matched_devices and latest_keys),
+            'matched_devices': matched_devices,
+            'devices_with_latest_values': latest_keys,
+        })
    
     @app.route('/api/latest_values')
    
@@ -1502,7 +1590,13 @@ def start_api_server(backend=None):
             app.logger.exception('api_plot_config failed')
             return jsonify({'status': 'error', 'error': str(exc)}), 500
    
-    threading.Thread(target=lambda: app.run(host='0.0.0.0', port=8001, debug=False), daemon=True).start()
+    api_server = make_server('0.0.0.0', 8001, app, threaded=True)
+    api_thread = threading.Thread(target=api_server.serve_forever, name='spin-api-server', daemon=True)
+    api_thread.start()
+
+    if backend is not None:
+        backend._api_server = api_server
+        backend._api_server_thread = api_thread
 
     # POST endpoint to send a raw SECoP line (or any line-based TCP command)
     @app.route('/api/send_request', methods=['POST'])
@@ -1582,7 +1676,9 @@ def start_api_server(backend=None):
                 except Exception:
                     pass
                 try:
-                    os.execv(sys.executable, [sys.executable] + sys.argv)
+                    if backend and hasattr(backend, 'stop_api_server'):
+                        backend.stop_api_server()
+                    _restart_process()
                 except Exception:
                     os._exit(0)
 

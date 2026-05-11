@@ -1964,6 +1964,9 @@ async function addNodeConnection() {
   
   if (window.Spin) {
       pendingAddedNodeAddr = `${ip.trim()}:${port.trim()}`;
+      if (typeof window.scheduleBackendRestartReload === 'function') {
+        window.scheduleBackendRestartReload(null, pendingAddedNodeAddr);
+      }
       Spin.send_request('nodemanager.add_node', "", "input", "set", {host: ip, port: port});
       // Alert will be handled by nodemanager.status update
       document.getElementById('conn-ip').value = '';

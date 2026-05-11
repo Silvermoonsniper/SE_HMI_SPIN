@@ -1,4 +1,127 @@
 // ===== Status Badge Updates =====
+let pendingBackendRestartReload = false;
+const BACKEND_RESTART_RECOVERY_KEY = 'pending_backend_restart_recovery';
+const BACKEND_RESTART_ADDR_KEY = 'pending_backend_restart_addr';
+
+function readPendingBackendRestartTimestamp() {
+  try {
+    const raw = sessionStorage.getItem(BACKEND_RESTART_RECOVERY_KEY);
+    const parsed = raw ? parseInt(raw, 10) : 0;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+function writePendingBackendRestartTimestamp(timestampMs) {
+  try {
+    sessionStorage.setItem(BACKEND_RESTART_RECOVERY_KEY, String(timestampMs));
+  } catch (e) {
+    // ignore storage failures
+  }
+}
+
+function clearPendingBackendRestartTimestamp() {
+  try {
+    sessionStorage.removeItem(BACKEND_RESTART_RECOVERY_KEY);
+  } catch (e) {
+    // ignore storage failures
+  }
+}
+
+function readPendingBackendRestartAddr() {
+  try {
+    return sessionStorage.getItem(BACKEND_RESTART_ADDR_KEY) || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function writePendingBackendRestartAddr(addr) {
+  try {
+    if (addr) {
+      sessionStorage.setItem(BACKEND_RESTART_ADDR_KEY, addr);
+    } else {
+      sessionStorage.removeItem(BACKEND_RESTART_ADDR_KEY);
+    }
+  } catch (e) {
+    // ignore storage failures
+  }
+}
+
+function scheduleBackendRestartReload(startedAtOverride, expectedAddrOverride) {
+  if (pendingBackendRestartReload) return;
+  pendingBackendRestartReload = true;
+
+  const startedAt = startedAtOverride || Date.now();
+  const expectedAddr = expectedAddrOverride || readPendingBackendRestartAddr();
+  const maxWaitMs = 60000;
+  const minWaitMs = 4000;
+  const retryDelayMs = 1000;
+  writePendingBackendRestartTimestamp(startedAt);
+  writePendingBackendRestartAddr(expectedAddr);
+
+  const tryReload = async () => {
+    const elapsedMs = Date.now() - startedAt;
+    if (elapsedMs > maxWaitMs) {
+      clearPendingBackendRestartTimestamp();
+      writePendingBackendRestartAddr('');
+      pendingBackendRestartReload = false;
+      return;
+    }
+
+    let backendReady = false;
+    try {
+      const url = expectedAddr
+        ? API_BASE + `/api/runtime_node_ready?addr=${encodeURIComponent(expectedAddr)}&_restart_probe=${Date.now()}`
+        : API_BASE + `/api/latest_values?_restart_probe=${Date.now()}`;
+      const resp = await fetch(url, { method: 'GET', cache: 'no-store' });
+      if (resp.ok) {
+        if (expectedAddr) {
+          const payload = await resp.json();
+          backendReady = !!(payload && payload.status === 'ok' && payload.ready);
+        } else {
+          backendReady = true;
+        }
+      }
+    } catch (e) {
+      backendReady = false;
+    }
+
+    if (backendReady && elapsedMs >= minWaitMs) {
+      clearPendingBackendRestartTimestamp();
+      writePendingBackendRestartAddr('');
+      try {
+        if (window.Spin && typeof window.Spin.reload === 'function') {
+          window.Spin.reload();
+        }
+      } catch (e) {
+        // ignore and fall back to full page reload below
+      }
+
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 250);
+      return;
+    }
+
+    window.setTimeout(tryReload, retryDelayMs);
+  };
+
+  window.setTimeout(tryReload, Math.max(250, minWaitMs - (Date.now() - startedAt)));
+}
+
+window.scheduleBackendRestartReload = scheduleBackendRestartReload;
+
+const pendingBackendRestartTimestamp = readPendingBackendRestartTimestamp();
+const pendingBackendRestartAddr = readPendingBackendRestartAddr();
+if (pendingBackendRestartTimestamp && (Date.now() - pendingBackendRestartTimestamp) < 60000) {
+  scheduleBackendRestartReload(pendingBackendRestartTimestamp, pendingBackendRestartAddr);
+} else if (pendingBackendRestartTimestamp) {
+  clearPendingBackendRestartTimestamp();
+  writePendingBackendRestartAddr('');
+}
+
 window.addEventListener('spinupdate', function(event) 
 {
   try {
@@ -27,6 +150,9 @@ window.addEventListener('spinupdate', function(event)
         fetchAndMergeLatestValuesOnce()
           .then(() => refreshVisibleDeviceBoxes())
           .catch(() => {});
+      }
+      if (typeof msg === 'string' && msg.includes('Restarting server')) {
+        scheduleBackendRestartReload();
       }
         showAppAlert(msg, 'Node Manager');
         }

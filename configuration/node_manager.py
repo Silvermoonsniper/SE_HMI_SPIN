@@ -3,6 +3,7 @@ from spin.device import BaseDevice
 from spin.backend import Reply
 import json
 import os
+import shutil
 import sys
 import asyncio
 from frappy.client import SecopClient
@@ -61,6 +62,26 @@ def resolve_host(host):
     
     # In Docker, use host.docker.internal to access host services
     return 'host.docker.internal'
+
+
+def _restart_process():
+    original_argv = list(getattr(sys, 'orig_argv', []) or [])
+    if original_argv:
+        executable = original_argv[0]
+        if not os.path.isabs(executable):
+            executable = shutil.which(executable) or executable
+            original_argv[0] = executable
+        os.execvpe(executable, original_argv, os.environ)
+
+    launcher = sys.argv[0] if sys.argv else ''
+    if launcher and not os.path.isabs(launcher):
+        launcher = shutil.which(launcher) or os.path.abspath(launcher)
+
+    restart_argv = [sys.executable]
+    if launcher:
+        restart_argv.append(launcher)
+    restart_argv.extend(sys.argv[1:])
+    os.execvpe(sys.executable, restart_argv, os.environ)
 
 """
 
@@ -281,7 +302,10 @@ class NodeManagerDevice(BaseDevice):
         except Exception:
             pass
         try:
-            os.execv(sys.executable, [sys.executable] + sys.argv)
+            backend = getattr(self, '_backend', None)
+            if backend and hasattr(backend, 'stop_api_server'):
+                backend.stop_api_server()
+            _restart_process()
         except Exception:
             os._exit(0)
 
@@ -638,9 +662,9 @@ def init_plugin(conf, loop):
     }
 
 
-# Generic Device base class for all  devices
-class Device(BaseDevice):
-    def read(self, param):
-        # Try to read from attributes, or return None if not found
-        return getattr(self, param, None)
+# Export the concrete node manager device under the conventional plugin name
+# used by Spin so the nodemanager protocol never falls back to an unimplemented
+# BaseDevice subclass.
+class Device(NodeManagerDevice):
+    pass
 
