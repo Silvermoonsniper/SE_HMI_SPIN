@@ -1,5 +1,9 @@
 // ===== Device Management =====
-var WRITABLE_PARAMS = null; 
+var AppState = window.SEAppState;
+
+function getDeviceParamsState() {
+  return AppState.getDeviceParams();
+}
 
 function fetchDeviceParams()
 {
@@ -47,7 +51,8 @@ function createDeviceDisplay(isConfigurelayout)
   }
   
   // Get original device name from WRITABLE_PARAMS when available
-  const deviceData = WRITABLE_PARAMS ? WRITABLE_PARAMS[device] : null;
+  const deviceParams = getDeviceParamsState();
+  const deviceData = deviceParams ? deviceParams[device] : null;
   const displayName = deviceData && deviceData.original_name ? deviceData.original_name : device;
   // Check if this is a valve_controller device - check both original_name and full device name
   const isValveController = (displayName && displayName.toLowerCase().includes('valve_controller')) || 
@@ -121,8 +126,8 @@ function createDeviceDisplay(isConfigurelayout)
   }
   
   
-  const interfaceClasses = WRITABLE_PARAMS && WRITABLE_PARAMS[device] && Array.isArray(WRITABLE_PARAMS[device].interface_classes)
-    ? WRITABLE_PARAMS[device].interface_classes
+  const interfaceClasses = deviceParams && deviceParams[device] && Array.isArray(deviceParams[device].interface_classes)
+    ? deviceParams[device].interface_classes
     : [];
   const isDrivable = interfaceClasses.includes('Drivable');
 
@@ -150,8 +155,8 @@ function createDeviceDisplay(isConfigurelayout)
   }
   
   // Populate params/commands
-  if (WRITABLE_PARAMS && WRITABLE_PARAMS[device]) {
-    populateParamsForDevice(device, WRITABLE_PARAMS[device], domId);
+  if (deviceParams && deviceParams[device]) {
+    populateParamsForDevice(device, deviceParams[device], domId);
   }
   
   // Trigger Spin to bind new data-spin elements if possible

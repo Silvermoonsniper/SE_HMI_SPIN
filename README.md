@@ -5,6 +5,9 @@
 
 An HMI front-end for SECoP devices built on top of the Spin framework. This repository contains the GUI (HTML/CSS/JS) and automatic discovery of SECoP nodes via UDP broadcasting, exposes device parameters to the frontend, and persists visual layouts to disk.
 
+Architecture reference:
+- See `ARCHITECTURE.md` for a system-level architecture map and runtime flow diagrams.
+
 This README explains how to run the project, the recommended development workflow (where to edit files), and troubleshooting steps for layout persistence and asset serving.
 
 ### Highlights / Features

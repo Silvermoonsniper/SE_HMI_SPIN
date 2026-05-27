@@ -1,5 +1,5 @@
 // --- Polling API for live updates ---
-// Polls /api/plot_updates every 2s so the frontend can replay samples missed
+// Polls /api/plot_updates every 10s so the frontend can replay samples missed
 // while the screen or browser was asleep.
 
 let latestValuesPollCursorMs = 0;
@@ -81,7 +81,7 @@ async function pollLatestValuesOnce() {
 
 function startPollingLatestValues() {
   pollLatestValuesOnce();
-  setInterval(pollLatestValuesOnce, 2000);
+  setInterval(pollLatestValuesOnce, 10000);
 
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
@@ -860,6 +860,67 @@ startPollingLatestValues();
     return Number.isFinite(numericValue) ? numericValue : null;
   }
 
+  const MAX_FUTURE_PLOT_SKEW_MS = 5 * 60 * 1000;
+
+  function coercePlotTimestamp(value){
+    if(value instanceof Date) {
+      const timestampMs = value.getTime();
+      return Number.isFinite(timestampMs) ? new Date(timestampMs) : null;
+    }
+
+    if(typeof value === 'number') {
+      return Number.isFinite(value) ? new Date(value) : null;
+    }
+
+    if(typeof value === 'string') {
+      const parsedMs = Date.parse(value);
+      return Number.isFinite(parsedMs) ? new Date(parsedMs) : null;
+    }
+
+    return null;
+  }
+
+  function sanitizeTimeSeriesPoints(xValues, yValues){
+    const safeX = [];
+    const safeY = [];
+    const nowMs = Date.now();
+    const maxAllowedTimestampMs = nowMs + MAX_FUTURE_PLOT_SKEW_MS;
+
+    for(let index = 0; index < Math.min(Array.isArray(xValues) ? xValues.length : 0, Array.isArray(yValues) ? yValues.length : 0); index += 1) {
+      const normalizedDate = coercePlotTimestamp(xValues[index]);
+      if(!normalizedDate) continue;
+
+      const timestampMs = normalizedDate.getTime();
+      if(timestampMs > maxAllowedTimestampMs) continue;
+
+      safeX.push(normalizedDate);
+      safeY.push(yValues[index]);
+    }
+
+    return { x: safeX, y: safeY };
+  }
+
+  function normalizePlotEventTimestamp(timestampMs, eventType){
+    const numericTimestampMs = Number(timestampMs);
+    const nowMs = Date.now();
+    const minAllowedTimestampMs = nowMs - (30 * 24 * 60 * 60 * 1000);
+    const maxAllowedTimestampMs = nowMs + MAX_FUTURE_PLOT_SKEW_MS;
+
+    if(eventType === 'spinupdate') {
+      return nowMs;
+    }
+
+    if(!Number.isFinite(numericTimestampMs)) {
+      return nowMs;
+    }
+
+    if(numericTimestampMs < minAllowedTimestampMs || numericTimestampMs > maxAllowedTimestampMs) {
+      return nowMs;
+    }
+
+    return numericTimestampMs;
+  }
+
   function sampleTracePoints(xValues, yValues, maxPoints){
     const xSource = Array.isArray(xValues) ? xValues : [];
     const ySource = Array.isArray(yValues) ? yValues : [];
@@ -895,6 +956,9 @@ startPollingLatestValues();
 
   function syncRenderedLineTrace(meta){
     if(!meta || !meta.traceObj) return;
+    const sanitized = sanitizeTimeSeriesPoints(meta.rawX, meta.rawY);
+    meta.rawX = sanitized.x;
+    meta.rawY = sanitized.y;
     const sampled = sampleTracePoints(meta.rawX, meta.rawY, MAX_RENDERED_PLOT_POINTS);
     meta.traceObj.x = sampled.x;
     meta.traceObj.y = sampled.y;
@@ -903,10 +967,12 @@ startPollingLatestValues();
   }
 
   function mergeOrderedTimeSeries(baseX, baseY, tailX, tailY){
-    const mergedX = Array.isArray(baseX) ? baseX.slice() : [];
-    const mergedY = Array.isArray(baseY) ? baseY.slice() : [];
-    const sourceX = Array.isArray(tailX) ? tailX : [];
-    const sourceY = Array.isArray(tailY) ? tailY : [];
+    const sanitizedBase = sanitizeTimeSeriesPoints(baseX, baseY);
+    const sanitizedTail = sanitizeTimeSeriesPoints(tailX, tailY);
+    const mergedX = sanitizedBase.x;
+    const mergedY = sanitizedBase.y;
+    const sourceX = sanitizedTail.x;
+    const sourceY = sanitizedTail.y;
 
     let lastTimestamp = mergedX.length ? Number(mergedX[mergedX.length - 1]) : Number.NEGATIVE_INFINITY;
     let lastValue = mergedY.length ? mergedY[mergedY.length - 1] : undefined;
@@ -1010,6 +1076,9 @@ startPollingLatestValues();
   }
 
   function appendToStoredLinePlotHistories(emittedKey, value, now){
+    const normalizedNow = coercePlotTimestamp(now);
+    if(!normalizedNow) return;
+
     Object.values(storedLinePlotHistories).forEach((history) => {
       if(!history || history.plotType !== 'line' || !history.traces) return;
 
@@ -1018,7 +1087,7 @@ startPollingLatestValues();
         if(!(plotKeyMatches(emittedKey, trace.key) || plotKeyMatches(emittedKey, trace.suffix))) return;
 
         const yValue = normalizeTimeSeriesValue(value);
-        trace.x.push(now);
+        trace.x.push(normalizedNow);
         trace.y.push(yValue);
         while(trace.x.length > MAX_STORED_PLOT_HISTORY_POINTS) {
           trace.x.shift();
@@ -1673,7 +1742,8 @@ startPollingLatestValues();
 
       if(i>=candidates.length){
 
-        if(window.WRITABLE_PARAMS) return populateDeviceParams(window.WRITABLE_PARAMS);
+        const deviceParams = window.SEAppState.getDeviceParams();
+        if(deviceParams) return populateDeviceParams(deviceParams);
 
     
         // As a last resort, try fetching a nodes list which may contain descriptive params
@@ -2090,7 +2160,8 @@ startPollingLatestValues();
 
   function handlePlotUpdateEvent(ev){
   
-    try{
+    try
+    {
       if (typeof window.isConfigurationModeActive === 'function' && window.isConfigurationModeActive()) {
         return;
       }
@@ -2103,7 +2174,7 @@ startPollingLatestValues();
       }
 
       // Use ev.detail.value.value if present, else fallback
-   
+      
       const val = (ev.detail.value && typeof ev.detail.value.value !== 'undefined') ? ev.detail.value.value : ev.detail.value;
       latestPlotValues[emittedKey] = val;
 
@@ -2111,7 +2182,7 @@ startPollingLatestValues();
         refreshArrayElementStylePanel();
       }
    
-      const eventTimestampMs = Number(ev.detail.timestamp_ms || Date.now());
+      const eventTimestampMs = normalizePlotEventTimestamp(ev.detail && ev.detail.timestamp_ms, ev.type);
       const now = new Date(eventTimestampMs);
       appendToStoredLinePlotHistories(emittedKey, val, now);
       // route update to all created plot traces that match
@@ -2451,7 +2522,7 @@ startPollingLatestValues();
   setTimeout(scanDataSpinPlots, 500);
 
   // expose minimal API for debugging
-  window._plots = { plotsMap: plotsMap, staged: staged, restorePlotPanelFromLayout: restorePlotPanelFromLayout, capturePlotPanelGeometry: capturePlotPanelGeometry, applyPlotPanelGeometry: applyPlotPanelGeometry };
+  window.SEAppState.setPlots({ plotsMap: plotsMap, staged: staged, restorePlotPanelFromLayout: restorePlotPanelFromLayout, capturePlotPanelGeometry: capturePlotPanelGeometry, applyPlotPanelGeometry: applyPlotPanelGeometry, _restoreCounter: window.SEAppState.getPlots()._restoreCounter || 0 });
 
 
 })();

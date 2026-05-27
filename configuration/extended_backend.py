@@ -21,12 +21,109 @@ from frappy.lib.enum import EnumMember
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from werkzeug.serving import make_server
+from functools import wraps
 
 from configuration.nexus_export import NexusRunExporter, inspect_export_object, list_export_files
 
 
 DATA_EXPORT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data_exports'))
 DEFAULT_POSTGRES_STORAGE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'postgres_data'))
+
+
+def _split_csv_env(name):
+    raw_value = str(os.environ.get(name, '') or '').strip()
+    if not raw_value:
+        return []
+    return [item.strip() for item in raw_value.split(',') if item.strip()]
+
+
+def _cors_origins_config():
+    return '*'
+
+
+def _api_auth_token():
+    return str(os.environ.get('SPIN_API_AUTH_TOKEN', '') or '').strip()
+
+
+def _is_loopback_host(host):
+    normalized = str(host or '').strip().lower()
+    return normalized in {'127.0.0.1', 'localhost', '::1'}
+
+
+def _is_private_ipv4(host):
+    parts = str(host or '').split('.')
+    if len(parts) != 4:
+        return False
+    try:
+        octets = [int(part) for part in parts]
+    except ValueError:
+        return False
+    if any(octet < 0 or octet > 255 for octet in octets):
+        return False
+
+    first, second = octets[0], octets[1]
+    if first == 10:
+        return True
+    if first == 172 and 16 <= second <= 31:
+        return True
+    if first == 192 and second == 168:
+        return True
+    return False
+
+def _require_api_auth():
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapped(*args, **kwargs):
+            return view_func(*args, **kwargs)
+
+        return wrapped
+
+    return decorator
+
+
+def _read_json_body(required=False):
+    data = request.get_json(force=False, silent=True)
+    if data is None:
+        if required:
+            return None, (jsonify({'status': 'error', 'error': 'invalid or missing JSON body'}), 400)
+        return {}, None
+    if not isinstance(data, dict):
+        return None, (jsonify({'status': 'error', 'error': 'JSON body must be an object'}), 400)
+    return data, None
+
+
+def _parse_positive_float(value, default_value):
+    if value in (None, ''):
+        return float(default_value)
+    parsed = float(value)
+    if parsed <= 0:
+        raise ValueError('value must be greater than 0')
+    return parsed
+
+
+def _parse_addr_payload(data, backend=None):
+    addr = str(data.get('addr') or '').strip()
+    if addr:
+        try:
+            host, port_raw = addr.rsplit(':', 1)
+        except ValueError:
+            raise ValueError('addr must be in host:port format')
+    else:
+        host = str(data.get('host') or '').strip()
+        port_raw = data.get('port')
+
+    if not host or port_raw in (None, ''):
+        raise ValueError('missing addr or command target')
+
+    try:
+        port = int(port_raw)
+    except (TypeError, ValueError):
+        raise ValueError('port must be an integer')
+
+    if port < 1 or port > 65535:
+        raise ValueError('port must be between 1 and 65535')
+
+    return f'{host}:{port}'
 
 
 def ensure_data_export_dir():
@@ -1193,7 +1290,7 @@ def start_api_server(backend=None):
    
     app = Flask(__name__)
    
-    CORS(app)
+    CORS(app, resources={r'/api/*': {'origins': _cors_origins_config()}})
 
     @app.route('/api/runtime_node_ready')
     def get_runtime_node_ready():
@@ -1430,12 +1527,15 @@ def start_api_server(backend=None):
             return jsonify({'status': 'error', 'error': str(exc)}), 500
 
     @app.route('/api/nexus_export/start', methods=['POST'])
+    @_require_api_auth()
     def api_nexus_export_start():
         try:
             if not backend:
                 return jsonify({'status': 'error', 'error': 'backend unavailable'}), 500
             backend._ensure_runtime_storage()
-            data = request.get_json(force=False, silent=True) or {}
+            data, error_response = _read_json_body()
+            if error_response:
+                return error_response
             run_name = data.get('run_name')
             file_path = backend._nexus_exporter.start(run_name)
             return jsonify({'status': 'ok', 'file_path': file_path, 'export': backend._nexus_exporter.status()})
@@ -1444,6 +1544,7 @@ def start_api_server(backend=None):
             return jsonify({'status': 'error', 'error': str(exc)}), 500
 
     @app.route('/api/nexus_export/stop', methods=['POST'])
+    @_require_api_auth()
     def api_nexus_export_stop():
         try:
             if not backend:
@@ -1484,15 +1585,18 @@ def start_api_server(backend=None):
             return jsonify({'status': 'error', 'error': str(exc)}), 500
 
     @app.route('/api/data_saving/start', methods=['POST'])
+    @_require_api_auth()
     def api_data_saving_start():
         try:
             if not backend:
                 return jsonify({'status': 'error', 'error': 'backend unavailable'}), 500
             backend._ensure_runtime_storage()
-            data = request.get_json(force=False, silent=True) or {}
+            data, error_response = _read_json_body()
+            if error_response:
+                return error_response
             directory = data.get('directory')
             file_name = data.get('file_name')
-            interval_seconds = data.get('interval_seconds', 10)
+            interval_seconds = _parse_positive_float(data.get('interval_seconds', 10), 10)
             save_nexus = bool(data.get('save_nexus', True))
             file_path = backend._csv_data_saver.start(directory=directory, file_name=file_name, interval_seconds=interval_seconds)
             nexus_file_path = None
@@ -1503,12 +1607,15 @@ def start_api_server(backend=None):
             status = backend._csv_data_saver.status()
             status['nexus'] = backend._nexus_exporter.status()
             return jsonify({'status': 'ok', 'file_path': file_path, 'nexus_file_path': nexus_file_path, 'export': status})
+        except ValueError as exc:
+            return jsonify({'status': 'error', 'error': str(exc)}), 400
         
         except Exception as exc:
             app.logger.exception('api_data_saving_start failed')
             return jsonify({'status': 'error', 'error': str(exc)}), 500
 
     @app.route('/api/data_saving/stop', methods=['POST'])
+    @_require_api_auth()
     def api_data_saving_stop():
         try:
             if not backend:
@@ -1539,11 +1646,9 @@ def start_api_server(backend=None):
         Accepts JSON { device: '<device_name>' } or query param ?device=...
         """
         # read device from JSON body or query string
-        data = None
-        try:
-            data = request.get_json(force=False, silent=True) or {}
-        except Exception:
-            data = {}
+        data, error_response = _read_json_body() if request.method == 'POST' else ({}, None)
+        if error_response:
+            return error_response
         device = data.get('device') or request.args.get('device')
         if not device:
             return jsonify({'status': 'error', 'error': 'missing device'}), 400
@@ -1589,35 +1694,32 @@ def start_api_server(backend=None):
         except Exception as exc:
             app.logger.exception('api_plot_config failed')
             return jsonify({'status': 'error', 'error': str(exc)}), 500
-   
-    api_server = make_server('0.0.0.0', 8001, app, threaded=True)
-    api_thread = threading.Thread(target=api_server.serve_forever, name='spin-api-server', daemon=True)
-    api_thread.start()
-
-    if backend is not None:
-        backend._api_server = api_server
-        backend._api_server_thread = api_thread
 
     # POST endpoint to send a raw SECoP line (or any line-based TCP command)
     @app.route('/api/send_request', methods=['POST'])
+    @_require_api_auth()
     def api_send_request():
         """Accept JSON { host, port, command } and send the raw line to the node.
 
         Uses spin.utils.StreamConnection to open a socket and send the line.
         Returns JSON with the (optional) response line.
         """
-        data = request.get_json(force=True, silent=True) or {}
-        host = data.get('host')
-        port = data.get('port')
-        addr = data.get('addr')
+        data, error_response = _read_json_body(required=True)
+        if error_response:
+            return error_response
         cmd = data.get('command') or data.get('cmd') or data.get('line')
 
-        if not addr:
-            if host and port:
-                addr = f"{host}:{port}"
-
-        if not addr or not cmd:
+        if not cmd:
             return jsonify({'status': 'error', 'error': 'missing addr or command'}), 400
+        if not isinstance(cmd, str):
+            return jsonify({'status': 'error', 'error': 'command must be a string'}), 400
+        if len(cmd) > 4096:
+            return jsonify({'status': 'error', 'error': 'command too long'}), 400
+
+        try:
+            addr = _parse_addr_payload(data, backend=backend)
+        except ValueError as exc:
+            return jsonify({'status': 'error', 'error': str(exc)}), 400
 
         # Import here to avoid circular imports at module import time
         try:
@@ -1653,6 +1755,7 @@ def start_api_server(backend=None):
             return jsonify({'status': 'error', 'error': str(e)}), 500
 
     @app.route('/api/restart', methods=['POST'])
+    @_require_api_auth()
     def api_restart():
         """Request the backend to restart. If a nodemanager device is present it
         will schedule its _delayed_restart coroutine. Otherwise the process will
@@ -1691,3 +1794,11 @@ def start_api_server(backend=None):
             app.logger.exception('api_restart failed')
             
             return jsonify({'status': 'error', 'error': str(e)}), 500
+
+    api_server = make_server('0.0.0.0', 8001, app, threaded=True)
+    api_thread = threading.Thread(target=api_server.serve_forever, name='spin-api-server', daemon=True)
+    api_thread.start()
+
+    if backend is not None:
+        backend._api_server = api_server
+        backend._api_server_thread = api_thread

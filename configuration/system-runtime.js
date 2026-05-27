@@ -1,4 +1,6 @@
 // ===== Status Badge Updates =====
+var AppState = window.SEAppState;
+var AppUi = window.SEAppUi;
 let pendingBackendRestartReload = false;
 const BACKEND_RESTART_RECOVERY_KEY = 'pending_backend_restart_recovery';
 const BACKEND_RESTART_ADDR_KEY = 'pending_backend_restart_addr';
@@ -135,8 +137,8 @@ window.addEventListener('spinupdate', function(event)
         if (nodes && Array.isArray(nodes)) {
             displayNodesInfo(nodes);
         }
-        fetchNodesList();
-        loadNodesInfo();
+        AppUi.fetchNodesList();
+        AppUi.loadNodesInfo();
         return;
     }
 
@@ -144,8 +146,8 @@ window.addEventListener('spinupdate', function(event)
         var msg = event.detail.value;
         if (msg) {
       if (msg === 'Node added successfully' || msg === 'Node already present in runtime') {
-        fetchNodesList();
-        loadNodesInfo();
+        AppUi.fetchNodesList();
+        AppUi.loadNodesInfo();
         fetchDeviceParams();
         fetchAndMergeLatestValuesOnce()
           .then(() => refreshVisibleDeviceBoxes())
@@ -154,7 +156,7 @@ window.addEventListener('spinupdate', function(event)
       if (typeof msg === 'string' && msg.includes('Restarting server')) {
         scheduleBackendRestartReload();
       }
-        showAppAlert(msg, 'Node Manager');
+        AppUi.showAppAlert(msg, 'Node Manager');
         }
         return;
     }
@@ -163,8 +165,9 @@ window.addEventListener('spinupdate', function(event)
         var data = event.detail.value;
       
         if (data) {
-            const previousKeys = WRITABLE_PARAMS ? new Set(Object.keys(WRITABLE_PARAMS)) : new Set();
-            WRITABLE_PARAMS = data;
+          const previousParams = AppState.getDeviceParams();
+          const previousKeys = previousParams ? new Set(Object.keys(previousParams)) : new Set();
+          AppState.setDeviceParams(data);
             populateDeviceList(data);
             if (pendingAddedNodeAddr) {
               let mappedCount = 0;
@@ -408,18 +411,19 @@ async function sendSelectedParam(device, domId) {
     const value = valueInput.value.trim();
     
     if (!param) {
-      await showAppAlert('Please select a parameter first.', 'Set Parameter');
+      await AppUi.showAppAlert('Please select a parameter first.', 'Set Parameter');
       return;
     }
     if (!value) {
-      await showAppAlert('Please enter a value.', 'Set Parameter');
+      await AppUi.showAppAlert('Please enter a value.', 'Set Parameter');
       return;
     }
     
     let finalValue = isNaN(value) ? value : parseFloat(value);
     const key = device + '.' + param;
 
-    const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
+    const deviceParams = AppState.getDeviceParams();
+    const deviceInfo = deviceParams && deviceParams[device] ? deviceParams[device] : null;
     const moduleName = deviceInfo && (deviceInfo.module_name || deviceInfo.original_name)
       ? (deviceInfo.module_name || deviceInfo.original_name)
       : null;
@@ -566,8 +570,9 @@ function updateParamDisplay(device, domId, param)
   
   currentValueDiv.innerHTML = `Current: <strong>${displayValue}</strong>${unit ? ' ' + unit : ''}`;
   
-  // Check if parameter has enum values in WRITABLE_PARAMS
-  const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
+  // Check if parameter has enum values in runtime metadata
+  const deviceParams = AppState.getDeviceParams();
+  const deviceInfo = deviceParams && deviceParams[device] ? deviceParams[device] : null;
   const paramInfo = getParamInfoMap(deviceInfo);
   const found = paramInfo[param] || null;
   if (!found) {
@@ -778,7 +783,8 @@ function renderExtra(device)
   if (!panel) return;
   
   const data = latestValues[device] || {};
-  const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
+  const deviceParams = AppState.getDeviceParams();
+  const deviceInfo = deviceParams && deviceParams[device] ? deviceParams[device] : null;
   const liveKeys = Object.keys(data);
   const metadataKeys = deviceInfo && Array.isArray(deviceInfo.all_params) ? deviceInfo.all_params : [];
   const keys = Array.from(new Set([...liveKeys, ...metadataKeys])).sort();

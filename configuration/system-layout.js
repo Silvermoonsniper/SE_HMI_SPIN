@@ -1,4 +1,6 @@
 // ===== Decoration Logic =====
+var AppState = window.SEAppState;
+var AppUi = window.SEAppUi;
 let selectedDeco = null;
 let selectedTextDeco = null;
 let selectedDecorationLine = null;
@@ -179,12 +181,12 @@ function setupDecorationLineContextMenu() {
       if (!targetLine) return;
 
       hideDecorationLineContextMenu();
-      const response = await showAppPrompt('Enter line rotation in degrees', String(getDecorationLineRotationDegrees(targetLine)), 'Rotate Line');
+      const response = await AppUi.showAppPrompt('Enter line rotation in degrees', String(getDecorationLineRotationDegrees(targetLine)), 'Rotate Line');
       if (response === null) return;
 
       const nextDegrees = parseFloat(String(response).trim());
       if (!Number.isFinite(nextDegrees)) {
-        await showAppAlert('Please enter a valid number of degrees.', 'Rotate Line');
+        await AppUi.showAppAlert('Please enter a valid number of degrees.', 'Rotate Line');
         return;
       }
 
@@ -769,7 +771,8 @@ function populateParamsForDevice(device, info, domId) {
 
 
 async function getModuleName(device) {
-  const runtimeInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
+  const deviceParams = AppState.getDeviceParams();
+  const runtimeInfo = deviceParams && deviceParams[device] ? deviceParams[device] : null;
   if (runtimeInfo) {
     return runtimeInfo.module_name || runtimeInfo.original_name || null;
   }
@@ -788,7 +791,7 @@ function sendCommand(device, cmd) {
   // Run the send logic as an async task so callers don't need to await
   (async () => {
     try {
-      const confirmed = await showAppConfirm(`Execute command '${cmd}' on ${device}?`, 'Execute Command');
+      const confirmed = await AppUi.showAppConfirm(`Execute command '${cmd}' on ${device}?`, 'Execute Command');
       if (!confirmed) return;
 
       // Resolve module name (if available) so we can build full SECoP line.
@@ -826,7 +829,7 @@ function sendCommand(device, cmd) {
       } catch (e) { /* ignore, we'll prompt */ }
 
       if (!addr) {
-        const manual = await showAppPrompt(
+        const manual = await AppUi.showAppPrompt(
           'Could not auto-resolve node for device "' + device + '". Enter host:port to send command:',
           '127.0.0.1:10803',
           'Manual Node Address'
@@ -862,7 +865,7 @@ function sendCommand(device, cmd) {
 
           // Successful send
           if (sr && sr.status === 'sent') {
-            await showAppAlert('Command sent via proxy. Response: ' + (sr.response || ''), 'Command Sent');
+            await AppUi.showAppAlert('Command sent via proxy. Response: ' + (sr.response || ''), 'Command Sent');
             return;
           }
 
@@ -871,7 +874,7 @@ function sendCommand(device, cmd) {
           const isProtocolError = textBody.includes('ProtocolError') || textBody.includes('error__scan') || (sr && sr.status === 'error');
           if (!isProtocolError) {
             // Unknown non-retryable response — show it and stop
-            await showAppAlert('Proxy response: ' + textBody, 'Command Response');
+            await AppUi.showAppAlert('Proxy response: ' + textBody, 'Command Response');
             return;
           }
 
@@ -885,11 +888,11 @@ function sendCommand(device, cmd) {
       }
 
       // Exhausted retries
-      await showAppAlert('Failed to send command after ' + maxRetries + ' attempts. Last response: ' + JSON.stringify(lastResp), 'Command Failed');
+      await AppUi.showAppAlert('Failed to send command after ' + maxRetries + ' attempts. Last response: ' + JSON.stringify(lastResp), 'Command Failed');
 
     } catch (e) {
       console.error('sendCommand failed', e);
-      await showAppAlert('Failed to send command: ' + e, 'Command Failed');
+      await AppUi.showAppAlert('Failed to send command: ' + e, 'Command Failed');
     }
   })();
 }
@@ -1175,10 +1178,11 @@ function getCurrentLayoutData() {
   const title = titleEl ? titleEl.textContent : '';
   // Try to get logical device name from box id
   const logicalName = box.id.replace(/^box-/, '');
-    // Get device info from WRITABLE_PARAMS if available
+    const deviceParams = AppState.getDeviceParams();
+    // Get device info from runtime metadata if available
     let deviceInfo = {};
-    if (window.WRITABLE_PARAMS && window.WRITABLE_PARAMS[logicalName]) {
-      deviceInfo = window.WRITABLE_PARAMS[logicalName];
+    if (deviceParams && deviceParams[logicalName]) {
+      deviceInfo = deviceParams[logicalName];
     }
     // If this device-box contains an image (sample slot), record it so layouts
     // can restore per-slot images.
@@ -1216,7 +1220,8 @@ function getCurrentLayoutData() {
 
   // Save Plot panels (if any) so they are restored with layouts.
   try {
-    const plotsMap = window._plots && window._plots.plotsMap ? window._plots.plotsMap : null;
+    const plotsState = AppState.getPlots();
+    const plotsMap = plotsState && plotsState.plotsMap ? plotsState.plotsMap : null;
     document.querySelectorAll('.plot-panel').forEach(box => {
       const plotId = box.id || null; // e.g., 'plot_1_panel'
       const titleEl = box.querySelector('.plot-title-label');
@@ -1236,8 +1241,8 @@ function getCurrentLayoutData() {
               configName = p.configName || '';
               xAxisTitle = p.xAxisTitle || '';
               yAxisTitle = p.yAxisTitle || '';
-              if (typeof window._plots.capturePlotPanelGeometry === 'function') {
-                geometry = window._plots.capturePlotPanelGeometry(p);
+              if (typeof plotsState.capturePlotPanelGeometry === 'function') {
+                geometry = plotsState.capturePlotPanelGeometry(p);
               }
             }
           } catch (e) { }
@@ -1364,10 +1369,11 @@ function connect_to_system(layout)
       let match = availableDevices.find(dev => dev === d.logicalName);
       // If not found, try by device title
       if (!match) match = availableDevices.find(dev => dev === d.device);
-      // If still not found, try by original_name in WRITABLE_PARAMS
-      if (!match && window.WRITABLE_PARAMS) {
+      const deviceParams = AppState.getDeviceParams();
+      // If still not found, try by original_name in runtime metadata
+      if (!match && deviceParams) {
         match = availableDevices.find(dev => {
-          const info = window.WRITABLE_PARAMS[dev];
+          const info = deviceParams[dev];
           return info && info.original_name === d.device;
         });
       }
@@ -1487,10 +1493,11 @@ function applyLayout(layout) {
       let match = availableDevices.find(dev => dev === d.logicalName);
       // If not found, try by device title
       if (!match) match = availableDevices.find(dev => dev === d.device);
-      // If still not found, try by original_name in WRITABLE_PARAMS
-      if (!match && window.WRITABLE_PARAMS) {
+      const deviceParams = AppState.getDeviceParams();
+      // If still not found, try by original_name in runtime metadata
+      if (!match && deviceParams) {
         match = availableDevices.find(dev => {
-          const info = window.WRITABLE_PARAMS[dev];
+          const info = deviceParams[dev];
           return info && info.original_name === d.device;
         });
       }
@@ -1670,14 +1677,11 @@ function create_sample_block(d,isconfigure_layout)
 function create_plot(layout,isconfigure_layout)
 
 {
-
-        // ensure window._plots exists
-      window._plots = window._plots || { plotsMap: {}, staged: {} };
-      window._plots._restoreCounter = window._plots._restoreCounter || 0;
+      const plotsState = AppState.ensurePlots();
       layout.plots.forEach(p => {
       try {
-          if (window._plots && typeof window._plots.restorePlotPanelFromLayout === 'function') {
-            window._plots.restorePlotPanelFromLayout(p, isconfigure_layout);
+          if (typeof plotsState.restorePlotPanelFromLayout === 'function') {
+            plotsState.restorePlotPanelFromLayout(p, isconfigure_layout);
             return;
           }
 
@@ -1685,7 +1689,7 @@ function create_plot(layout,isconfigure_layout)
           if (!grid) return;
           const container = document.createElement('div');
           container.className = 'device-box plot-panel';
-          container.id = p.id || ('restored_plot_' + (++window._plots._restoreCounter) + '_panel');
+          container.id = p.id || ('restored_plot_' + AppState.nextPlotRestoreCounter() + '_panel');
           container.style.position = 'absolute';
           if (p.left) container.style.left = p.left;
           if (p.top) container.style.top = p.top;
@@ -1707,7 +1711,7 @@ function create_plot(layout,isconfigure_layout)
           container.appendChild(titleDiv);
 
           const plotDiv = document.createElement('div');
-          plotDiv.id = (container.id ? container.id + '_plot' : ('restored_plot_' + window._plots._restoreCounter + '_plot'));
+          plotDiv.id = (container.id ? container.id + '_plot' : ('restored_plot_' + plotsState._restoreCounter + '_plot'));
           plotDiv.style.width = '100%';
           plotDiv.style.height = (p.height || '360px');
           container.appendChild(plotDiv);
@@ -1721,7 +1725,7 @@ function create_plot(layout,isconfigure_layout)
 
           try { container.style.transform = ''; container.removeAttribute('data-x'); container.removeAttribute('data-y'); } catch(e){}
 
-          const newKey = 'restored_plot_' + (++window._plots._restoreCounter);
+          const newKey = 'restored_plot_' + AppState.nextPlotRestoreCounter();
           const plotEntry = { id: newKey, containerDiv: container, plotDiv: plotDiv, traces: {}, configName: p.configName || p.title || '' };
           if (Array.isArray(p.traces)) {
             p.traces.forEach(tkey => {
@@ -1729,7 +1733,7 @@ function create_plot(layout,isconfigure_layout)
               plotEntry.traces[tkey] = { traceObj: trace, suffix: tkey, _traceIndex: undefined, _lastSent: 0 };
             });
           }
-          window._plots.plotsMap[newKey] = plotEntry;
+          plotsState.plotsMap[newKey] = plotEntry;
 
           try 
           {
@@ -1819,10 +1823,11 @@ function create_valve_icon(availableDevices,iconDef,isconfigure_layout)
         if (availableDevices.length && !availableDevices.includes(realDevice)) {
           // 1) find device that contains the saved device string
           let found = availableDevices.find(d => d.includes(realDevice) || realDevice.includes(d));
-          // 2) try matching by original_name in WRITABLE_PARAMS
-          if (!found && window.WRITABLE_PARAMS) {
+          const deviceParams = AppState.getDeviceParams();
+          // 2) try matching by original_name in runtime metadata
+          if (!found && deviceParams) {
             found = availableDevices.find(dev => {
-              const info = window.WRITABLE_PARAMS[dev];
+              const info = deviceParams[dev];
               return info && (info.original_name === iconDef.device || (info.original_name && iconDef.device && iconDef.device.includes(info.original_name)));
             });
           }

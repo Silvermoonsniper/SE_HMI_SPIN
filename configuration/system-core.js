@@ -171,7 +171,8 @@ async function deleteSelectedLayout() {
 let scale = 1;
 let panX = 0;
 let panY = 0;
-const STORAGE_KEY = 'gas_system_layouts';
+var AppState = window.SEAppState;
+const STORAGE_KEY = AppState.getLayoutStorageKey();
 
 // Backend API base used for HTTP fallbacks (Flask API runs on port 8001)
 const API_BASE = (function(){
@@ -901,8 +902,9 @@ async function hydrateDeviceFromNode(device) {
     return deviceHydrationRequests.get(device);
   }
 
-  const requestPromise = (async () => {
-    const deviceInfo = WRITABLE_PARAMS && WRITABLE_PARAMS[device] ? WRITABLE_PARAMS[device] : null;
+    const requestPromise = (async () => {
+    const deviceParams = AppState.getDeviceParams();
+    const deviceInfo = deviceParams && deviceParams[device] ? deviceParams[device] : null;
     const moduleName = deviceInfo && (deviceInfo.module_name || deviceInfo.original_name)
       ? (deviceInfo.module_name || deviceInfo.original_name)
       : null;
@@ -2180,4 +2182,16 @@ function disconnectNode() {
   document.getElementById('connection-panel').style.display = 'flex';
  
 }
+
+window.SEAppUi = Object.assign(window.SEAppUi || {}, {
+  showAppAlert: showAppAlert,
+  showAppConfirm: showAppConfirm,
+  showAppPrompt: showAppPrompt,
+  toggleConfigurationPanels: toggleConfigurationPanels,
+  toggleConfigView: toggleConfigView,
+  fetchNodesList: fetchNodesList,
+  loadNodesInfo: loadNodesInfo,
+  connectToGUI: connectToGUI,
+  disconnectNode: disconnectNode,
+});
 
