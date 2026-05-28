@@ -6,6 +6,7 @@ const DEFAULT_VALVE_CLOSED_SVG = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIw
 const DEFAULT_VALVE_OPEN_SVG = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==';
 let valveSvgAssetsPromise = null;
 let valveSvgPickerRefs = null;
+let valveSvgPickerGlobalListenerReady = false;
 
 function getDeviceParamsState() {
   return AppState.getDeviceParams();
@@ -220,8 +221,44 @@ async function showValveSvgPicker(valveIcon, clientX, clientY) {
   picker.menu.style.top = `${Math.min(clientY, window.innerHeight - 220)}px`;
 }
 
+function findValveIconAtPoint(clientX, clientY) {
+  if (typeof document.elementsFromPoint !== 'function') {
+    return null;
+  }
+  const stack = document.elementsFromPoint(clientX, clientY) || [];
+  for (const element of stack) {
+    if (!element || !element.closest) continue;
+    const valveIcon = element.closest('.valve-icon');
+    if (!valveIcon) continue;
+    const field = String(valveIcon.dataset.field || '');
+    const lowerField = field.toLowerCase();
+    const isValve = lowerField.includes('valve') || field.startsWith('V');
+    if (isValve) {
+      return valveIcon;
+    }
+  }
+  return null;
+}
+
+function ensureGlobalValveSvgPickerListener() {
+  if (valveSvgPickerGlobalListenerReady) return;
+  valveSvgPickerGlobalListenerReady = true;
+
+  document.addEventListener('contextmenu', (event) => {
+    const valveIcon = findValveIconAtPoint(event.clientX, event.clientY);
+    if (!valveIcon) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    showValveSvgPicker(valveIcon, event.clientX, event.clientY).catch((error) => {
+      console.error('Failed to show valve SVG picker', error);
+    });
+  }, true);
+}
+
 function attachValveSvgPicker(valveIcon, isValve) {
   if (!valveIcon || !isValve || valveIcon.dataset.svgPickerReady === 'true') return;
+  ensureGlobalValveSvgPickerListener();
   valveIcon.dataset.svgPickerReady = 'true';
   valveIcon.addEventListener('contextmenu', (event) => {
     event.preventDefault();
