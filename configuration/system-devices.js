@@ -1,8 +1,235 @@
 // ===== Device Management =====
 var AppState = window.SEAppState;
+var AppUi = window.SEAppUi || {};
+
+const DEFAULT_VALVE_CLOSED_SVG = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=';
+const DEFAULT_VALVE_OPEN_SVG = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==';
+let valveSvgAssetsPromise = null;
+let valveSvgPickerRefs = null;
 
 function getDeviceParamsState() {
   return AppState.getDeviceParams();
+}
+
+function getValveAssetApiBase() {
+  try {
+    return typeof API_BASE !== 'undefined'
+      ? API_BASE
+      : `${window.location.protocol}//${window.location.hostname}:8001`;
+  } catch (e) {
+    return 'http://127.0.0.1:8001';
+  }
+}
+
+function getValveSvgStorageKey(device, field, state) {
+  return `valve-svg:${device}:${field}:${state}`;
+}
+
+function readValveSvgPreference(device, field, state) {
+  try {
+    return localStorage.getItem(getValveSvgStorageKey(device, field, state)) || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function writeValveSvgPreference(device, field, state, value) {
+  try {
+    const storageKey = getValveSvgStorageKey(device, field, state);
+    if (value) localStorage.setItem(storageKey, value);
+    else localStorage.removeItem(storageKey);
+  } catch (e) {
+    // ignore storage failures
+  }
+}
+
+function getDefaultValveSvgForState(isOpen) {
+  return isOpen ? DEFAULT_VALVE_OPEN_SVG : DEFAULT_VALVE_CLOSED_SVG;
+}
+
+function initializeValveSvgChoices(valveIcon, options) {
+  if (!valveIcon) return;
+  const device = valveIcon.dataset.device || '';
+  const field = valveIcon.dataset.field || '';
+  const choices = options || {};
+  const closedSvg = choices.closedSvg || readValveSvgPreference(device, field, 'closed') || DEFAULT_VALVE_CLOSED_SVG;
+  const openSvg = choices.openSvg || readValveSvgPreference(device, field, 'open') || DEFAULT_VALVE_OPEN_SVG;
+  valveIcon.dataset.closedSvg = closedSvg;
+  valveIcon.dataset.openSvg = openSvg;
+}
+
+function setValveSvgChoices(valveIcon, choices, persist) {
+  if (!valveIcon) return;
+  const device = valveIcon.dataset.device || '';
+  const field = valveIcon.dataset.field || '';
+  const closedSvg = choices && choices.closedSvg ? choices.closedSvg : DEFAULT_VALVE_CLOSED_SVG;
+  const openSvg = choices && choices.openSvg ? choices.openSvg : DEFAULT_VALVE_OPEN_SVG;
+  valveIcon.dataset.closedSvg = closedSvg;
+  valveIcon.dataset.openSvg = openSvg;
+  if (persist) {
+    writeValveSvgPreference(device, field, 'closed', closedSvg === DEFAULT_VALVE_CLOSED_SVG ? '' : closedSvg);
+    writeValveSvgPreference(device, field, 'open', openSvg === DEFAULT_VALVE_OPEN_SVG ? '' : openSvg);
+  }
+}
+
+function getValveSvgForState(valveIcon, isOpen) {
+  if (!valveIcon) return getDefaultValveSvgForState(isOpen);
+  const configured = isOpen ? valveIcon.dataset.openSvg : valveIcon.dataset.closedSvg;
+  return configured || getDefaultValveSvgForState(isOpen);
+}
+
+function syncValveSvgSelectionToStoredLayout(valveIcon) {
+  if (!valveIcon) return;
+  try {
+    const selected = sessionStorage.getItem('selectedLayout');
+    if (!selected) return;
+    const layouts = getStoredLayouts();
+    const layout = layouts && layouts[selected];
+    if (!layout || !Array.isArray(layout.valveIcons)) return;
+    const entry = layout.valveIcons.find((item) => item && item.id === valveIcon.id);
+    if (!entry) return;
+    entry.closedSvg = valveIcon.dataset.closedSvg || '';
+    entry.openSvg = valveIcon.dataset.openSvg || '';
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
+  } catch (e) {
+    console.error('Failed to update stored valve SVG selection', e);
+  }
+}
+
+function refreshValveIconImage(valveIcon) {
+  if (!valveIcon) return;
+  const valveDomId = valveIcon.id.replace(/^icon-/, '');
+  updateValveImage(valveDomId, valveIcon.dataset.open === '1');
+}
+
+function fetchValveSvgAssets() {
+  if (!valveSvgAssetsPromise) {
+    valveSvgAssetsPromise = fetch(getValveAssetApiBase() + '/api/assets/svg', { method: 'GET' })
+      .then((resp) => {
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return resp.json();
+      })
+      .then((payload) => Array.isArray(payload && payload.files) ? payload.files : [])
+      .catch((error) => {
+        valveSvgAssetsPromise = null;
+        throw error;
+      });
+  }
+  return valveSvgAssetsPromise;
+}
+
+function ensureValveSvgPicker() {
+  if (valveSvgPickerRefs) return valveSvgPickerRefs;
+
+  const menu = document.createElement('div');
+  menu.className = 'valve-svg-picker-menu';
+  menu.style.display = 'none';
+  menu.innerHTML = [
+    '<div class="valve-svg-picker-title">Valve SVG</div>',
+    '<label class="valve-svg-picker-label" for="valve-svg-closed-select">Closed (0)</label>',
+    '<select id="valve-svg-closed-select" class="valve-svg-picker-select"></select>',
+    '<label class="valve-svg-picker-label" for="valve-svg-open-select">Open (1)</label>',
+    '<select id="valve-svg-open-select" class="valve-svg-picker-select"></select>',
+    '<div class="valve-svg-picker-actions">',
+    '  <button type="button" data-action="apply">Apply</button>',
+    '  <button type="button" data-action="reset">Reset</button>',
+    '  <button type="button" data-action="cancel">Cancel</button>',
+    '</div>'
+  ].join('');
+  document.body.appendChild(menu);
+
+  valveSvgPickerRefs = {
+    menu,
+    title: menu.querySelector('.valve-svg-picker-title'),
+    closedSelect: menu.querySelector('#valve-svg-closed-select'),
+    openSelect: menu.querySelector('#valve-svg-open-select'),
+    targetValve: null,
+  };
+
+  function hideValveSvgPicker() {
+    valveSvgPickerRefs.targetValve = null;
+    menu.style.display = 'none';
+  }
+
+  menu.querySelector('[data-action="cancel"]').addEventListener('click', hideValveSvgPicker);
+  menu.querySelector('[data-action="reset"]').addEventListener('click', () => {
+    if (!valveSvgPickerRefs.targetValve) return;
+    setValveSvgChoices(valveSvgPickerRefs.targetValve, {
+      closedSvg: DEFAULT_VALVE_CLOSED_SVG,
+      openSvg: DEFAULT_VALVE_OPEN_SVG,
+    }, true);
+    refreshValveIconImage(valveSvgPickerRefs.targetValve);
+    syncValveSvgSelectionToStoredLayout(valveSvgPickerRefs.targetValve);
+    hideValveSvgPicker();
+  });
+  menu.querySelector('[data-action="apply"]').addEventListener('click', () => {
+    if (!valveSvgPickerRefs.targetValve) return;
+    setValveSvgChoices(valveSvgPickerRefs.targetValve, {
+      closedSvg: valveSvgPickerRefs.closedSelect.value,
+      openSvg: valveSvgPickerRefs.openSelect.value,
+    }, true);
+    refreshValveIconImage(valveSvgPickerRefs.targetValve);
+    syncValveSvgSelectionToStoredLayout(valveSvgPickerRefs.targetValve);
+    hideValveSvgPicker();
+  });
+
+  document.addEventListener('mousedown', (event) => {
+    if (menu.style.display === 'none') return;
+    if (!menu.contains(event.target)) hideValveSvgPicker();
+  });
+
+  return valveSvgPickerRefs;
+}
+
+function populateValveSvgSelect(select, assets, selectedValue, defaultValue) {
+  if (!select) return;
+  select.innerHTML = '';
+  const options = [{ name: 'Built-in', url: defaultValue }, ...(assets || [])];
+  const hasSelected = options.some((option) => option.url === selectedValue);
+  if (!hasSelected && selectedValue) {
+    options.push({ name: 'Current custom', url: selectedValue });
+  }
+  options.forEach((option) => {
+    const el = document.createElement('option');
+    el.value = option.url;
+    el.textContent = option.name;
+    if (option.url === selectedValue) el.selected = true;
+    select.appendChild(el);
+  });
+}
+
+async function showValveSvgPicker(valveIcon, clientX, clientY) {
+  const picker = ensureValveSvgPicker();
+  picker.targetValve = valveIcon;
+  picker.title.textContent = `${valveIcon.dataset.field || 'Valve'} SVG`;
+
+  let assets = [];
+  try {
+    assets = await fetchValveSvgAssets();
+  } catch (error) {
+    if (AppUi.showAppAlert) {
+      await AppUi.showAppAlert(`Failed to load SVG assets.\n${error.message || error}`, 'Valve SVG');
+    }
+    return;
+  }
+
+  populateValveSvgSelect(picker.closedSelect, assets, getValveSvgForState(valveIcon, false), DEFAULT_VALVE_CLOSED_SVG);
+  populateValveSvgSelect(picker.openSelect, assets, getValveSvgForState(valveIcon, true), DEFAULT_VALVE_OPEN_SVG);
+  picker.menu.style.display = 'block';
+  picker.menu.style.left = `${Math.min(clientX, window.innerWidth - 260)}px`;
+  picker.menu.style.top = `${Math.min(clientY, window.innerHeight - 220)}px`;
+}
+
+function attachValveSvgPicker(valveIcon, isValve) {
+  if (!valveIcon || !isValve || valveIcon.dataset.svgPickerReady === 'true') return;
+  valveIcon.dataset.svgPickerReady = 'true';
+  valveIcon.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    showValveSvgPicker(valveIcon, event.clientX, event.clientY).catch((error) => {
+      console.error('Failed to show valve SVG picker', error);
+    });
+  });
 }
 
 function fetchDeviceParams()
@@ -644,6 +871,7 @@ async function setupValveController(device, domId,isConfigurelayout) {
       valveIcon.style.cursor = 'pointer';
       valveIcon.style.userSelect = 'none';
       valveIcon.style.overflow = 'visible';
+      valveIcon.style.zIndex = '20';
       if (isConfigurelayout) valveIcon.classList.add('configure-layout');
       appendContactPoints(valveIcon);
       
@@ -674,11 +902,11 @@ async function setupValveController(device, domId,isConfigurelayout) {
           updateSwitchRotation(imgContainer, newValue);
         };
       } else if (isValve) {
+        initializeValveSvgChoices(valveIcon);
         // Valve image - SVG with two triangles pointing toward each other (touching at tips)
         const img = document.createElement('img');
         img.id = `valve-img-${valveDomId}`;
-        // Two triangles with points touching in the center: ◄ ►
-        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=';
+        img.src = getValveSvgForState(valveIcon, false);
 
         img.style.cssText = 'width: 100%; height: 100%; object-fit: contain;';
         imgContainer.appendChild(img);
@@ -697,6 +925,7 @@ async function setupValveController(device, domId,isConfigurelayout) {
           updateValveImage(valveDomId, newValue);
         };
       }
+      attachValveSvgPicker(valveIcon, isValve);
       // Set initial visual state from the live value if available
       try {
         const liveRaw = (valueData && typeof valueData[fieldName] !== 'undefined') ? valueData[fieldName] : undefined;
@@ -819,20 +1048,13 @@ function updateSwitchRotation(imgContainer, position) {
 function updateValveImage(valveDomId, isOpen) {
   const img = document.querySelector(`#valve-img-${valveDomId}`);
   if (img) {
-    // Change to green when open, black when closed
-    if (isOpen) {
-      // Green triangles for open valve
-      img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==';
-    } else {
-      //  triangles for closed valve
-      img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=';
-
-    // reflect optimistic/UI state on the parent valve element so clicks can read it
     try {
       const valveEl = img.closest('.valve-icon');
-      if (valveEl) valveEl.dataset.open = isOpen ? '1' : '0';
+      if (valveEl) {
+        img.src = getValveSvgForState(valveEl, !!isOpen);
+        valveEl.dataset.open = isOpen ? '1' : '0';
+      }
     } catch (e) { /* ignore */ }
-    }
   }
 }
 

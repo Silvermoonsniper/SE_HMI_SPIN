@@ -1291,7 +1291,9 @@ function getCurrentLayoutData() {
         left: icon.style.left,
         top: icon.style.top,
         width: icon.style.width,
-        height: icon.style.height
+        height: icon.style.height,
+        closedSvg: icon.dataset.closedSvg || '',
+        openSvg: icon.dataset.openSvg || ''
       });
     }
   });
@@ -1856,6 +1858,7 @@ function create_valve_icon(availableDevices,iconDef,isconfigure_layout)
         valveIcon.style.cursor = 'pointer';
         valveIcon.style.userSelect = 'none';
         valveIcon.style.overflow = 'visible';
+        valveIcon.style.zIndex = '20';
         if (isconfigure_layout) valveIcon.classList.add('configure-layout');
         appendContactPoints(valveIcon);
        
@@ -1871,15 +1874,23 @@ function create_valve_icon(availableDevices,iconDef,isconfigure_layout)
         const isSwitch = lowerField.includes('switch');
         const isValve = lowerField.includes('valve') || (fieldName && fieldName.startsWith('V'));
 
+        if (isValve) {
+          initializeValveSvgChoices(valveIcon, {
+            closedSvg: iconDef.closedSvg,
+            openSvg: iconDef.openSvg,
+          });
+        }
+
         // Create img element similar to setupValveController
         const img = document.createElement('img');
         img.style.cssText = 'width: 100%; height: 100%; object-fit: contain;';
         if (isSwitch) img.style.transform = 'rotate(0deg)';
         // Default to closed appearance
-        img.src = isValve ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=' : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=';
+        img.src = isValve ? getValveSvgForState(valveIcon, false) : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=';
         // ensure valve image id matches expected lookup used by updateValveImage
         if (isValve) img.id = `valve-img-${valveDomId}`;
         imgContainer.appendChild(img);
+        attachValveSvgPicker(valveIcon, isValve);
 
         // Click handler toggles by reading latestValues and sending setValveField
         imgContainer.onclick = () => {

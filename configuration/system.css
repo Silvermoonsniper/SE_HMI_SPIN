@@ -1088,6 +1088,46 @@ input.control-input {
 .valve-icon {
   position: absolute;
   overflow: visible;
+  z-index: 20;
+}
+
+.valve-svg-picker-menu {
+  position: fixed;
+  min-width: 220px;
+  padding: 12px;
+  border: 1px solid #cfd8dc;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+  z-index: 3000;
+}
+
+.valve-svg-picker-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #263238;
+}
+
+.valve-svg-picker-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 8px 0 4px;
+  color: #455a64;
+}
+
+.valve-svg-picker-select {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 32px;
+}
+
+.valve-svg-picker-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
 }
 
 .contact-point {

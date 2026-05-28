@@ -13,7 +13,7 @@ import sys
 import threading
 import time
 import importlib
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 import mlzlog
 from spin import secop as spin_secop
 from frappy.client import SecopClient
@@ -28,6 +28,7 @@ from configuration.nexus_export import NexusRunExporter, inspect_export_object, 
 
 DATA_EXPORT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data_exports'))
 DEFAULT_POSTGRES_STORAGE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'postgres_data'))
+ASSETS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'assets'))
 
 
 def _split_csv_env(name):
@@ -1693,6 +1694,22 @@ def start_api_server(backend=None):
             return jsonify({'status': 'ok', 'config': config})
         except Exception as exc:
             app.logger.exception('api_plot_config failed')
+            return jsonify({'status': 'error', 'error': str(exc)}), 500
+
+    @app.route('/api/assets/svg', methods=['GET'])
+    def api_assets_svg():
+        try:
+            files = []
+            if os.path.isdir(ASSETS_DIR):
+                for fname in sorted(os.listdir(ASSETS_DIR)):
+                    if fname.lower().endswith('.svg'):
+                        files.append({
+                            'name': fname,
+                            'url': f'/c/assets/{quote(fname)}',
+                        })
+            return jsonify({'status': 'ok', 'files': files})
+        except Exception as exc:
+            app.logger.exception('api_assets_svg failed')
             return jsonify({'status': 'error', 'error': str(exc)}), 500
 
     # POST endpoint to send a raw SECoP line (or any line-based TCP command)
