@@ -1294,7 +1294,9 @@ function getCurrentLayoutData() {
         height: icon.style.height,
         closedSvg: icon.dataset.closedSvg || '',
         openSvg: icon.dataset.openSvg || '',
-        switchSvg: icon.dataset.switchSvg || ''
+        switchSvg: icon.dataset.switchSvg || '',
+        switchClosedSvg: icon.dataset.switchClosedSvg || '',
+        switchOpenSvg: icon.dataset.switchOpenSvg || ''
       });
     }
   });
@@ -1881,7 +1883,11 @@ function create_valve_icon(availableDevices,iconDef,isconfigure_layout)
             openSvg: iconDef.openSvg,
           });
         } else if (isSwitch) {
-          initializeSwitchSvgChoice(valveIcon, iconDef.switchSvg);
+          initializeSwitchSvgChoice(valveIcon, {
+            switchSvg: iconDef.switchSvg,
+            closedSvg: iconDef.switchClosedSvg,
+            openSvg: iconDef.switchOpenSvg,
+          });
         }
 
         // Create img element similar to setupValveController
@@ -1889,7 +1895,7 @@ function create_valve_icon(availableDevices,iconDef,isconfigure_layout)
         img.style.cssText = 'width: 100%; height: 100%; object-fit: contain;';
         if (isSwitch) img.style.transform = 'rotate(0deg)';
         // Default to closed appearance
-        img.src = isValve ? getValveSvgForState(valveIcon, false) : getSwitchSvg(valveIcon);
+        img.src = isValve ? getValveSvgForState(valveIcon, false) : getSwitchSvgForState(valveIcon, false);
         // ensure valve image id matches expected lookup used by updateValveImage
         if (isValve) img.id = `valve-img-${valveDomId}`;
         imgContainer.appendChild(img);
