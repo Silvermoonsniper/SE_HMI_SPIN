@@ -4,6 +4,7 @@ var AppUi = window.SEAppUi || {};
 
 const DEFAULT_VALVE_CLOSED_SVG = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=';
 const DEFAULT_VALVE_OPEN_SVG = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==';
+const DEFAULT_SWITCH_SVG = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=';
 let valveSvgAssetsPromise = null;
 let valveSvgPickerRefs = null;
 let valveSvgPickerGlobalListenerReady = false;
@@ -26,6 +27,10 @@ function getValveSvgStorageKey(device, field, state) {
   return `valve-svg:${device}:${field}:${state}`;
 }
 
+function getSwitchSvgStorageKey(device, field) {
+  return `switch-svg:${device}:${field}`;
+}
+
 function readValveSvgPreference(device, field, state) {
   try {
     return localStorage.getItem(getValveSvgStorageKey(device, field, state)) || '';
@@ -37,6 +42,24 @@ function readValveSvgPreference(device, field, state) {
 function writeValveSvgPreference(device, field, state, value) {
   try {
     const storageKey = getValveSvgStorageKey(device, field, state);
+    if (value) localStorage.setItem(storageKey, value);
+    else localStorage.removeItem(storageKey);
+  } catch (e) {
+    // ignore storage failures
+  }
+}
+
+function readSwitchSvgPreference(device, field) {
+  try {
+    return localStorage.getItem(getSwitchSvgStorageKey(device, field)) || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function writeSwitchSvgPreference(device, field, value) {
+  try {
+    const storageKey = getSwitchSvgStorageKey(device, field);
     if (value) localStorage.setItem(storageKey, value);
     else localStorage.removeItem(storageKey);
   } catch (e) {
@@ -59,6 +82,13 @@ function initializeValveSvgChoices(valveIcon, options) {
   valveIcon.dataset.openSvg = openSvg;
 }
 
+function initializeSwitchSvgChoice(valveIcon, switchSvg) {
+  if (!valveIcon) return;
+  const device = valveIcon.dataset.device || '';
+  const field = valveIcon.dataset.field || '';
+  valveIcon.dataset.switchSvg = switchSvg || readSwitchSvgPreference(device, field) || DEFAULT_SWITCH_SVG;
+}
+
 function setValveSvgChoices(valveIcon, choices, persist) {
   if (!valveIcon) return;
   const device = valveIcon.dataset.device || '';
@@ -79,6 +109,22 @@ function getValveSvgForState(valveIcon, isOpen) {
   return configured || getDefaultValveSvgForState(isOpen);
 }
 
+function getSwitchSvg(valveIcon) {
+  if (!valveIcon) return DEFAULT_SWITCH_SVG;
+  return valveIcon.dataset.switchSvg || DEFAULT_SWITCH_SVG;
+}
+
+function setSwitchSvgChoice(valveIcon, switchSvg, persist) {
+  if (!valveIcon) return;
+  const device = valveIcon.dataset.device || '';
+  const field = valveIcon.dataset.field || '';
+  const resolved = switchSvg || DEFAULT_SWITCH_SVG;
+  valveIcon.dataset.switchSvg = resolved;
+  if (persist) {
+    writeSwitchSvgPreference(device, field, resolved === DEFAULT_SWITCH_SVG ? '' : resolved);
+  }
+}
+
 function syncValveSvgSelectionToStoredLayout(valveIcon) {
   if (!valveIcon) return;
   try {
@@ -91,6 +137,7 @@ function syncValveSvgSelectionToStoredLayout(valveIcon) {
     if (!entry) return;
     entry.closedSvg = valveIcon.dataset.closedSvg || '';
     entry.openSvg = valveIcon.dataset.openSvg || '';
+    entry.switchSvg = valveIcon.dataset.switchSvg || '';
     localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
   } catch (e) {
     console.error('Failed to update stored valve SVG selection', e);
@@ -99,6 +146,12 @@ function syncValveSvgSelectionToStoredLayout(valveIcon) {
 
 function refreshValveIconImage(valveIcon) {
   if (!valveIcon) return;
+  const field = String(valveIcon.dataset.field || '');
+  if (field.toLowerCase().includes('switch')) {
+    const img = valveIcon.querySelector('img');
+    if (img) img.src = getSwitchSvg(valveIcon);
+    return;
+  }
   const valveDomId = valveIcon.id.replace(/^icon-/, '');
   updateValveImage(valveDomId, valveIcon.dataset.open === '1');
 }
@@ -127,6 +180,8 @@ function ensureValveSvgPicker() {
   menu.style.display = 'none';
   menu.innerHTML = [
     '<div class="valve-svg-picker-title">Valve SVG</div>',
+    '<label class="valve-svg-picker-label" for="valve-svg-switch-select">Switch</label>',
+    '<select id="valve-svg-switch-select" class="valve-svg-picker-select"></select>',
     '<label class="valve-svg-picker-label" for="valve-svg-closed-select">Closed (0)</label>',
     '<select id="valve-svg-closed-select" class="valve-svg-picker-select"></select>',
     '<label class="valve-svg-picker-label" for="valve-svg-open-select">Open (1)</label>',
@@ -142,9 +197,12 @@ function ensureValveSvgPicker() {
   valveSvgPickerRefs = {
     menu,
     title: menu.querySelector('.valve-svg-picker-title'),
+    switchLabel: menu.querySelector('label[for="valve-svg-switch-select"]'),
+    switchSelect: menu.querySelector('#valve-svg-switch-select'),
     closedSelect: menu.querySelector('#valve-svg-closed-select'),
     openSelect: menu.querySelector('#valve-svg-open-select'),
     targetValve: null,
+    mode: 'valve',
   };
 
   function hideValveSvgPicker() {
@@ -155,20 +213,28 @@ function ensureValveSvgPicker() {
   menu.querySelector('[data-action="cancel"]').addEventListener('click', hideValveSvgPicker);
   menu.querySelector('[data-action="reset"]').addEventListener('click', () => {
     if (!valveSvgPickerRefs.targetValve) return;
-    setValveSvgChoices(valveSvgPickerRefs.targetValve, {
-      closedSvg: DEFAULT_VALVE_CLOSED_SVG,
-      openSvg: DEFAULT_VALVE_OPEN_SVG,
-    }, true);
+    if (valveSvgPickerRefs.mode === 'switch') {
+      setSwitchSvgChoice(valveSvgPickerRefs.targetValve, DEFAULT_SWITCH_SVG, true);
+    } else {
+      setValveSvgChoices(valveSvgPickerRefs.targetValve, {
+        closedSvg: DEFAULT_VALVE_CLOSED_SVG,
+        openSvg: DEFAULT_VALVE_OPEN_SVG,
+      }, true);
+    }
     refreshValveIconImage(valveSvgPickerRefs.targetValve);
     syncValveSvgSelectionToStoredLayout(valveSvgPickerRefs.targetValve);
     hideValveSvgPicker();
   });
   menu.querySelector('[data-action="apply"]').addEventListener('click', () => {
     if (!valveSvgPickerRefs.targetValve) return;
-    setValveSvgChoices(valveSvgPickerRefs.targetValve, {
-      closedSvg: valveSvgPickerRefs.closedSelect.value,
-      openSvg: valveSvgPickerRefs.openSelect.value,
-    }, true);
+    if (valveSvgPickerRefs.mode === 'switch') {
+      setSwitchSvgChoice(valveSvgPickerRefs.targetValve, valveSvgPickerRefs.switchSelect.value, true);
+    } else {
+      setValveSvgChoices(valveSvgPickerRefs.targetValve, {
+        closedSvg: valveSvgPickerRefs.closedSelect.value,
+        openSvg: valveSvgPickerRefs.openSelect.value,
+      }, true);
+    }
     refreshValveIconImage(valveSvgPickerRefs.targetValve);
     syncValveSvgSelectionToStoredLayout(valveSvgPickerRefs.targetValve);
     hideValveSvgPicker();
@@ -202,7 +268,10 @@ function populateValveSvgSelect(select, assets, selectedValue, defaultValue) {
 async function showValveSvgPicker(valveIcon, clientX, clientY) {
   const picker = ensureValveSvgPicker();
   picker.targetValve = valveIcon;
-  picker.title.textContent = `${valveIcon.dataset.field || 'Valve'} SVG`;
+  const field = String(valveIcon.dataset.field || '');
+  const isSwitch = field.toLowerCase().includes('switch');
+  picker.mode = isSwitch ? 'switch' : 'valve';
+  picker.title.textContent = `${field || (isSwitch ? 'Switch' : 'Valve')} SVG`;
 
   let assets = [];
   try {
@@ -214,8 +283,19 @@ async function showValveSvgPicker(valveIcon, clientX, clientY) {
     return;
   }
 
-  populateValveSvgSelect(picker.closedSelect, assets, getValveSvgForState(valveIcon, false), DEFAULT_VALVE_CLOSED_SVG);
-  populateValveSvgSelect(picker.openSelect, assets, getValveSvgForState(valveIcon, true), DEFAULT_VALVE_OPEN_SVG);
+  picker.switchLabel.style.display = isSwitch ? 'block' : 'none';
+  picker.switchSelect.style.display = isSwitch ? 'block' : 'none';
+  picker.closedSelect.style.display = isSwitch ? 'none' : 'block';
+  picker.openSelect.style.display = isSwitch ? 'none' : 'block';
+  picker.closedSelect.previousElementSibling.style.display = isSwitch ? 'none' : 'block';
+  picker.openSelect.previousElementSibling.style.display = isSwitch ? 'none' : 'block';
+
+  if (isSwitch) {
+    populateValveSvgSelect(picker.switchSelect, assets, getSwitchSvg(valveIcon), DEFAULT_SWITCH_SVG);
+  } else {
+    populateValveSvgSelect(picker.closedSelect, assets, getValveSvgForState(valveIcon, false), DEFAULT_VALVE_CLOSED_SVG);
+    populateValveSvgSelect(picker.openSelect, assets, getValveSvgForState(valveIcon, true), DEFAULT_VALVE_OPEN_SVG);
+  }
   picker.menu.style.display = 'block';
   picker.menu.style.left = `${Math.min(clientX, window.innerWidth - 260)}px`;
   picker.menu.style.top = `${Math.min(clientY, window.innerHeight - 220)}px`;
@@ -232,8 +312,9 @@ function findValveIconAtPoint(clientX, clientY) {
     if (!valveIcon) continue;
     const field = String(valveIcon.dataset.field || '');
     const lowerField = field.toLowerCase();
+    const isSwitch = lowerField.includes('switch');
     const isValve = lowerField.includes('valve') || field.startsWith('V');
-    if (isValve) {
+    if (isValve || isSwitch) {
       return valveIcon;
     }
   }
@@ -256,8 +337,8 @@ function ensureGlobalValveSvgPickerListener() {
   }, true);
 }
 
-function attachValveSvgPicker(valveIcon, isValve) {
-  if (!valveIcon || !isValve || valveIcon.dataset.svgPickerReady === 'true') return;
+function attachValveSvgPicker(valveIcon, isConfigurableIcon) {
+  if (!valveIcon || !isConfigurableIcon || valveIcon.dataset.svgPickerReady === 'true') return;
   ensureGlobalValveSvgPickerListener();
   valveIcon.dataset.svgPickerReady = 'true';
   valveIcon.addEventListener('contextmenu', (event) => {
@@ -920,8 +1001,8 @@ async function setupValveController(device, domId,isConfigurelayout) {
       if (isSwitch) {
         // Switch image - rotates based on position (circle with two separate arcs)
         const img = document.createElement('img');
-        // Circle with two separate arcs touching the circle edge
-        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=';
+        initializeSwitchSvgChoice(valveIcon);
+        img.src = getSwitchSvg(valveIcon);
 
         img.style.cssText = 'width: 100%; height: 100%; object-fit: contain; transform: rotate(0deg); transition: transform 0.3s ease;';
         imgContainer.appendChild(img);
@@ -962,7 +1043,7 @@ async function setupValveController(device, domId,isConfigurelayout) {
           updateValveImage(valveDomId, newValue);
         };
       }
-      attachValveSvgPicker(valveIcon, isValve);
+      attachValveSvgPicker(valveIcon, isValve || isSwitch);
       // Set initial visual state from the live value if available
       try {
         const liveRaw = (valueData && typeof valueData[fieldName] !== 'undefined') ? valueData[fieldName] : undefined;

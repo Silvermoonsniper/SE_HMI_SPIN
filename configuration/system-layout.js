@@ -1293,7 +1293,8 @@ function getCurrentLayoutData() {
         width: icon.style.width,
         height: icon.style.height,
         closedSvg: icon.dataset.closedSvg || '',
-        openSvg: icon.dataset.openSvg || ''
+        openSvg: icon.dataset.openSvg || '',
+        switchSvg: icon.dataset.switchSvg || ''
       });
     }
   });
@@ -1879,6 +1880,8 @@ function create_valve_icon(availableDevices,iconDef,isconfigure_layout)
             closedSvg: iconDef.closedSvg,
             openSvg: iconDef.openSvg,
           });
+        } else if (isSwitch) {
+          initializeSwitchSvgChoice(valveIcon, iconDef.switchSvg);
         }
 
         // Create img element similar to setupValveController
@@ -1886,11 +1889,11 @@ function create_valve_icon(availableDevices,iconDef,isconfigure_layout)
         img.style.cssText = 'width: 100%; height: 100%; object-fit: contain;';
         if (isSwitch) img.style.transform = 'rotate(0deg)';
         // Default to closed appearance
-        img.src = isValve ? getValveSvgForState(valveIcon, false) : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=';
+        img.src = isValve ? getValveSvgForState(valveIcon, false) : getSwitchSvg(valveIcon);
         // ensure valve image id matches expected lookup used by updateValveImage
         if (isValve) img.id = `valve-img-${valveDomId}`;
         imgContainer.appendChild(img);
-        attachValveSvgPicker(valveIcon, isValve);
+        attachValveSvgPicker(valveIcon, isValve || isSwitch);
 
         // Click handler toggles by reading latestValues and sending setValveField
         imgContainer.onclick = () => {
