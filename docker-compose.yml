@@ -23,7 +23,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    image: registry.hzdr.de/zhengyu.chen/se_hmi_spin:latest    
+    image: registry.hzdr.de/zhengyu.chen/se_hmi_spin/se_hmi_spin:latest    
     ports:
       - "8080:8000"
       - "8001:8001"
