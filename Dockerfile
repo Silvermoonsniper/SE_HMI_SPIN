@@ -1,5 +1,5 @@
 # Use Python 3.11 as base image
-FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
+FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim as baseimage
 
 # Set working directory
 WORKDIR /app
@@ -14,10 +14,12 @@ RUN apt-get update && apt-get install -y \
 COPY pyproject.toml .
 COPY uv.lock ./
 
+FROM baseimage AS deps
 # Create virtual environment and install dependencies using uv
 RUN uv venv --python 3.11 && \
     uv sync --all-groups
 
+FROM deps AS all_deps
 # Copy application files
 COPY . /app
 
