@@ -757,6 +757,14 @@ input.control-input {
   outline: 2px dashed #007bff;
 }
 
+body[data-configuration-mode="false"] .deco-box {
+  pointer-events: none !important;
+}
+
+body[data-configuration-mode="false"] .deco-box.selected {
+  outline: none;
+}
+
 .deco-visual {
   width: 100%;
   height: 100%;
@@ -953,7 +961,17 @@ input.control-input {
   stroke-width: 2;
   fill: none;
   stroke-linecap: round;
-  pointer-events: stroke;
+  pointer-events: none;
+  cursor: default;
+}
+
+body[data-configuration-mode="false"] #connection-svg,
+body[data-configuration-mode="false"] .device-connection-line {
+  pointer-events: none !important;
+}
+
+body[data-configuration-mode="true"] .device-connection-line {
+  pointer-events: visibleStroke;
   cursor: pointer;
 }
 
@@ -1100,6 +1118,40 @@ input.control-input {
   background: #ffffff;
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
   z-index: 3000;
+}
+
+.valve-icon-action-menu {
+  position: fixed;
+  min-width: 160px;
+  padding: 8px;
+  border: 1px solid #cfd8dc;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+  z-index: 3001;
+}
+
+.valve-icon-action-menu button {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #263238;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.valve-icon-action-menu button + button {
+  margin-top: 4px;
+}
+
+.valve-icon-action-menu button:hover {
+  background: #eef4ff;
 }
 
 .valve-svg-picker-title {

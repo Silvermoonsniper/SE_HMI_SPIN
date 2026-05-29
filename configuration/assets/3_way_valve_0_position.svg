@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 87 91" role="img" aria-label="Three arrows on white background with black top triangle and green bottom triangle">
+  <title>Three arrows with black top and green bottom</title>
+  <rect width="87" height="91" fill="#ffffff"/>
+
+  <!-- Top black arrow: same angular style as the original top triangle -->
+  <path d="M37 12 H51 L46 45 L44 45 Z" fill="#000000"/>
+  <path d="M37 12 H51 V16 H37 Z" fill="#4a4a4a" opacity="0.28"/>
+
+  <!-- Left green arrow: same triangular style as the original -->
+  <path d="M11 39 L46 45 L11 52 Z" fill="#069a2e"/>
+  <path d="M11 39 L20 42 L11 42 Z" fill="#b9ef5b" opacity="0.35"/>
+
+  <!-- Bottom green triangle only, matching the original bottom shape -->
+  <path d="M45 45 L53 81 H36 Z" fill="#069a2e"/>
+  <path d="M46 45 L49 66 L53 81 L49 81 Z" fill="#045f1b" opacity="0.22"/>
+</svg>

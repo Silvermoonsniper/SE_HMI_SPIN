@@ -1,6 +1,8 @@
 {
   "name": "temperature_plot",
   "plotType": "line",
+  "xAxisTitle": "",
+  "yAxisTitle": "",
   "lines": [
     {
       "key": "reactor_cell_temperature_reg.value",
@@ -45,5 +47,5 @@
       }
     }
   ],
-  "savedAt": "2026-04-24T11:32:56.403Z"
+  "savedAt": "2026-05-29T12:39:53.780Z"
 }

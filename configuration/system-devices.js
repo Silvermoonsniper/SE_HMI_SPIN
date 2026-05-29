@@ -10,6 +10,134 @@ const DEFAULT_SWITCH_OPEN_SVG = DEFAULT_SWITCH_SVG;
 let valveSvgAssetsPromise = null;
 let valveSvgPickerRefs = null;
 let valveSvgPickerGlobalListenerReady = false;
+let valveIconActionMenuRefs = null;
+
+function getValveIconRotationDegrees(valveIcon) {
+  const value = parseFloat((valveIcon && valveIcon.dataset && valveIcon.dataset.rotationDegrees) || '0');
+  return Number.isFinite(value) ? value : 0;
+}
+
+function applyValveIconRotation(valveIcon, degrees) {
+  if (!valveIcon) return;
+  const parsedDegrees = parseFloat(degrees);
+  const rotationDegrees = Number.isFinite(parsedDegrees) ? parsedDegrees : 0;
+  const imgContainer = valveIcon.querySelector('div[id^="img-"]');
+  if (!imgContainer) return;
+
+  valveIcon.dataset.rotationDegrees = String(rotationDegrees);
+  imgContainer.style.transform = `rotate(${rotationDegrees}deg)`;
+  imgContainer.style.transformOrigin = 'center center';
+}
+
+function syncValveRotationToStoredLayout(valveIcon) {
+  if (!valveIcon) return;
+  try {
+    const selected = sessionStorage.getItem('selectedLayout');
+    if (!selected) return;
+    const layouts = getStoredLayouts();
+    const layout = layouts && layouts[selected];
+    if (!layout || !Array.isArray(layout.valveIcons)) return;
+    const entry = layout.valveIcons.find((item) => item && item.id === valveIcon.id);
+    if (!entry) return;
+    entry.rotationDegrees = valveIcon.dataset.rotationDegrees || '0';
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
+  } catch (e) {
+    console.error('Failed to update stored valve icon rotation', e);
+  }
+}
+
+async function promptValveIconRotation(valveIcon) {
+  if (!valveIcon) return;
+
+  const field = String(valveIcon.dataset.field || '');
+  const title = field ? `Rotate ${field}` : 'Rotate Valve Icon';
+  const currentValue = String(getValveIconRotationDegrees(valveIcon));
+  let response = null;
+
+  if (AppUi.showAppPrompt) {
+    response = await AppUi.showAppPrompt('Enter icon rotation in degrees', currentValue, title);
+  } else {
+    response = window.prompt('Enter icon rotation in degrees', currentValue);
+  }
+
+  if (response === null) return;
+
+  const nextDegrees = parseFloat(String(response).trim());
+  if (!Number.isFinite(nextDegrees)) 
+    {
+    if (AppUi.showAppAlert) {
+      await AppUi.showAppAlert('Please enter a valid number of degrees.', title);
+    } else 
+      {
+      window.alert('Please enter a valid number of degrees.');
+    }
+    return;
+  }
+
+  applyValveIconRotation(valveIcon, nextDegrees);
+  syncValveRotationToStoredLayout(valveIcon);
+}
+
+function ensureValveIconActionMenu() {
+  if (valveIconActionMenuRefs) return valveIconActionMenuRefs;
+
+  const menu = document.createElement('div');
+  menu.className = 'valve-icon-action-menu';
+  menu.style.display = 'none';
+  menu.innerHTML = [
+    '<button type="button" data-action="rotate">Rotate Icon</button>',
+    '<button type="button" data-action="svg">Change SVG</button>',
+    '<button type="button" data-action="cancel">Cancel</button>'
+  ].join('');
+  document.body.appendChild(menu);
+
+  valveIconActionMenuRefs = {
+    menu,
+    targetValve: null,
+  };
+
+  function hideValveIconActionMenu() {
+    valveIconActionMenuRefs.targetValve = null;
+    menu.style.display = 'none';
+  }
+
+  menu.querySelector('[data-action="rotate"]').addEventListener('click', () => {
+    const targetValve = valveIconActionMenuRefs.targetValve;
+    hideValveIconActionMenu();
+    if (!targetValve) return;
+    promptValveIconRotation(targetValve).catch((error) => {
+      console.error('Failed to rotate valve icon', error);
+    });
+  });
+
+  menu.querySelector('[data-action="svg"]').addEventListener('click', () => {
+    const targetValve = valveIconActionMenuRefs.targetValve;
+    const rect = menu.getBoundingClientRect();
+    hideValveIconActionMenu();
+    if (!targetValve) return;
+    showValveSvgPicker(targetValve, rect.left, rect.top).catch((error) => {
+      console.error('Failed to show valve SVG picker', error);
+    });
+  });
+
+  menu.querySelector('[data-action="cancel"]').addEventListener('click', hideValveIconActionMenu);
+
+  document.addEventListener('mousedown', (event) => {
+    if (menu.style.display === 'none') return;
+    if (!menu.contains(event.target)) hideValveIconActionMenu();
+  });
+
+  return valveIconActionMenuRefs;
+}
+
+function showValveIconActionMenu(valveIcon, clientX, clientY) {
+  if (!valveIcon) return;
+  const menuRefs = ensureValveIconActionMenu();
+  menuRefs.targetValve = valveIcon;
+  menuRefs.menu.style.display = 'block';
+  menuRefs.menu.style.left = `${Math.min(clientX, window.innerWidth - 180)}px`;
+  menuRefs.menu.style.top = `${Math.min(clientY, window.innerHeight - 140)}px`;
+}
 
 function getDeviceParamsState() {
   return AppState.getDeviceParams();
@@ -376,6 +504,12 @@ function ensureGlobalValveSvgPickerListener() {
 
     event.preventDefault();
     event.stopPropagation();
+
+    if (valveIcon.classList.contains('configure-layout')) {
+      showValveIconActionMenu(valveIcon, event.clientX, event.clientY);
+      return;
+    }
+
     showValveSvgPicker(valveIcon, event.clientX, event.clientY).catch((error) => {
       console.error('Failed to show valve SVG picker', error);
     });
@@ -389,6 +523,12 @@ function attachValveSvgPicker(valveIcon, isConfigurableIcon) {
   valveIcon.addEventListener('contextmenu', (event) => {
     event.preventDefault();
     event.stopPropagation();
+
+    if (valveIcon.classList.contains('configure-layout')) {
+      showValveIconActionMenu(valveIcon, event.clientX, event.clientY);
+      return;
+    }
+
     showValveSvgPicker(valveIcon, event.clientX, event.clientY).catch((error) => {
       console.error('Failed to show valve SVG picker', error);
     });

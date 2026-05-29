@@ -1300,6 +1300,15 @@ startPollingLatestValues();
     return !(typeof window.isConfigurationModeActive === 'function' && !window.isConfigurationModeActive());
   }
 
+  function getPlotlyRenderConfig() {
+    return {
+      responsive: true,
+      scrollZoom: false,
+      doubleClick: false,
+      displayModeBar: arePlotPanelsMovable()
+    };
+  }
+
   function loadPlotConfigByName(name, callback){
     const configs = getStoredPlotConfigs();
     const cachedConfig = configs[name];
@@ -1592,7 +1601,7 @@ startPollingLatestValues();
 
     plotsMap[id] = plotEntry;
     const initTraceMetas = Object.values(plotEntry.traces).filter(t => t && t.traceObj);
-    Plotly.newPlot(plotDiv, initTraceMetas.map(t=>t.traceObj), layoutForType(plotEntry.plotType, plotEntry)).then(()=>{
+    Plotly.newPlot(plotDiv, initTraceMetas.map(t=>t.traceObj), layoutForType(plotEntry.plotType, plotEntry), getPlotlyRenderConfig()).then(()=>{
       initTraceMetas.forEach((t,i)=>{ t._traceIndex = i; if (Array.isArray(t.x)) t._lastSent = t.x.length; });
       Plotly.relayout(plotDiv, { title: '' });
       if (titleDiv.parentNode !== container) {
@@ -1853,6 +1862,12 @@ startPollingLatestValues();
       autorange: true
     });
 
+    if (!arePlotPanelsMovable()) {
+      layout.dragmode = false;
+      layout.xaxis = Object.assign({}, layout.xaxis || {}, { fixedrange: true });
+      layout.yaxis = Object.assign({}, layout.yaxis || {}, { fixedrange: true });
+    }
+
     return withTimeRangeControls(layout);
 
   }
@@ -1872,7 +1887,7 @@ startPollingLatestValues();
       const data = traceMetas.map(t => t.traceObj);
 
       // update the whole plot with only the real traces
-      Plotly.react(p.plotDiv, data, layoutForType(p.plotType, p), {responsive:true}).then(()=>{
+      Plotly.react(p.plotDiv, data, layoutForType(p.plotType, p), getPlotlyRenderConfig()).then(()=>{
         traceMetas.forEach((t,i)=> t._traceIndex = i);
         Plotly.relayout(p.plotDiv, { 'yaxis.autorange': true }).catch(() => {});
       }).catch(e=>{ });
@@ -2046,7 +2061,7 @@ startPollingLatestValues();
           const traceMetas = Object.values(p.traces).filter(tt => tt && tt.traceObj);
           traceMetas.forEach((tt) => syncRenderedLineTrace(tt));
           const data = traceMetas.map(tt => tt.traceObj);
-          Plotly.react(p.plotDiv, data, layoutForType(p.plotType, p), {responsive:true}).then(()=>{
+          Plotly.react(p.plotDiv, data, layoutForType(p.plotType, p), getPlotlyRenderConfig()).then(()=>{
             traceMetas.forEach((tt, i) => {
               tt._traceIndex = i;
               tt._lastSent = Array.isArray(tt.rawX) ? tt.rawX.length : tt.traceObj.x.length;
@@ -2101,7 +2116,7 @@ startPollingLatestValues();
           // Only include real trace objects in full react
           const traceMetas = traces.filter(tt => tt && tt.traceObj);
           const data = traceMetas.map(tt=>tt.traceObj);
-          Plotly.react(p.plotDiv, data, layoutForType(p.plotType, p), {responsive:true}).then(()=>{
+          Plotly.react(p.plotDiv, data, layoutForType(p.plotType, p), getPlotlyRenderConfig()).then(()=>{
             traceMetas.forEach((tt,i)=> tt._traceIndex = i);
             traceMetas.forEach(tt=> tt._lastSent = tt.traceObj.x.length);
             Plotly.relayout(p.plotDiv, { 'yaxis.autorange': true }).catch(() => {});
@@ -2488,7 +2503,7 @@ startPollingLatestValues();
 
     plotsMap[id] = plotEntry;
     const initTraceMetasAuto = Object.values(plotEntry.traces).filter(t => t && t.traceObj);
-    Plotly.newPlot(plotDiv, initTraceMetasAuto.map(t=>t.traceObj), layout).then(()=>{
+    Plotly.newPlot(plotDiv, initTraceMetasAuto.map(t=>t.traceObj), layout, getPlotlyRenderConfig()).then(()=>{
       initTraceMetasAuto.forEach((t,i)=> t._traceIndex = i);
       try { enablePlotPanelDragResize(container, plotDiv); } catch(e) {}
       // (legend editor removed)

@@ -1,9 +1,9 @@
 {
   "devices": [
     {
-      "id": "box-sim_gas_dosing_massflow_contr1",
+      "id": "box-gas_dosing_massflow_contr1",
       "device": "massflow_contr1",
-      "logicalName": "sim_gas_dosing_massflow_contr1",
+      "logicalName": "gas_dosing_massflow_contr1",
       "left": "135px",
       "top": "35px",
       "width": "259px",
@@ -19,7 +19,6 @@
           "_inverse_calibration_coefficients",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "target"
         ],
@@ -28,20 +27,17 @@
           "_I_value",
           "_P_value",
           "_control_mode",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_gastype_select",
           "_inverse_calibration_coefficients",
           "_test_cmd",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "stop",
           "target"
         ],
         "commands": [
-          "_factory_reset",
           "_test_cmd",
           "stop"
         ],
@@ -99,16 +95,6 @@
             }
           },
           {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
             "ramp": {
               "description": "desired ramp speed for gas flow of gas",
               "datainfo": {
@@ -135,14 +121,6 @@
           {
             "stop": {
               "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
               "datainfo": {
                 "type": "command"
               }
@@ -186,8 +164,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -196,8 +173,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -360,9 +336,9 @@
       "image": null
     },
     {
-      "id": "box-sim_gas_dosing_massflow_contr2",
+      "id": "box-gas_dosing_massflow_contr2",
       "device": "massflow_contr2",
-      "logicalName": "sim_gas_dosing_massflow_contr2",
+      "logicalName": "gas_dosing_massflow_contr2",
       "left": "132px",
       "top": "192px",
       "width": "261px",
@@ -378,7 +354,6 @@
           "_inverse_calibration_coefficients",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "target"
         ],
@@ -387,20 +362,17 @@
           "_I_value",
           "_P_value",
           "_control_mode",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_gastype_select",
           "_inverse_calibration_coefficients",
           "_test_cmd",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "stop",
           "target"
         ],
         "commands": [
-          "_factory_reset",
           "_test_cmd",
           "stop"
         ],
@@ -458,16 +430,6 @@
             }
           },
           {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
             "ramp": {
               "description": "desired ramp speed for gas flow of gas",
               "datainfo": {
@@ -494,14 +456,6 @@
           {
             "stop": {
               "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
               "datainfo": {
                 "type": "command"
               }
@@ -545,8 +499,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -555,8 +508,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -719,11 +671,11 @@
       "image": null
     },
     {
-      "id": "box-sim_gas_dosing_massflow_contr3",
+      "id": "box-gas_dosing_massflow_contr3",
       "device": "massflow_contr3",
-      "logicalName": "sim_gas_dosing_massflow_contr3",
-      "left": "130px",
-      "top": "344px",
+      "logicalName": "gas_dosing_massflow_contr3",
+      "left": "131px",
+      "top": "360px",
       "width": "260px",
       "height": "113px",
       "info": {
@@ -737,7 +689,6 @@
           "_inverse_calibration_coefficients",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "target"
         ],
@@ -746,20 +697,17 @@
           "_I_value",
           "_P_value",
           "_control_mode",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_gastype_select",
           "_inverse_calibration_coefficients",
           "_test_cmd",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "stop",
           "target"
         ],
         "commands": [
-          "_factory_reset",
           "_test_cmd",
           "stop"
         ],
@@ -817,16 +765,6 @@
             }
           },
           {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
             "ramp": {
               "description": "desired ramp speed for gas flow of gas",
               "datainfo": {
@@ -853,14 +791,6 @@
           {
             "stop": {
               "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
               "datainfo": {
                 "type": "command"
               }
@@ -904,8 +834,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -914,8 +843,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -1078,9 +1006,9 @@
       "image": null
     },
     {
-      "id": "box-sim_gas_dosing_massflow_contr4",
+      "id": "box-gas_dosing_massflow_contr4",
       "device": "massflow_contr4",
-      "logicalName": "sim_gas_dosing_massflow_contr4",
+      "logicalName": "gas_dosing_massflow_contr4",
       "left": "128px",
       "top": "496px",
       "width": "260px",
@@ -1096,7 +1024,6 @@
           "_inverse_calibration_coefficients",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "target"
         ],
@@ -1105,20 +1032,17 @@
           "_I_value",
           "_P_value",
           "_control_mode",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_gastype_select",
           "_inverse_calibration_coefficients",
           "_test_cmd",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "stop",
           "target"
         ],
         "commands": [
-          "_factory_reset",
           "_test_cmd",
           "stop"
         ],
@@ -1176,16 +1100,6 @@
             }
           },
           {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
             "ramp": {
               "description": "desired ramp speed for gas flow of gas",
               "datainfo": {
@@ -1212,14 +1126,6 @@
           {
             "stop": {
               "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
               "datainfo": {
                 "type": "command"
               }
@@ -1263,8 +1169,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -1273,8 +1178,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -1437,9 +1341,9 @@
       "image": null
     },
     {
-      "id": "box-sim_gas_dosing_massflow_contr5",
+      "id": "box-gas_dosing_massflow_contr5",
       "device": "massflow_contr5",
-      "logicalName": "sim_gas_dosing_massflow_contr5",
+      "logicalName": "gas_dosing_massflow_contr5",
       "left": "128px",
       "top": "698px",
       "width": "254px",
@@ -1455,7 +1359,6 @@
           "_inverse_calibration_coefficients",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "target"
         ],
@@ -1464,20 +1367,17 @@
           "_I_value",
           "_P_value",
           "_control_mode",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_gastype_select",
           "_inverse_calibration_coefficients",
           "_test_cmd",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "stop",
           "target"
         ],
         "commands": [
-          "_factory_reset",
           "_test_cmd",
           "stop"
         ],
@@ -1535,16 +1435,6 @@
             }
           },
           {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
             "ramp": {
               "description": "desired ramp speed for gas flow of gas",
               "datainfo": {
@@ -1571,14 +1461,6 @@
           {
             "stop": {
               "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
               "datainfo": {
                 "type": "command"
               }
@@ -1622,8 +1504,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -1632,8 +1513,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -1796,9 +1676,9 @@
       "image": null
     },
     {
-      "id": "box-sim_gas_dosing_massflow_contr6",
+      "id": "box-gas_dosing_massflow_contr6",
       "device": "massflow_contr6",
-      "logicalName": "sim_gas_dosing_massflow_contr6",
+      "logicalName": "gas_dosing_massflow_contr6",
       "left": "127px",
       "top": "849px",
       "width": "251px",
@@ -1814,7 +1694,6 @@
           "_inverse_calibration_coefficients",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "target"
         ],
@@ -1823,20 +1702,17 @@
           "_I_value",
           "_P_value",
           "_control_mode",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_gastype_select",
           "_inverse_calibration_coefficients",
           "_test_cmd",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "stop",
           "target"
         ],
         "commands": [
-          "_factory_reset",
           "_test_cmd",
           "stop"
         ],
@@ -1894,16 +1770,6 @@
             }
           },
           {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
             "ramp": {
               "description": "desired ramp speed for gas flow of gas",
               "datainfo": {
@@ -1930,14 +1796,6 @@
           {
             "stop": {
               "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
               "datainfo": {
                 "type": "command"
               }
@@ -1981,8 +1839,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -1991,8 +1848,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -2155,9 +2011,9 @@
       "image": null
     },
     {
-      "id": "box-sim_gas_dosing_massflow_contr7",
+      "id": "box-gas_dosing_massflow_contr7",
       "device": "massflow_contr7",
-      "logicalName": "sim_gas_dosing_massflow_contr7",
+      "logicalName": "gas_dosing_massflow_contr7",
       "left": "125px",
       "top": "1005px",
       "width": "254px",
@@ -2173,7 +2029,6 @@
           "_inverse_calibration_coefficients",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "target"
         ],
@@ -2182,20 +2037,17 @@
           "_I_value",
           "_P_value",
           "_control_mode",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_gastype_select",
           "_inverse_calibration_coefficients",
           "_test_cmd",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "stop",
           "target"
         ],
         "commands": [
-          "_factory_reset",
           "_test_cmd",
           "stop"
         ],
@@ -2253,16 +2105,6 @@
             }
           },
           {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
             "ramp": {
               "description": "desired ramp speed for gas flow of gas",
               "datainfo": {
@@ -2289,14 +2131,6 @@
           {
             "stop": {
               "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
               "datainfo": {
                 "type": "command"
               }
@@ -2340,8 +2174,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -2350,8 +2183,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -2514,9 +2346,9 @@
       "image": null
     },
     {
-      "id": "box-sim_gas_dosing_massflow_contr8",
+      "id": "box-gas_dosing_massflow_contr8",
       "device": "massflow_contr8",
-      "logicalName": "sim_gas_dosing_massflow_contr8",
+      "logicalName": "gas_dosing_massflow_contr8",
       "left": "123px",
       "top": "1159px",
       "width": "254px",
@@ -2532,7 +2364,6 @@
           "_inverse_calibration_coefficients",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "target"
         ],
@@ -2541,20 +2372,17 @@
           "_I_value",
           "_P_value",
           "_control_mode",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_gastype_select",
           "_inverse_calibration_coefficients",
           "_test_cmd",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "stop",
           "target"
         ],
         "commands": [
-          "_factory_reset",
           "_test_cmd",
           "stop"
         ],
@@ -2612,16 +2440,6 @@
             }
           },
           {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
             "ramp": {
               "description": "desired ramp speed for gas flow of gas",
               "datainfo": {
@@ -2648,14 +2466,6 @@
           {
             "stop": {
               "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
               "datainfo": {
                 "type": "command"
               }
@@ -2699,8 +2509,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -2709,8 +2518,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -2873,11 +2681,11 @@
       "image": null
     },
     {
-      "id": "box-sim_gas_dosing_massflow_contr9",
+      "id": "box-gas_dosing_massflow_contr9",
       "device": "massflow_contr9",
-      "logicalName": "sim_gas_dosing_massflow_contr9",
-      "left": "121px",
-      "top": "1380px",
+      "logicalName": "gas_dosing_massflow_contr9",
+      "left": "123px",
+      "top": "1382px",
       "width": "257px",
       "height": "123px",
       "info": {
@@ -2891,7 +2699,6 @@
           "_inverse_calibration_coefficients",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "target"
         ],
@@ -2900,20 +2707,17 @@
           "_I_value",
           "_P_value",
           "_control_mode",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_gastype_select",
           "_inverse_calibration_coefficients",
           "_test_cmd",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "stop",
           "target"
         ],
         "commands": [
-          "_factory_reset",
           "_test_cmd",
           "stop"
         ],
@@ -2971,16 +2775,6 @@
             }
           },
           {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
             "ramp": {
               "description": "desired ramp speed for gas flow of gas",
               "datainfo": {
@@ -3007,14 +2801,6 @@
           {
             "stop": {
               "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
               "datainfo": {
                 "type": "command"
               }
@@ -3058,8 +2844,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -3068,8 +2853,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -3232,9 +3016,9 @@
       "image": null
     },
     {
-      "id": "box-sim_gas_dosing_massflow_contr10",
+      "id": "box-gas_dosing_massflow_contr10",
       "device": "massflow_contr10",
-      "logicalName": "sim_gas_dosing_massflow_contr10",
+      "logicalName": "gas_dosing_massflow_contr10",
       "left": "120px",
       "top": "1535px",
       "width": "259px",
@@ -3250,7 +3034,6 @@
           "_inverse_calibration_coefficients",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "target"
         ],
@@ -3259,20 +3042,17 @@
           "_I_value",
           "_P_value",
           "_control_mode",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_gastype_select",
           "_inverse_calibration_coefficients",
           "_test_cmd",
           "_tolerance",
           "_valveposition",
-          "pollinterval",
           "ramp",
           "stop",
           "target"
         ],
         "commands": [
-          "_factory_reset",
           "_test_cmd",
           "stop"
         ],
@@ -3330,16 +3110,6 @@
             }
           },
           {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
             "ramp": {
               "description": "desired ramp speed for gas flow of gas",
               "datainfo": {
@@ -3366,14 +3136,6 @@
           {
             "stop": {
               "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
               "datainfo": {
                 "type": "command"
               }
@@ -3417,8 +3179,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -3427,8 +3188,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -3591,21 +3351,19 @@
       "image": null
     },
     {
-      "id": "box-sim_reactor_cell_pressure_inlet",
+      "id": "box-reactor_cell_pressure_inlet",
       "device": "pressure_inlet",
-      "logicalName": "sim_reactor_cell_pressure_inlet",
-      "left": "1104px",
-      "top": "153px",
+      "logicalName": "reactor_cell_pressure_inlet",
+      "left": "1243px",
+      "top": "187px",
       "width": "181px",
       "height": "124px",
       "info": {
         "params": [
-          "_pre_flux",
-          "pollinterval"
+          "_pre_flux"
         ],
         "all_params": [
-          "_pre_flux",
-          "pollinterval"
+          "_pre_flux"
         ],
         "commands": [],
         "original_name": "pressure_inlet",
@@ -3649,16 +3407,6 @@
             }
           },
           {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
             "_pre_flux": {
               "description": "Constant for simulation of pressure flux",
               "datainfo": {
@@ -3674,21 +3422,19 @@
       "image": null
     },
     {
-      "id": "box-sim_reactor_cell_pressure_outlet",
+      "id": "box-reactor_cell_pressure_outlet",
       "device": "pressure_outlet",
-      "logicalName": "sim_reactor_cell_pressure_outlet",
-      "left": "1104px",
-      "top": "649px",
+      "logicalName": "reactor_cell_pressure_outlet",
+      "left": "1253px",
+      "top": "633px",
       "width": "190px",
       "height": "124px",
       "info": {
         "params": [
-          "_pre_flux",
-          "pollinterval"
+          "_pre_flux"
         ],
         "all_params": [
-          "_pre_flux",
-          "pollinterval"
+          "_pre_flux"
         ],
         "commands": [],
         "original_name": "pressure_outlet",
@@ -3732,16 +3478,6 @@
             }
           },
           {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
             "_pre_flux": {
               "description": "Constant for simulation of pressure flux",
               "datainfo": {
@@ -3757,11 +3493,11 @@
       "image": null
     },
     {
-      "id": "box-sim_reactor_cell_temperature_reg",
+      "id": "box-reactor_cell_temperature_reg",
       "device": "temperature_reg",
-      "logicalName": "sim_reactor_cell_temperature_reg",
-      "left": "1104px",
-      "top": "322px",
+      "logicalName": "reactor_cell_temperature_reg",
+      "left": "1243px",
+      "top": "338px",
       "width": "195px",
       "height": "124px",
       "info": {
@@ -3779,7 +3515,6 @@
           "_D_value",
           "_I_value",
           "_P_value",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_inverse_calibration_coefficients",
           "_tolerance",
@@ -3788,7 +3523,6 @@
           "target"
         ],
         "commands": [
-          "_factory_reset",
           "stop"
         ],
         "original_name": "temperature_reg",
@@ -3877,14 +3611,6 @@
             }
           },
           {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
             "_inverse_calibration_coefficients": {
               "description": "Inverse calibration polynomial coefficients for value Parameter",
               "datainfo": {
@@ -3922,8 +3648,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -3932,8 +3657,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -3989,21 +3713,19 @@
       "image": null
     },
     {
-      "id": "box-sim_reactor_cell_temperature_sam",
+      "id": "box-reactor_cell_temperature_sam",
       "device": "temperature_sam",
-      "logicalName": "sim_reactor_cell_temperature_sam",
-      "left": "1105px",
-      "top": "488px",
+      "logicalName": "reactor_cell_temperature_sam",
+      "left": "1248px",
+      "top": "486px",
       "width": "200px",
       "height": "124px",
       "info": {
         "params": [
-          "_heat_flux",
-          "pollinterval"
+          "_heat_flux"
         ],
         "all_params": [
-          "_heat_flux",
-          "pollinterval"
+          "_heat_flux"
         ],
         "commands": [],
         "original_name": "temperature_sam",
@@ -4047,16 +3769,6 @@
             }
           },
           {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
             "_heat_flux": {
               "description": "Constant for simulation of heat flux",
               "datainfo": {
@@ -4075,8 +3787,8 @@
       "id": "box-sim_FTIR_gas_concentration",
       "device": "gas_concentration",
       "logicalName": "sim_FTIR_gas_concentration",
-      "left": "1817px",
-      "top": "1369px",
+      "left": "2764px",
+      "top": "1271px",
       "width": "208px",
       "height": "124px",
       "info": {
@@ -4252,11 +3964,11 @@
       "image": null
     },
     {
-      "id": "box-sim_gas_analysis_myspot_mass_spec",
+      "id": "box-Hiden_MS_mass_spec",
       "device": "mass_spec",
-      "logicalName": "sim_gas_analysis_myspot_mass_spec",
-      "left": "1604px",
-      "top": "1365px",
+      "logicalName": "Hiden_MS_mass_spec",
+      "left": "2298px",
+      "top": "813px",
       "width": "162px",
       "height": "auto",
       "info": {
@@ -4292,15 +4004,40 @@
         "param_info": [
           {
             "value": {
-              "description": "partial pressure spectrum",
+              "description": "mass, partial pressure, timestamp",
               "datainfo": {
-                "type": "array",
-                "minlen": 0,
-                "maxlen": 100,
+                "type": "struct",
                 "members": {
-                  "min": 0,
-                  "max": 1000,
-                  "type": "double"
+                  "mass": {
+                    "type": "array",
+                    "minlen": 0,
+                    "maxlen": 100,
+                    "members": {
+                      "min": 0,
+                      "max": 1000,
+                      "type": "double"
+                    }
+                  },
+                  "partial_pressure": {
+                    "type": "array",
+                    "minlen": 0,
+                    "maxlen": 100,
+                    "members": {
+                      "min": 0,
+                      "max": 1000,
+                      "type": "double"
+                    }
+                  },
+                  "timestamp": {
+                    "type": "array",
+                    "minlen": 0,
+                    "maxlen": 100,
+                    "members": {
+                      "min": 0,
+                      "max": 1000,
+                      "type": "double"
+                    }
+                  }
                 }
               },
               "readonly": true
@@ -4351,23 +4088,6 @@
             }
           },
           {
-            "_mass": {
-              "description": "massnumber to corresponding partialpressures",
-              "datainfo": {
-                "type": "array",
-                "minlen": 0,
-                "maxlen": 100,
-                "members": {
-                  "min": 0,
-                  "max": 1000,
-                  "type": "double"
-                }
-              },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
-            }
-          },
-          {
             "_aquire_time": {
               "description": "time duration for aquisition of spectrum",
               "datainfo": {
@@ -4388,8 +4108,7 @@
                 "max": 2000,
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -4568,7 +4287,7 @@
           },
           {
             "_delta_m": {
-              "description": "The low mass peak width/valley adjustment used during set up and maintenance.Can also affect the high masses and should be adjusted in conjunction withthe Resolution",
+              "description": "The low mass peak width/valley adjustment used during set up and maintenance. Can also affect the high masses and should be adjusted in conjunction with the Resolution",
               "datainfo": {
                 "unit": "%",
                 "min": 0,
@@ -4616,7 +4335,7 @@
           },
           {
             "_settle": {
-              "description": "Defines the time to allow the electronics to settle before the scan isstarted. Given as a percentage of the default settle time for the currentrange.",
+              "description": "Defines the time to allow the electronics to settle before the scan is started. Given as a percentage of the default settle time for the current range.",
               "datainfo": {
                 "unit": "%",
                 "min": 0,
@@ -4628,7 +4347,7 @@
           },
           {
             "_dwell": {
-              "description": "Defines the time used to acquire a single point in the scan. Given as apercentage of the default settle time for the current range.",
+              "description": "Defines the time used to acquire a single point in the scan. Given as a percentage of the default settle time for the current range.",
               "datainfo": {
                 "unit": "%",
                 "min": 0,
@@ -4643,19 +4362,21 @@
       "image": null
     },
     {
-      "id": "box-sim_gas_dosing_Gas_flow_calibrator",
+      "id": "box-gas_dosing_Gas_flow_calibrator",
       "device": "Gas_flow_calibrator",
-      "logicalName": "sim_gas_dosing_Gas_flow_calibrator",
-      "left": "1555px",
-      "top": "998px",
+      "logicalName": "gas_dosing_Gas_flow_calibrator",
+      "left": "1928px",
+      "top": "784px",
       "width": "216px",
       "height": "124px",
       "info": {
         "params": [
-          "_avg_window"
+          "_No_average",
+          "_gastype_select"
         ],
         "all_params": [
-          "_avg_window"
+          "_No_average",
+          "_gastype_select"
         ],
         "commands": [],
         "original_name": "Gas_flow_calibrator",
@@ -4699,7 +4420,7 @@
             }
           },
           {
-            "_avg_window": {
+            "_No_average": {
               "description": "number of flow measurement for average",
               "datainfo": {
                 "min": 1,
@@ -4742,19 +4463,52 @@
               },
               "readonly": true
             }
+          },
+          {
+            "_calibrated_coff": {
+              "description": "calibrated coefficients for gas",
+              "datainfo": {
+                "type": "array",
+                "minlen": 2,
+                "maxlen": 5,
+                "members": {
+                  "min": -1000000,
+                  "max": 100000,
+                  "type": "double"
+                }
+              },
+              "readonly": true
+            }
+          },
+          {
+            "_gastype_select": {
+              "description": "enum of gastype",
+              "datainfo": {
+                "type": "enum",
+                "members": {
+                  "N2": 1,
+                  "CO": 2,
+                  "CO2": 3,
+                  "O2": 4,
+                  "He": 5,
+                  "H2": 6
+                }
+              },
+              "readonly": false
+            }
           }
         ]
       },
       "image": null
     },
     {
-      "id": "box-sim_gas_dosing_backpress_contr1",
+      "id": "box-gas_dosing_backpress_contr1",
       "device": "backpress_contr1",
-      "logicalName": "sim_gas_dosing_backpress_contr1",
-      "left": "950px",
-      "top": "1386px",
-      "width": "200px",
-      "height": "124px",
+      "logicalName": "gas_dosing_backpress_contr1",
+      "left": "1338px",
+      "top": "938px",
+      "width": "342px",
+      "height": "117px",
       "info": {
         "params": [
           "_D_value",
@@ -4772,7 +4526,6 @@
           "_D_value",
           "_I_value",
           "_P_value",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_inverse_calibration_coefficients",
           "_looptime",
@@ -4783,7 +4536,6 @@
           "target"
         ],
         "commands": [
-          "_factory_reset",
           "stop"
         ],
         "original_name": "backpress_contr1",
@@ -4882,14 +4634,6 @@
             }
           },
           {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
             "_inverse_calibration_coefficients": {
               "description": "Inverse calibration polynomial coefficients for value Parameter",
               "datainfo": {
@@ -4927,8 +4671,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -4937,8 +4680,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -5029,13 +4771,13 @@
       "image": null
     },
     {
-      "id": "box-sim_gas_dosing_backpress_contr2",
+      "id": "box-gas_dosing_backpress_contr2",
       "device": "backpress_contr2",
-      "logicalName": "sim_gas_dosing_backpress_contr2",
-      "left": "2340px",
-      "top": "1115px",
-      "width": "200px",
-      "height": "124px",
+      "logicalName": "gas_dosing_backpress_contr2",
+      "left": "2669px",
+      "top": "953px",
+      "width": "327px",
+      "height": "102px",
       "info": {
         "params": [
           "_D_value",
@@ -5053,7 +4795,6 @@
           "_D_value",
           "_I_value",
           "_P_value",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_inverse_calibration_coefficients",
           "_looptime",
@@ -5064,7 +4805,6 @@
           "target"
         ],
         "commands": [
-          "_factory_reset",
           "stop"
         ],
         "original_name": "backpress_contr2",
@@ -5163,14 +4903,6 @@
             }
           },
           {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
             "_inverse_calibration_coefficients": {
               "description": "Inverse calibration polynomial coefficients for value Parameter",
               "datainfo": {
@@ -5208,8 +4940,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -5218,8 +4949,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -5312,247 +5042,409 @@
   ],
   "valveIcons": [
     {
-      "id": "icon-sim_gas_dosing_valve_controller_Switch1",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_Switch1",
+      "device": "gas_dosing_valve_controller",
       "field": "Switch1",
-      "left": "694px",
-      "top": "606px",
+      "left": "769px",
+      "top": "739px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "",
+      "openSvg": "",
+      "switchSvg": "/c/assets/3_way_valve_1_position.svg",
+      "switchClosedSvg": "/c/assets/3_way_valve_0_position.svg",
+      "switchOpenSvg": "/c/assets/3_way_valve_1_position.svg"
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_Switch2",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_Switch2",
+      "device": "gas_dosing_valve_controller",
       "field": "Switch2",
-      "left": "674px",
-      "top": "387px",
+      "left": "935px",
+      "top": "746px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "",
+      "openSvg": "",
+      "switchSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=",
+      "switchClosedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=",
+      "switchOpenSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4="
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_Switch3",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_Switch3",
+      "device": "gas_dosing_valve_controller",
       "field": "Switch3",
-      "left": "808px",
-      "top": "720px",
+      "left": "1096px",
+      "top": "746px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "",
+      "openSvg": "",
+      "switchSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=",
+      "switchClosedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=",
+      "switchOpenSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4="
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_Switch4",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_Switch4",
+      "device": "gas_dosing_valve_controller",
       "field": "Switch4",
-      "left": "919px",
-      "top": "583px",
+      "left": "1097px",
+      "top": "194px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "",
+      "openSvg": "",
+      "switchSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=",
+      "switchClosedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=",
+      "switchOpenSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4="
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_Switch5",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_Switch5",
+      "device": "gas_dosing_valve_controller",
       "field": "Switch5",
-      "left": "916px",
-      "top": "891px",
+      "left": "1800px",
+      "top": "933px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "",
+      "openSvg": "",
+      "switchSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=",
+      "switchClosedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=",
+      "switchOpenSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4="
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_Switch6",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_Switch6",
+      "device": "gas_dosing_valve_controller",
       "field": "Switch6",
-      "left": "1280px",
-      "top": "785px",
+      "left": "2422px",
+      "top": "1053px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "",
+      "openSvg": "",
+      "switchSvg": "/c/assets/3_way_valve_1_position.svg",
+      "switchClosedSvg": "/c/assets/3_way_valve_0_position.svg",
+      "switchOpenSvg": "/c/assets/3_way_valve_1_position.svg"
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V0_1",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V0_1",
+      "device": "gas_dosing_valve_controller",
       "field": "V0_1",
-      "left": "1131px",
-      "top": "965px",
+      "left": "861px",
+      "top": "335px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "90",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V0_2",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V0_2",
+      "device": "gas_dosing_valve_controller",
       "field": "V0_2",
-      "left": "1123px",
-      "top": "1128px",
+      "left": "1094px",
+      "top": "47px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "90",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V0_3",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V0_3",
+      "device": "gas_dosing_valve_controller",
       "field": "V0_3",
-      "left": "1380px",
-      "top": "1119px",
+      "left": "2570px",
+      "top": "958px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V0_4",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V0_4",
+      "device": "gas_dosing_valve_controller",
       "field": "V0_4",
-      "left": "1337px",
-      "top": "1310px",
+      "left": "2650px",
+      "top": "1124px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V10_1",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V10_1",
+      "device": "gas_dosing_valve_controller",
       "field": "V10_1",
-      "left": "24px",
-      "top": "1560px",
+      "left": "6px",
+      "top": "1564px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V10_2",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V10_2",
+      "device": "gas_dosing_valve_controller",
       "field": "V10_2",
-      "left": "435px",
-      "top": "1563px",
+      "left": "2492px",
+      "top": "1366px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "90",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V1_1",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V1_1",
+      "device": "gas_dosing_valve_controller",
       "field": "V1_1",
       "left": "13px",
       "top": "57px",
       "width": "82px",
-      "height": "102px"
+      "height": "102px",
+      "rotationDegrees": "0",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V2_1",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V2_1",
+      "device": "gas_dosing_valve_controller",
       "field": "V2_1",
       "left": "12px",
       "top": "217px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V3_1",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V3_1",
+      "device": "gas_dosing_valve_controller",
       "field": "V3_1",
       "left": "17px",
       "top": "368px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V3_2",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V3_2",
+      "device": "gas_dosing_valve_controller",
       "field": "V3_2",
-      "left": "428px",
-      "top": "374px",
+      "left": "438px",
+      "top": "366px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V4_1",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V4_1",
+      "device": "gas_dosing_valve_controller",
       "field": "V4_1",
-      "left": "21px",
-      "top": "519px",
+      "left": "22px",
+      "top": "513px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V4_2",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V4_2",
+      "device": "gas_dosing_valve_controller",
       "field": "V4_2",
-      "left": "431px",
-      "top": "520px",
+      "left": "438px",
+      "top": "507px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V5_1",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V5_1",
+      "device": "gas_dosing_valve_controller",
       "field": "V5_1",
-      "left": "25px",
-      "top": "734px",
+      "left": "23px",
+      "top": "720px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V6_1",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V6_1",
+      "device": "gas_dosing_valve_controller",
       "field": "V6_1",
-      "left": "25px",
-      "top": "876px",
+      "left": "19px",
+      "top": "865px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V7_1",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V7_1",
+      "device": "gas_dosing_valve_controller",
       "field": "V7_1",
-      "left": "24px",
-      "top": "1032px",
+      "left": "23px",
+      "top": "1026px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V7_2",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V7_2",
+      "device": "gas_dosing_valve_controller",
       "field": "V7_2",
       "left": "428px",
       "top": "1026px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V8_1",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V8_1",
+      "device": "gas_dosing_valve_controller",
       "field": "V8_1",
-      "left": "26px",
+      "left": "24px",
       "top": "1178px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V8_2",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V8_2",
+      "device": "gas_dosing_valve_controller",
       "field": "V8_2",
       "left": "433px",
       "top": "1179px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V9_1",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V9_1",
+      "device": "gas_dosing_valve_controller",
       "field": "V9_1",
-      "left": "24px",
-      "top": "1422px",
+      "left": "6px",
+      "top": "1400px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "0",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V9_2",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V9_2",
+      "device": "gas_dosing_valve_controller",
       "field": "V9_2",
-      "left": "433px",
-      "top": "1414px",
+      "left": "1020px",
+      "top": "431px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "90",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     },
     {
-      "id": "icon-sim_gas_dosing_valve_controller_V9_3",
-      "device": "sim_gas_dosing_valve_controller",
+      "id": "icon-gas_dosing_valve_controller_V9_3",
+      "device": "gas_dosing_valve_controller",
       "field": "V9_3",
-      "left": "695px",
-      "top": "1445px",
+      "left": "2118px",
+      "top": "1275px",
       "width": "80px",
-      "height": "100px"
+      "height": "100px",
+      "rotationDegrees": "90",
+      "closedSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48cG9seWdvbiBwb2ludHM9IjEwLDIwIDEwLDc0IDYwLDQ3IiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjxwb2x5Z29uIHBvaW50cz0iMTEwLDIwIDExMCw3NCA2MCw0NyIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+      "openSvg": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9Ijk0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTQiIGZpbGw9IiNmZmYiLz48IS0tIExlZnQgdHJpYW5nbGUgcG9pbnRpbmcgcmlnaHQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMCwyMCAxMCw3NCA2MCw0NyIgZmlsbD0iIzI4YTc0NSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48IS0tIFJpZ2h0IHRyaWFuZ2xlIHBvaW50aW5nIGxlZnQgLS0+PHBvbHlnb24gcG9pbnRzPSIxMTAsMjAgMTEwLDc0IDYwLDQ3IiBmaWxsPSIjMjhhNzQ1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+      "switchSvg": "",
+      "switchClosedSvg": "",
+      "switchOpenSvg": ""
     }
   ],
   "decorations": [
@@ -5575,8 +5467,8 @@
     {
       "id": "deco-1779955734036",
       "type": "line",
-      "left": "396px",
-      "top": "553px",
+      "left": "397px",
+      "top": "551px",
       "width": "38px",
       "height": "12px",
       "color": "transparent",
@@ -5587,8 +5479,1133 @@
       "lineWidth": "4",
       "lineType": "solid",
       "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780041669557",
+      "type": "line",
+      "left": "731px",
+      "top": "579px",
+      "width": "346px",
+      "height": "93px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#00a3d7",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780041669757",
+      "type": "line",
+      "left": "902px",
+      "top": "789px",
+      "width": "38px",
+      "height": "17px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#00a3d7",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780041669989",
+      "type": "line",
+      "left": "809px",
+      "top": "976px",
+      "width": "161px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780041670140",
+      "type": "line",
+      "left": "911px",
+      "top": "911px",
+      "width": "117px",
+      "height": "28px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780041670291",
+      "type": "line",
+      "left": "712px",
+      "top": "645px",
+      "width": "185px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780041670441",
+      "type": "line",
+      "left": "749px",
+      "top": "915px",
+      "width": "120px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780041670624",
+      "type": "line",
+      "left": "391px",
+      "top": "961px",
+      "width": "461px",
+      "height": "81px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780041670789",
+      "type": "line",
+      "left": "511px",
+      "top": "1224px",
+      "width": "111px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780041670956",
+      "type": "line",
+      "left": "384px",
+      "top": "1225px",
+      "width": "53px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780041671123",
+      "type": "line",
+      "left": "386px",
+      "top": "1066px",
+      "width": "42px",
+      "height": "17px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780041671289",
+      "type": "line",
+      "left": "506px",
+      "top": "1070px",
+      "width": "114px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780041671423",
+      "type": "line",
+      "left": "394px",
+      "top": "911px",
+      "width": "228px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780041671573",
+      "type": "line",
+      "left": "393px",
+      "top": "764px",
+      "width": "369px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780041671706",
+      "type": "line",
+      "left": "399px",
+      "top": "260px",
+      "width": "223px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780041671891",
+      "type": "line",
+      "left": "401px",
+      "top": "98px",
+      "width": "220px",
+      "height": "15px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780041681390",
+      "type": "line",
+      "left": "519px",
+      "top": "551px",
+      "width": "457px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780041681523",
+      "type": "line",
+      "left": "395px",
+      "top": "305px",
+      "width": "452px",
+      "height": "48px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780041681656",
+      "type": "line",
+      "left": "526px",
+      "top": "410px",
+      "width": "97px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780049341921",
+      "type": "line",
+      "left": "1058px",
+      "top": "240px",
+      "width": "46px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#9929bd",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780049342118",
+      "type": "line",
+      "left": "1325px",
+      "top": "773px",
+      "width": "38px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780049342285",
+      "type": "line",
+      "left": "1174px",
+      "top": "793px",
+      "width": "170px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780049342417",
+      "type": "line",
+      "left": "1170px",
+      "top": "235px",
+      "width": "68px",
+      "height": "15px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780049342568",
+      "type": "line",
+      "left": "911px",
+      "top": "516px",
+      "width": "449px",
+      "height": "48px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780049342702",
+      "type": "line",
+      "left": "872px",
+      "top": "653px",
+      "width": "206px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780049342834",
+      "type": "line",
+      "left": "1012px",
+      "top": "789px",
+      "width": "73px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780049342987",
+      "type": "line",
+      "left": "736px",
+      "top": "177px",
+      "width": "332px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#00a3d7",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780049346767",
+      "type": "line",
+      "left": "1112px",
+      "top": "27px",
+      "width": "38px",
+      "height": "18px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780049346901",
+      "type": "line",
+      "left": "1117px",
+      "top": "177px",
+      "width": "38px",
+      "height": "22px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780049347034",
+      "type": "line",
+      "left": "902px",
+      "top": "10px",
+      "width": "1630px",
+      "height": "15px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#00a3d7",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780050935918",
+      "type": "line",
+      "left": "1807px",
+      "top": "1071px",
+      "width": "54px",
+      "height": "13px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780050936066",
+      "type": "line",
+      "left": "1833px",
+      "top": "1096px",
+      "width": "583px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780050936350",
+      "type": "line",
+      "left": "1878px",
+      "top": "974px",
+      "width": "142px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#ffaa00",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780050936516",
+      "type": "line",
+      "left": "89px",
+      "top": "262px",
+      "width": "38px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780050936666",
+      "type": "line",
+      "left": "1985px",
+      "top": "941px",
+      "width": "70px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#ffb43f",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780050936850",
+      "type": "line",
+      "left": "1791px",
+      "top": "889px",
+      "width": "105px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#ffaa00",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780050937000",
+      "type": "line",
+      "left": "1846px",
+      "top": "838px",
+      "width": "70px",
+      "height": "13px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#ffaa00",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780050937133",
+      "type": "line",
+      "left": "1684px",
+      "top": "979px",
+      "width": "120px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780050937283",
+      "type": "line",
+      "left": "1079px",
+      "top": "922px",
+      "width": "120px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780050937433",
+      "type": "line",
+      "left": "1139px",
+      "top": "981px",
+      "width": "187px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780050937584",
+      "type": "line",
+      "left": "396px",
+      "top": "1604px",
+      "width": "2138px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#be38f3",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780050937736",
+      "type": "line",
+      "left": "398px",
+      "top": "1447px",
+      "width": "1763px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#be38f3",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780050937918",
+      "type": "line",
+      "left": "611px",
+      "top": "946px",
+      "width": "900px",
+      "height": "118px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#be38f3",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780050938184",
+      "type": "line",
+      "left": "962px",
+      "top": "269px",
+      "width": "195px",
+      "height": "146px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#be38f3",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780054186700",
+      "type": "line",
+      "left": "2463px",
+      "top": "1292px",
+      "width": "69px",
+      "height": "13px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780054186864",
+      "type": "line",
+      "left": "2399px",
+      "top": "1229px",
+      "width": "126px",
+      "height": "16px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780054187581",
+      "type": "line",
+      "left": "2069px",
+      "top": "1184px",
+      "width": "179px",
+      "height": "19px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#be38f3",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780054187730",
+      "type": "line",
+      "left": "2129px",
+      "top": "1411px",
+      "width": "63px",
+      "height": "24px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#be38f3",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780054187898",
+      "type": "line",
+      "left": "2040px",
+      "top": "903px",
+      "width": "369px",
+      "height": "29px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780054188096",
+      "type": "line",
+      "left": "2223px",
+      "top": "728px",
+      "width": "60px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780054188247",
+      "type": "line",
+      "left": "2224px",
+      "top": "874px",
+      "width": "65px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780054785394",
+      "type": "line",
+      "left": "2435px",
+      "top": "1026px",
+      "width": "57px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780054785543",
+      "type": "line",
+      "left": "2548px",
+      "top": "1168px",
+      "width": "113px",
+      "height": "13px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780054785727",
+      "type": "line",
+      "left": "2533px",
+      "top": "1330px",
+      "width": "225px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780054785893",
+      "type": "line",
+      "left": "2498px",
+      "top": "1325px",
+      "width": "69px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780054786076",
+      "type": "line",
+      "left": "2463px",
+      "top": "999px",
+      "width": "100px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780054786575",
+      "type": "line",
+      "left": "2472px",
+      "top": "1543px",
+      "width": "124px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#be38f3",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780055458243",
+      "type": "line",
+      "left": "98px",
+      "top": "764px",
+      "width": "38px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780055458375",
+      "type": "line",
+      "left": "89px",
+      "top": "556px",
+      "width": "38px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780055458542",
+      "type": "line",
+      "left": "95px",
+      "top": "411px",
+      "width": "38px",
+      "height": "15px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780055458676",
+      "type": "line",
+      "left": "2731px",
+      "top": "1167px",
+      "width": "202px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780055458809",
+      "type": "line",
+      "left": "2464px",
+      "top": "1079px",
+      "width": "171px",
+      "height": "23px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780055458923",
+      "type": "line",
+      "left": "2038px",
+      "top": "414px",
+      "width": "989px",
+      "height": "194px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#00c7fc",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "90"
+    },
+    {
+      "id": "deco-1780060515192",
+      "type": "line",
+      "left": "174px",
+      "top": "117px",
+      "width": "120px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#cccccc",
+      "lineWidth": "2",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780060515355",
+      "type": "line",
+      "left": "87px",
+      "top": "1445px",
+      "width": "38px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780060515574",
+      "type": "line",
+      "left": "103px",
+      "top": "1224px",
+      "width": "38px",
+      "height": "13px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780060515925",
+      "type": "line",
+      "left": "88px",
+      "top": "1070px",
+      "width": "38px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780060516657",
+      "type": "line",
+      "left": "91px",
+      "top": "912px",
+      "width": "38px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780060822758",
+      "type": "line",
+      "left": "94px",
+      "top": "102px",
+      "width": "38px",
+      "height": "12px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
+    },
+    {
+      "id": "deco-1780060823774",
+      "type": "line",
+      "left": "84px",
+      "top": "1607px",
+      "width": "38px",
+      "height": "13px",
+      "color": "transparent",
+      "text": "",
+      "fontFamily": "",
+      "fontSize": "",
+      "lineColor": "#000000",
+      "lineWidth": "4",
+      "lineType": "solid",
+      "rotationDegrees": "0"
     }
   ],
-  "plots": [],
+  "plots": [
+    {
+      "id": "plot_1_panel",
+      "title": "temperature_plot",
+      "configName": "temperature_plot",
+      "xAxisTitle": "",
+      "yAxisTitle": "",
+      "left": "171px",
+      "top": "4px",
+      "width": "1056px",
+      "height": "574px",
+      "transform": "translate(1288.03125px, 40.71875px)",
+      "zIndex": "5",
+      "dataX": "1288.03125",
+      "dataY": "40.71875",
+      "traces": [
+        "reactor_cell_temperature_reg.value",
+        "reactor_cell_temperature_reg.setpoint",
+        "reactor_cell_temperature_sam.value"
+      ]
+    }
+  ],
   "connections": []
 }

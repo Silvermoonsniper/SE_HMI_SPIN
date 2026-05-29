@@ -1201,7 +1201,31 @@ function clearConnectionLineSelection() {
   selectedConnectionLine = null;
 }
 
+function applyConnectionLineInteractivity(line) {
+  if (!line) return;
+  const interactive = typeof window.isConfigurationModeActive === 'function'
+    ? window.isConfigurationModeActive()
+    : document.body.dataset.configurationMode === 'true';
+  line.style.pointerEvents = interactive ? 'visibleStroke' : 'none';
+  if (interactive) {
+    line.setAttribute('pointer-events', 'visibleStroke');
+  } else {
+    line.removeAttribute('pointer-events');
+  }
+  line.style.cursor = interactive ? 'pointer' : 'default';
+  if (!interactive) {
+    line.classList.remove('is-selected');
+    if (selectedConnectionLine === line) {
+      selectedConnectionLine = null;
+    }
+  }
+}
+
 function selectConnectionLine(line) {
+  if (typeof window.isConfigurationModeActive === 'function' && !window.isConfigurationModeActive()) {
+    clearConnectionLineSelection();
+    return;
+  }
   if (selectedConnectionLine === line) return;
   if (selectedConnectionLine) {
     selectedConnectionLine.classList.remove('is-selected');
@@ -1293,6 +1317,10 @@ function setupLineContextMenu() {
   setupConnectionLineKeyboardControl();
 
   document.addEventListener('mousedown', (event) => {
+    if (typeof window.isConfigurationModeActive === 'function' && !window.isConfigurationModeActive()) {
+      clearConnectionLineSelection();
+      return;
+    }
     const line = event.target && event.target.closest ? event.target.closest('.device-connection-line:not(.is-temporary)') : null;
     if (line) {
       selectConnectionLine(line);
@@ -1305,6 +1333,10 @@ function setupLineContextMenu() {
   });
 
   document.addEventListener('contextmenu', (event) => {
+    if (typeof window.isConfigurationModeActive === 'function' && !window.isConfigurationModeActive()) {
+      hideLineContextMenu();
+      return;
+    }
     const line = event.target && event.target.closest ? event.target.closest('.device-connection-line:not(.is-temporary)') : null;
     if (!line) {
       hideLineContextMenu();
@@ -1391,9 +1423,22 @@ function setupLineContextMenu() {
 
 function setConfigurationMode(enabled) {
   const mainPanel = document.getElementById('main-panel');
+  const connectionSvg = document.getElementById('connection-svg');
   document.body.dataset.configurationMode = enabled ? 'true' : 'false';
   if (mainPanel) {
     mainPanel.classList.toggle('config-mode', !!enabled);
+  }
+  if (connectionSvg) {
+    connectionSvg.style.pointerEvents = enabled ? 'auto' : 'none';
+    if (enabled) {
+      connectionSvg.setAttribute('pointer-events', 'auto');
+    } else {
+      connectionSvg.removeAttribute('pointer-events');
+    }
+  }
+  document.querySelectorAll('.device-connection-line:not(.is-temporary)').forEach(applyConnectionLineInteractivity);
+  if (!enabled) {
+    clearConnectionLineSelection();
   }
 }
 
@@ -1415,7 +1460,7 @@ function getConnectionSvg() {
     svg.style.left = '0';
     svg.style.width = '100%';
     svg.style.height = '100%';
-    svg.style.pointerEvents = 'auto';
+    svg.style.pointerEvents = (typeof window.isConfigurationModeActive === 'function' && !window.isConfigurationModeActive()) ? 'none' : 'auto';
     grid.insertBefore(svg, grid.firstChild);
   }
 
@@ -1570,12 +1615,12 @@ function finalizeConnection(point) {
 
   const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
   line.classList.add('device-connection-line');
-  line.style.pointerEvents = 'stroke';
   line.dataset.startBoxId = activeConnectionStart.boxId;
   line.dataset.startSide = activeConnectionStart.side;
   line.dataset.endBoxId = endDescriptor.boxId;
   line.dataset.endSide = endDescriptor.side;
   getConnectionSvg().appendChild(line);
+  applyConnectionLineInteractivity(line);
   applyConnectionLineStyle(line);
 
   setConnectionLinePosition(
@@ -1619,13 +1664,13 @@ function restoreConnectionLines(connections) {
 
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.classList.add('device-connection-line');
-    line.style.pointerEvents = 'stroke';
     line.dataset.startBoxId = connection.startBoxId;
     line.dataset.startSide = connection.startSide;
     line.dataset.endBoxId = connection.endBoxId;
     line.dataset.endSide = connection.endSide;
     line.dataset.rotationDegrees = connection.rotationDegrees || '0';
     svg.appendChild(line);
+    applyConnectionLineInteractivity(line);
     applyConnectionLineStyle(line, connection);
     setConnectionLinePosition(line, getContactAnchor(startPoint), getContactAnchor(endPoint));
   });
