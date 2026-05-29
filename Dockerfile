@@ -28,6 +28,8 @@ RUN mkdir -p /app/configuration && \
     touch /app/configuration/nodes.json && \
     touch /app/configuration/device_params.json
 
+# Final application image target used by the GitLab publish job
+FROM all_deps AS se_hmi_spin    
 # Expose the port that spin server runs on (configured in conf.py as 8000)
 EXPOSE 8000
 EXPOSE 8001
