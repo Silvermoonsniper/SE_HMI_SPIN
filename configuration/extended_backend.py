@@ -1331,16 +1331,10 @@ def start_api_server(backend=None):
     @app.route('/api/latest_values')
    
     def get_latest_values():
-        if backend and hasattr(backend, 'refresh_runtime_latest_values'):
-            backend.refresh_runtime_latest_values()
-
         return jsonify(_json_safe_value(ExtendedBackend.latest_values))
 
     @app.route('/api/plot_updates')
     def get_plot_updates():
-        if backend and hasattr(backend, 'refresh_runtime_latest_values'):
-            backend.refresh_runtime_latest_values()
-
         since_raw = request.args.get('since')
         try:
             since_ms = int(since_raw) if since_raw not in (None, '') else None

@@ -1,0 +1,200 @@
+{
+  "devices": [
+    {
+      "id": "box-ROCK_IT_abstraction_layer_MFC_group_1",
+      "device": "MFC_group_1",
+      "logicalName": "ROCK_IT_abstraction_layer_MFC_group_1",
+      "left": "20px",
+      "top": "20px",
+      "width": "298px",
+      "height": "auto",
+      "info": {
+        "params": [
+          "pollinterval",
+          "target"
+        ],
+        "all_params": [
+          "pollinterval",
+          "stop",
+          "target"
+        ],
+        "commands": [
+          "stop"
+        ],
+        "original_name": "MFC_group_1",
+        "interface_classes": [
+          "Drivable"
+        ],
+        "module_name": "MFC_group_1",
+        "param_info": [
+          {
+            "value": {
+              "description": "Current gas composition of and total flow of MFC group",
+              "datainfo": {
+                "type": "struct",
+                "members": {
+                  "gas_list": {
+                    "type": "array",
+                    "minlen": 4,
+                    "maxlen": 4,
+                    "members": {
+                      "type": "string"
+                    }
+                  },
+                  "composition": {
+                    "type": "array",
+                    "minlen": 4,
+                    "maxlen": 4,
+                    "members": {
+                      "unit": "%",
+                      "min": 0,
+                      "max": 100,
+                      "type": "double"
+                    }
+                  },
+                  "total_flow": {
+                    "unit": "ml/min",
+                    "min": 0,
+                    "max": 3000,
+                    "type": "double"
+                  }
+                }
+              },
+              "readonly": true
+            }
+          },
+          {
+            "status": {
+              "description": "current status of the module",
+              "datainfo": {
+                "type": "tuple",
+                "members": [
+                  {
+                    "type": "enum",
+                    "members": {
+                      "IDLE": 100,
+                      "WARN": 200,
+                      "BUSY": 300,
+                      "ERROR": 400
+                    }
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "readonly": true
+            }
+          },
+          {
+            "target": {
+              "description": "Targeted gas composition of and total flow of MFC group",
+              "datainfo": {
+                "type": "struct",
+                "members": {
+                  "gas_list": {
+                    "type": "array",
+                    "minlen": 4,
+                    "maxlen": 4,
+                    "members": {
+                      "type": "string"
+                    }
+                  },
+                  "composition": {
+                    "type": "array",
+                    "minlen": 4,
+                    "maxlen": 4,
+                    "members": {
+                      "unit": "%",
+                      "min": 0,
+                      "max": 100,
+                      "type": "double"
+                    }
+                  },
+                  "total_flow": {
+                    "unit": "ml/min",
+                    "min": 0,
+                    "max": 3000,
+                    "type": "double"
+                  }
+                }
+              },
+              "readonly": false
+            }
+          },
+          {
+            "pollinterval": {
+              "description": "default poll interval",
+              "datainfo": {
+                "unit": "s",
+                "min": 0.1,
+                "max": 120,
+                "type": "double"
+              },
+              "readonly": false
+            }
+          },
+          {
+            "stop": {
+              "description": "not implemented - this is a no-op",
+              "datainfo": {
+                "type": "command"
+              }
+            }
+          },
+          {
+            "_child_gas_dosing_uri": {
+              "description": "URI of the child gas dosing node",
+              "datainfo": {
+                "type": "string"
+              },
+              "readonly": true
+            }
+          },
+          {
+            "_mfc_list": {
+              "description": "List of MFCs represented by the group",
+              "datainfo": {
+                "type": "array",
+                "minlen": 0,
+                "maxlen": 100,
+                "members": {
+                  "type": "string"
+                }
+              },
+              "readonly": true
+            }
+          },
+          {
+            "_gas_list": {
+              "description": "List of available gases",
+              "datainfo": {
+                "type": "array",
+                "minlen": 0,
+                "maxlen": 100,
+                "members": {
+                  "type": "string"
+                }
+              },
+              "readonly": true
+            }
+          },
+          {
+            "_use_cache": {
+              "description": "True: use cached readings for construction of gas composition\nFalse: force flow reads from massflow controllers\n(will introduce a lot of roundtrips)",
+              "datainfo": {
+                "type": "bool"
+              },
+              "readonly": true
+            }
+          }
+        ]
+      },
+      "image": null
+    }
+  ],
+  "valveIcons": [],
+  "decorations": [],
+  "plots": [],
+  "connections": []
+}
