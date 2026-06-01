@@ -422,62 +422,7 @@ async function sendSelectedParam(device, domId) {
     let finalValue = isNaN(value) ? value : parseFloat(value);
     const key = device + '.' + param;
 
-    const deviceParams = AppState.getDeviceParams();
-    const deviceInfo = deviceParams && deviceParams[device] ? deviceParams[device] : null;
-    const moduleName = deviceInfo && (deviceInfo.module_name || deviceInfo.original_name)
-      ? (deviceInfo.module_name || deviceInfo.original_name)
-      : null;
-
-    let addr = null;
-    try {
-      if (typeof getKnownNodeAddrForDevice === 'function') {
-        addr = getKnownNodeAddrForDevice(device);
-      }
-    } catch (e) {
-      addr = null;
-    }
-
-    if (!addr && typeof fetch === 'function' && typeof API_BASE !== 'undefined') {
-      try {
-        const resp = await fetch(API_BASE + '/api/node_for_device', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ device: device })
-        });
-        if (resp.ok) {
-          const payload = await resp.json();
-          if (payload && payload.status === 'ok' && payload.addr) {
-            addr = payload.addr;
-          }
-        }
-      } catch (e) {
-        addr = null;
-      }
-    }
-
-    let sentDirectly = false;
-    if (addr && moduleName && typeof fetch === 'function' && typeof API_BASE !== 'undefined') {
-      try {
-        const command = `change ${moduleName}:${param} ${JSON.stringify(finalValue)}`;
-        const resp = await fetch(API_BASE + '/api/send_request', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ addr: addr, command: command })
-        });
-        if (resp.ok) {
-          const payload = await resp.json();
-          if (payload && payload.status === 'sent' && /^changed\s|^reply\s/i.test(String(payload.response || ''))) {
-            sentDirectly = true;
-          }
-        }
-      } catch (e) {
-        sentDirectly = false;
-      }
-    }
-
-    if (!sentDirectly) {
-      Spin.send_request(key, "", "input", "", finalValue);
-    }
+    Spin.send_request(key, "", "input", "", finalValue);
 
     fetchAndMergeLatestValuesOnce()
       .then(() => applyCachedDeviceState(device, domId))
