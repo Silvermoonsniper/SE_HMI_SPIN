@@ -771,6 +771,10 @@ body[data-configuration-mode="false"] .deco-box {
   pointer-events: none !important;
 }
 
+body[data-configuration-mode="false"] .deco-box.deco-type-switch {
+  pointer-events: auto !important;
+}
+
 body[data-configuration-mode="false"] .deco-box.selected {
   outline: none;
 }

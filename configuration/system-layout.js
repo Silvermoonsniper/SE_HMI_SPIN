@@ -612,7 +612,6 @@ function createDecoration(isConfigurelayout)
   });
 
   wrapper.addEventListener('click', (e) => {
-    if (!areDecorationEditsEnabled()) return;
     if (wrapper.dataset.type !== 'switch') return;
     e.preventDefault();
     e.stopPropagation();

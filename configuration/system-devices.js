@@ -17,16 +17,38 @@ function getValveIconRotationDegrees(valveIcon) {
   return Number.isFinite(value) ? value : 0;
 }
 
+function getSwitchStateRotationDegrees(imgContainer, valveIcon) {
+  const positionValue = valveIcon && valveIcon.dataset
+    ? valveIcon.dataset.open
+    : imgContainer && imgContainer.dataset
+      ? imgContainer.dataset.switchPosition
+      : '0';
+  return String(positionValue) === '1' ? 90 : 0;
+}
+
+function syncValveIconTransform(valveIcon) {
+  if (!valveIcon) return;
+  const imgContainer = valveIcon.querySelector('div[id^="img-"]');
+  if (!imgContainer) return;
+
+  const lowerField = String(valveIcon.dataset.field || '').toLowerCase();
+  const isSwitch = lowerField.includes('switch');
+  const baseRotationDegrees = getValveIconRotationDegrees(valveIcon);
+  const effectiveRotation = isSwitch
+    ? baseRotationDegrees + getSwitchStateRotationDegrees(imgContainer, valveIcon)
+    : baseRotationDegrees;
+
+  imgContainer.style.transform = `rotate(${effectiveRotation}deg)`;
+  imgContainer.style.transformOrigin = 'center center';
+}
+
 function applyValveIconRotation(valveIcon, degrees) {
   if (!valveIcon) return;
   const parsedDegrees = parseFloat(degrees);
   const rotationDegrees = Number.isFinite(parsedDegrees) ? parsedDegrees : 0;
-  const imgContainer = valveIcon.querySelector('div[id^="img-"]');
-  if (!imgContainer) return;
 
   valveIcon.dataset.rotationDegrees = String(rotationDegrees);
-  imgContainer.style.transform = `rotate(${rotationDegrees}deg)`;
-  imgContainer.style.transformOrigin = 'center center';
+  syncValveIconTransform(valveIcon);
 }
 
 function syncValveRotationToStoredLayout(valveIcon) {
@@ -1287,6 +1309,11 @@ async function setupValveController(device, domId,isConfigurelayout) {
       if (grid) 
       {
         grid.appendChild(valveIcon);
+        if (isSwitch) {
+          const switchImg = imgContainer.querySelector('img');
+          if (switchImg) switchImg.style.transform = '';
+          syncValveIconTransform(valveIcon);
+        }
       } else {
         console.error('device-grid not found!');
       }
@@ -1343,13 +1370,14 @@ async function setupValveController(device, domId,isConfigurelayout) {
 function updateSwitchRotation(imgContainer, position) {
   const img = imgContainer.querySelector('img');
   if (img) {
+    imgContainer.dataset.switchPosition = String(position === 1 ? 1 : 0);
     try {
       const valveEl = img.closest('.valve-icon');
       if (valveEl) {
         img.src = getSwitchSvgForState(valveEl, position === 1);
         valveEl.dataset.open = position === 1 ? '1' : '0';
-        const usesStateSpecificSvg = (valveEl.dataset.switchClosedSvg || '') !== (valveEl.dataset.switchOpenSvg || '');
-        img.style.transform = usesStateSpecificSvg ? 'rotate(0deg)' : `rotate(${position * 90}deg)`;
+        img.style.transform = '';
+        syncValveIconTransform(valveEl);
         return;
       }
     } catch (e) { /* ignore */ }
