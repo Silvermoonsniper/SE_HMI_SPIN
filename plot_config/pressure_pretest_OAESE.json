@@ -1,0 +1,93 @@
+{
+  "name": "pressure_pretest_OAESE",
+  "plotType": "line",
+  "xAxisTitle": "",
+  "yAxisTitle": "",
+  "lines": [
+    {
+      "key": "gas_dosing_backpress_contr1.value",
+      "suffix": "gas_dosing_backpress_contr1.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#99c1f1"
+      }
+    },
+    {
+      "key": "gas_dosing_backpress_contr1.setpoint",
+      "suffix": "gas_dosing_backpress_contr1.setpoint",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#99c1f1"
+      }
+    },
+    {
+      "key": "gas_dosing_backpress_contr2.value",
+      "suffix": "gas_dosing_backpress_contr2.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#ed333b"
+      }
+    },
+    {
+      "key": "gas_dosing_backpress_contr2.setpoint",
+      "suffix": "gas_dosing_backpress_contr2.setpoint",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#ed333b"
+      }
+    },
+    {
+      "key": "reactor_cell_pressure_inlet.value",
+      "suffix": "reactor_cell_pressure_inlet.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#33d17a"
+      }
+    },
+    {
+      "key": "reactor_cell_pressure_outlet.value",
+      "suffix": "reactor_cell_pressure_outlet.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#ff7800"
+      }
+    }
+  ],
+  "savedAt": "2026-06-02T11:47:40.813Z"
+}
