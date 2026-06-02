@@ -2173,22 +2173,14 @@ function connectToGUI(is_configure) {
         }
       sessionStorage.setItem('selectedLayout', name);
     }
-    // If this decoration is editable text, focus it so the user can start typing
-    try {
-      if (el.contentEditable === 'true' || el.isContentEditable) {
-        setTimeout(() => {
-          try {
-            el.focus();
-            const range = document.createRange();
-            range.selectNodeContents(el);
-            range.collapse(false);
-            const sel = window.getSelection();
-            sel.removeAllRanges();
-            sel.addRange(range);
-          } catch (e) { /* ignore focus errors */ }
-        }, 0);
+    else {
+      sessionStorage.setItem('selectedLayout', name);
+      try {
+        window.Spin.send_request('nodemanager.get_layout', '', 'read', 'read', { name: name });
+      } catch (e) {
+        alert('Failed to load layout from server.');
       }
-    } catch (e) { /* ignore */ }
+    }
 
   }
 
