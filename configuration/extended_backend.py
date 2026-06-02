@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import enum
 import os, json
 import psycopg
+import socket
 import shutil
 import shutil
 import sys
@@ -16,6 +17,7 @@ import importlib
 from urllib.parse import quote, urlparse
 import mlzlog
 from spin import secop as spin_secop
+from spin.utils import extract_addr
 from frappy.client import SecopClient
 from frappy.lib.enum import EnumMember
 from flask import Flask, jsonify, request
@@ -29,6 +31,7 @@ from configuration.nexus_export import NexusRunExporter, inspect_export_object, 
 DATA_EXPORT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data_exports'))
 DEFAULT_POSTGRES_STORAGE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'postgres_data'))
 ASSETS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'assets'))
+SECOP_STREAM_READER_LIMIT = 10 * 1024 * 1024
 
 
 def _split_csv_env(name):
@@ -433,6 +436,17 @@ class RuntimeSECNode(spin_secop.SECNode):
     def __init__(self, addr, log):
         super().__init__(addr, log)
         self._description = None
+
+    async def _open_connection(self):
+        host, port = extract_addr(self.addr, self.default_port)
+        reader, writer = await asyncio.open_connection(
+            host,
+            port,
+            family=socket.AF_INET,
+            limit=SECOP_STREAM_READER_LIMIT,
+        )
+        self.conn_read = reader
+        self.conn_write = writer
 
     async def _synchronize(self):
         self.log.info('connected to node')
