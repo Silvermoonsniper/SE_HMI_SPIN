@@ -16,16 +16,6 @@
   display: flex !important;
 }
 
-/* Keep Spin package overlays above the app shell. */
-body > .overlay {
-  z-index: 4000 !important;
-}
-
-body > .overlay .overlay-inner {
-  position: relative;
-  z-index: 4001;
-}
-
 /* Ensure control panel is below device-boxes inside it */
 .control-panel-box {
   z-index: 2 !important;
