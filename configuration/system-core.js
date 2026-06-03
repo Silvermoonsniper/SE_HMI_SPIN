@@ -2153,6 +2153,9 @@ async function connectToGUI(is_configure) {
   
   // Switch to main panel
   enterSystem(is_configure);
+  if (typeof setPendingLayoutRenderMode === 'function') {
+    setPendingLayoutRenderMode(is_configure);
+  }
   // Then load selected layout
   const select = document.getElementById('layout-select');
   const name = select.value;
@@ -2184,7 +2187,9 @@ async function connectToGUI(is_configure) {
             alert('Layout not found on server.');
             return;
           }
-          if (is_configure) {
+          if (typeof renderServerLayout === 'function') {
+            await renderServerLayout(layout);
+          } else if (is_configure) {
             applyLayout(layout);
           } else {
             connect_to_system(layout);

@@ -1029,6 +1029,126 @@ function getLayoutApiBase() {
     : `${window.location.protocol}//${window.location.hostname}:8001`;
 }
 
+async function waitForLayoutDeviceOptions(timeoutMs = 5000) {
+  const startedAt = Date.now();
+
+  try {
+    if (typeof fetchDeviceParams === 'function') {
+      fetchDeviceParams();
+    }
+  } catch (e) {
+    console.error('Failed to request device params before layout render', e);
+  }
+
+  while ((Date.now() - startedAt) < timeoutMs) {
+    const select = document.getElementById('device-select');
+    const deviceParams = AppState && typeof AppState.getDeviceParams === 'function'
+      ? AppState.getDeviceParams()
+      : null;
+    const hasOptions = !!(select && select.options && select.options.length > 1);
+    const hasParams = !!(deviceParams && Object.keys(deviceParams).length > 0);
+
+    if (hasOptions || hasParams) {
+      return true;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  return false;
+}
+
+async function hydrateDeviceMetadataFromStaticFile() {
+  try {
+    const response = await fetch('./c/device_params.json', { method: 'GET', cache: 'no-store' });
+    if (!response.ok) return false;
+    const data = await response.json();
+    if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).length === 0) {
+      return false;
+    }
+    if (AppState && typeof AppState.setDeviceParams === 'function') {
+      AppState.setDeviceParams(data);
+    }
+    if (typeof populateDeviceList === 'function') {
+      populateDeviceList(data);
+    }
+    return true;
+  } catch (e) {
+    console.error('Failed to hydrate device metadata from static file', e);
+    return false;
+  }
+}
+
+function hydrateDeviceMetadataFromLayout(layout) {
+  if (!layout || !Array.isArray(layout.devices) || layout.devices.length === 0) {
+    return false;
+  }
+
+  const currentParams = AppState && typeof AppState.getDeviceParams === 'function'
+    ? (AppState.getDeviceParams() || {})
+    : {};
+  const mergedParams = Object.assign({}, currentParams);
+  let addedCount = 0;
+
+  layout.devices.forEach((deviceEntry) => {
+    const key = deviceEntry && (deviceEntry.logicalName || deviceEntry.device);
+    if (!key || mergedParams[key]) return;
+
+    const info = Object.assign({}, deviceEntry.info || {});
+    if (!info.original_name && deviceEntry.device) info.original_name = deviceEntry.device;
+    if (!info.module_name && deviceEntry.device) info.module_name = deviceEntry.device;
+    if (!Array.isArray(info.interface_classes)) info.interface_classes = [];
+    if (!Array.isArray(info.params)) info.params = [];
+    if (!Array.isArray(info.all_params)) info.all_params = info.params.slice();
+    if (!Array.isArray(info.commands)) info.commands = [];
+    if (!Array.isArray(info.param_info)) info.param_info = [];
+    mergedParams[key] = info;
+    addedCount += 1;
+  });
+
+  if (!addedCount) return false;
+
+  if (AppState && typeof AppState.setDeviceParams === 'function') {
+    AppState.setDeviceParams(mergedParams);
+  }
+  if (typeof populateDeviceList === 'function') {
+    populateDeviceList(mergedParams);
+  }
+  return true;
+}
+
+function getPendingLayoutRenderMode() {
+  try {
+    return sessionStorage.getItem('pendingLayoutRenderMode') || 'configure';
+  } catch (e) {
+    return 'configure';
+  }
+}
+
+function setPendingLayoutRenderMode(isConfigure) {
+  try {
+    sessionStorage.setItem('pendingLayoutRenderMode', isConfigure ? 'configure' : 'connect');
+  } catch (e) {
+    console.error('Failed to store pending layout mode', e);
+  }
+}
+
+async function renderServerLayout(layout) {
+  if (!layout) return;
+  const ready = await waitForLayoutDeviceOptions();
+  if (!ready) {
+    const hydratedFromStatic = await hydrateDeviceMetadataFromStaticFile();
+    if (!hydratedFromStatic) {
+      hydrateDeviceMetadataFromLayout(layout);
+    }
+  }
+  if (getPendingLayoutRenderMode() === 'connect') {
+    connect_to_system(layout);
+  } else {
+    applyLayout(layout);
+  }
+}
+
 function populateLayoutSelectWithNames(names) {
   const select = document.getElementById('layout-select');
   if (!select) return;
@@ -1177,7 +1297,8 @@ async function loadSelectedLayout() {
         return;
       }
       sessionStorage.setItem('selectedLayout', name);
-      applyLayout(layout);
+      setPendingLayoutRenderMode(true);
+      await renderServerLayout(layout);
     } catch (e) {
       alert('Failed to load layout from server.');
     }

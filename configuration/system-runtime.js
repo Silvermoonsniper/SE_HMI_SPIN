@@ -234,7 +234,13 @@ window.addEventListener('spinupdate', function(event)
     try {
       const layout = event.detail.value;
       if (layout) {
-        applyLayout(layout);
+        if (typeof renderServerLayout === 'function') {
+          renderServerLayout(layout).catch((error) => {
+            console.error('renderServerLayout failed', error);
+          });
+        } else {
+          applyLayout(layout);
+        }
       }
     } catch (e) { console.error('get_layout spinupdate error', e); }
     return;
