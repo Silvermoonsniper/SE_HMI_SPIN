@@ -2166,15 +2166,14 @@ async function connectToGUI(is_configure) {
     
     if (layouts[name]) 
       {
-      if (is_configure)
-      {
-       applyLayout(layouts[name]);
-      }
-      else
-        {
-       connect_to_system(layouts[name]);
-        }
       sessionStorage.setItem('selectedLayout', name);
+      if (typeof renderServerLayout === 'function') {
+        await renderServerLayout(layouts[name]);
+      } else if (is_configure) {
+        applyLayout(layouts[name]);
+      } else {
+        connect_to_system(layouts[name]);
+      }
     }
     else {
       sessionStorage.setItem('selectedLayout', name);

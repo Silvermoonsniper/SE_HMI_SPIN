@@ -993,6 +993,31 @@ function resetView() {
   refreshConnectionLines();
 }
 
+function focusViewportOnLayoutContent() {
+  const viewport = document.getElementById('viewport');
+  const grid = document.getElementById('device-grid');
+  if (!viewport || !grid) return;
+
+  const elements = Array.from(grid.querySelectorAll('.device-box, .deco-box, .valve-icon, .plot-panel'));
+  if (!elements.length) return;
+
+  let minLeft = Number.POSITIVE_INFINITY;
+  let minTop = Number.POSITIVE_INFINITY;
+
+  elements.forEach((element) => {
+    if (!(element instanceof HTMLElement)) return;
+    const left = Number.isFinite(element.offsetLeft) ? element.offsetLeft : parseFloat(element.style.left || '0');
+    const top = Number.isFinite(element.offsetTop) ? element.offsetTop : parseFloat(element.style.top || '0');
+    if (Number.isFinite(left)) minLeft = Math.min(minLeft, left);
+    if (Number.isFinite(top)) minTop = Math.min(minTop, top);
+  });
+
+  if (!Number.isFinite(minLeft) || !Number.isFinite(minTop)) return;
+
+  viewport.scrollLeft = Math.max(0, minLeft - 40);
+  viewport.scrollTop = Math.max(0, minTop - 40);
+}
+
 // Pan Event Listeners
 let isPanning = false;
 let startPanX, startPanY;
@@ -1142,6 +1167,7 @@ async function renderServerLayout(layout) {
       hydrateDeviceMetadataFromLayout(layout);
     }
   }
+  hydrateDeviceMetadataFromLayout(layout);
   if (getPendingLayoutRenderMode() === 'connect') {
     connect_to_system(layout);
   } else {
@@ -1277,7 +1303,8 @@ async function loadSelectedLayout() {
   const layouts = getStoredLayouts();
   if (layouts[name]) {
     sessionStorage.setItem('selectedLayout', name);
-    applyLayout(layouts[name]);
+    setPendingLayoutRenderMode(true);
+    await renderServerLayout(layouts[name]);
   } else {
     // Otherwise request it from the server
     if (window.Spin && window.Spin.send_request) {
@@ -1660,6 +1687,8 @@ function connect_to_system(layout)
   }
 
   restoreConnectionLines(layout.connections);
+  requestAnimationFrame(focusViewportOnLayoutContent);
+  requestAnimationFrame(focusViewportOnLayoutContent);
 }
 
 
