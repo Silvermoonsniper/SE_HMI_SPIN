@@ -127,10 +127,11 @@ if (pendingBackendRestartTimestamp && (Date.now() - pendingBackendRestartTimesta
 window.addEventListener('spinupdate', function(event) 
 {
   try {
-    if (typeof window.isConfigurationModeActive === 'function' && window.isConfigurationModeActive()) {
+    var key = event.detail.key || '';
+    const isNodeManagerEvent = key.startsWith('nodemanager.');
+    if (!isNodeManagerEvent && typeof window.isConfigurationModeActive === 'function' && window.isConfigurationModeActive()) {
       return;
     }
-    var key = event.detail.key || '';
 
     if (key === 'nodemanager.nodes') {
         var nodes = event.detail.value;
