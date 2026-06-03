@@ -20,18 +20,19 @@ from spin import secop as spin_secop
 from spin.utils import extract_addr
 from frappy.client import SecopClient
 from frappy.lib.enum import EnumMember
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from werkzeug.serving import make_server
 from functools import wraps
 
-from configuration.nexus_export import NexusRunExporter, inspect_export_object, list_export_files
+from configuration.nexus_export import NexusRunExporter, inspect_export_object, list_export_files, resolve_export_file
 
 
 DATA_EXPORT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data_exports'))
 DEFAULT_POSTGRES_STORAGE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'postgres_data'))
 ASSETS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'assets'))
 LAYOUT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'layout'))
+EXTRA_CSV_EXPORT_DIRS = set()
 SECOP_STREAM_READER_LIMIT = 10 * 1024 * 1024
 
 
@@ -170,6 +171,37 @@ def ensure_data_export_dir():
         print(f'Failed to create data export dir {DATA_EXPORT_DIR}: {exc}')
 
 
+def _all_csv_export_dirs():
+    ensure_data_export_dir()
+    directories = {DATA_EXPORT_DIR}
+    directories.update(path for path in EXTRA_CSV_EXPORT_DIRS if path)
+    return sorted(directories)
+
+
+def register_csv_export_dir(path):
+    if not path:
+        return
+    EXTRA_CSV_EXPORT_DIRS.add(os.path.abspath(path))
+
+
+def _safe_csv_export_name(file_name):
+    safe_name = os.path.basename(str(file_name or '').strip())
+    if not safe_name:
+        raise ValueError('missing CSV file name')
+    if not safe_name.lower().endswith('.csv'):
+        raise ValueError('CSV file must end with .csv')
+    return safe_name
+
+
+def resolve_csv_export_file(file_name):
+    safe_name = _safe_csv_export_name(file_name)
+    for directory in _all_csv_export_dirs():
+        file_path = os.path.join(directory, safe_name)
+        if os.path.isfile(file_path):
+            return file_path
+    raise FileNotFoundError(safe_name)
+
+
 def _read_plot_history_limit():
     raw_value = str(os.environ.get('PLOT_HISTORY_LIMIT', '')).strip()
     if not raw_value:
@@ -271,6 +303,7 @@ class CsvDataSaver:
             target_directory = os.path.abspath(os.path.join(DATA_EXPORT_DIR, raw_directory))
 
         os.makedirs(target_directory, exist_ok=True)
+        register_csv_export_dir(target_directory)
 
         raw_file_name = str(file_name or '').strip() or f"data_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         if not raw_file_name.lower().endswith('.csv'):
@@ -1571,6 +1604,28 @@ def start_api_server(backend=None):
             app.logger.exception('api_nexus_export_files failed')
             return jsonify({'status': 'error', 'error': str(exc)}), 500
 
+    @app.route('/api/nexus_export/download', methods=['GET'])
+    def api_nexus_export_download():
+        file_name = request.args.get('file')
+        if not file_name:
+            return jsonify({'status': 'error', 'error': 'missing file'}), 400
+
+        try:
+            file_path = resolve_export_file(file_name)
+            return send_file(
+                file_path,
+                as_attachment=True,
+                download_name=os.path.basename(file_path),
+                mimetype='application/octet-stream',
+            )
+        except ValueError as exc:
+            return jsonify({'status': 'error', 'error': str(exc)}), 400
+        except FileNotFoundError:
+            return jsonify({'status': 'not_found'}), 404
+        except Exception as exc:
+            app.logger.exception('api_nexus_export_download failed')
+            return jsonify({'status': 'error', 'error': str(exc)}), 500
+
     @app.route('/api/nexus_export/inspect', methods=['GET'])
     def api_nexus_export_inspect():
         file_name = request.args.get('file')
@@ -1645,6 +1700,28 @@ def start_api_server(backend=None):
             return jsonify({'status': 'ok', 'export': status})
         except Exception as exc:
             app.logger.exception('api_data_saving_status failed')
+            return jsonify({'status': 'error', 'error': str(exc)}), 500
+
+    @app.route('/api/data_saving/download', methods=['GET'])
+    def api_data_saving_download():
+        file_name = request.args.get('file')
+        if not file_name:
+            return jsonify({'status': 'error', 'error': 'missing file'}), 400
+
+        try:
+            file_path = resolve_csv_export_file(file_name)
+            return send_file(
+                file_path,
+                as_attachment=True,
+                download_name=os.path.basename(file_path),
+                mimetype='text/csv',
+            )
+        except ValueError as exc:
+            return jsonify({'status': 'error', 'error': str(exc)}), 400
+        except FileNotFoundError:
+            return jsonify({'status': 'not_found'}), 404
+        except Exception as exc:
+            app.logger.exception('api_data_saving_download failed')
             return jsonify({'status': 'error', 'error': str(exc)}), 500
 
     @app.route('/api/data_saving/start', methods=['POST'])

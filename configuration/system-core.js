@@ -180,6 +180,11 @@ const API_BASE = (function(){
 })();
 
 let lastStorageAlertLevel = 'normal';
+const dataSavingLocalPreference = {
+  enabled: false,
+  directoryHandle: null,
+  directoryName: '',
+};
 
 function formatBytes(value) {
   const bytes = Number(value);
@@ -293,6 +298,199 @@ async function refreshStorageAlertStatus() {
   }
 }
 
+function isDirectLocalExportSupported() {
+  return !!(window.isSecureContext && typeof window.showDirectoryPicker === 'function');
+}
+
+function getFileNameFromPath(filePath) {
+  const rawPath = String(filePath || '').trim();
+  if (!rawPath) return '';
+  const parts = rawPath.split(/[\\/]/);
+  return parts[parts.length - 1] || '';
+}
+
+function updateDataSavingLocalUi(overlay) {
+  if (!overlay) return;
+
+  const directoryInput = overlay.querySelector('#data-saving-directory');
+  const note = overlay.querySelector('#data-saving-local-note');
+  const chooseBtn = overlay.querySelector('#data-saving-choose-local-btn');
+
+  const hasFolderHandle = !!dataSavingLocalPreference.directoryHandle;
+
+  if (directoryInput) {
+    const defaultServerDirectory = overlay.dataset.serverDirectoryValue || '/app/data_exports';
+    directoryInput.readOnly = true;
+    directoryInput.style.cursor = 'default';
+    if (dataSavingLocalPreference.enabled) {
+      directoryInput.dataset.mode = 'local';
+      directoryInput.dataset.syncingLocal = 'true';
+      directoryInput.value = hasFolderHandle
+        ? `Local folder: ${dataSavingLocalPreference.directoryName}`
+        : 'No local folder selected';
+      directoryInput.dataset.syncingLocal = 'false';
+      directoryInput.title = hasFolderHandle
+        ? `Files will be copied to ${dataSavingLocalPreference.directoryName || 'the chosen folder'} after saving stops.`
+        : 'Use the folder button to choose a folder on this computer.';
+    } else {
+      directoryInput.dataset.mode = 'server';
+      directoryInput.dataset.syncingLocal = 'true';
+      directoryInput.value = `Server folder: ${defaultServerDirectory}`;
+      directoryInput.dataset.syncingLocal = 'false';
+      directoryInput.title = `Files will be written on the server to ${defaultServerDirectory}.`;
+    }
+  }
+
+  if (chooseBtn) {
+    chooseBtn.disabled = false;
+    chooseBtn.textContent = '📁';
+    chooseBtn.title = hasFolderHandle ? 'Change local folder' : 'Choose folder on this computer';
+  }
+
+  if (note) {
+    if (dataSavingLocalPreference.enabled && hasFolderHandle) {
+      note.textContent = `Storage target on this computer: ${dataSavingLocalPreference.directoryName || 'chosen folder'}. The backend still stages files on the server and copies the finished CSV and NeXus files there after saving stops.`;
+    } else {
+      note.textContent = 'Click the folder button to open the system file explorer and choose a folder on this computer. If no folder is selected, files stay in the server export folder.';
+    }
+  }
+}
+
+async function chooseDataSavingStorageLocation(overlay) {
+  if (!isDirectLocalExportSupported()) {
+    dataSavingLocalPreference.enabled = false;
+    dataSavingLocalPreference.directoryHandle = null;
+    dataSavingLocalPreference.directoryName = '';
+    updateDataSavingLocalUi(overlay);
+    let guidance = 'This browser connection cannot open the system folder chooser. To use the native file explorer here, open the app on localhost or over HTTPS in a supported browser.';
+    if (location && location.hostname && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+      guidance += `\n\nIf this browser is running on the same computer as Docker, open ${location.protocol}//localhost:${location.port || '8080'} instead of ${location.origin}.`;
+    }
+    await showAppAlert(
+      guidance,
+      'Storage Location'
+    );
+    return false;
+  }
+
+  return chooseDataSavingLocalDirectory(overlay);
+}
+
+async function chooseDataSavingLocalDirectory(overlay) {
+  if (!isDirectLocalExportSupported()) {
+    dataSavingLocalPreference.enabled = false;
+    dataSavingLocalPreference.directoryHandle = null;
+    dataSavingLocalPreference.directoryName = '';
+    updateDataSavingLocalUi(overlay);
+    return false;
+  }
+
+  try {
+    const directoryInput = overlay ? overlay.querySelector('#data-saving-directory') : null;
+    if (overlay && directoryInput && !overlay.dataset.serverDirectoryValue) {
+      overlay.dataset.serverDirectoryValue = '/app/data_exports';
+    }
+    const handle = await window.showDirectoryPicker({ id: 'spin-local-exports', mode: 'readwrite' });
+    dataSavingLocalPreference.directoryHandle = handle;
+    dataSavingLocalPreference.directoryName = handle && handle.name ? handle.name : 'chosen folder';
+    dataSavingLocalPreference.enabled = true;
+    updateDataSavingLocalUi(overlay);
+    return true;
+  } catch (e) {
+    if (e && e.name === 'AbortError') {
+      return false;
+    }
+    throw e;
+  }
+}
+
+async function fetchGeneratedExportBlob(kind, fileName) {
+  const safeFileName = getFileNameFromPath(fileName);
+  if (!safeFileName) {
+    throw new Error(`Missing ${kind.toUpperCase()} file name`);
+  }
+
+  const url = kind === 'csv'
+    ? `${API_BASE}/api/data_saving/download?file=${encodeURIComponent(safeFileName)}`
+    : `${API_BASE}/api/nexus_export/download?file=${encodeURIComponent(safeFileName)}`;
+  const response = await fetch(url, { method: 'GET' });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return response.blob();
+}
+
+async function writeBlobToLocalDirectory(directoryHandle, fileName, blob) {
+  const fileHandle = await directoryHandle.getFileHandle(fileName, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(blob);
+  await writable.close();
+}
+
+function triggerBlobDownload(blob, fileName) {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = fileName;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  window.setTimeout(() => {
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+  }, 1000);
+}
+
+async function persistFinishedExportsToLocalComputer(payload) {
+  if (!dataSavingLocalPreference.enabled) return null;
+
+  const files = [];
+  const csvFileName = getFileNameFromPath(payload && payload.file_path);
+  const nexusFileName = getFileNameFromPath(payload && payload.nexus_file_path);
+
+  if (csvFileName) files.push({ kind: 'csv', fileName: csvFileName });
+  if (nexusFileName) files.push({ kind: 'nexus', fileName: nexusFileName });
+  if (!files.length) return { saved: [], downloaded: [], errors: [] };
+
+  const result = { saved: [], downloaded: [], errors: [] };
+
+  for (const file of files) {
+    try {
+      const blob = await fetchGeneratedExportBlob(file.kind, file.fileName);
+      if (dataSavingLocalPreference.directoryHandle && isDirectLocalExportSupported()) {
+        try {
+          await writeBlobToLocalDirectory(dataSavingLocalPreference.directoryHandle, file.fileName, blob);
+          result.saved.push(file.fileName);
+          continue;
+        } catch (writeError) {
+          result.errors.push(`${file.fileName}: ${writeError.message || writeError}`);
+        }
+      }
+      triggerBlobDownload(blob, file.fileName);
+      result.downloaded.push(file.fileName);
+    } catch (e) {
+      result.errors.push(`${file.fileName}: ${e.message || e}`);
+    }
+  }
+
+  return result;
+}
+
+function formatLocalExportResultMessage(result) {
+  if (!result) return '';
+  const lines = [];
+  if (result.saved && result.saved.length > 0) {
+    lines.push(`Copied to this computer: ${result.saved.join(', ')}`);
+  }
+  if (result.downloaded && result.downloaded.length > 0) {
+    lines.push(`Downloaded to this computer: ${result.downloaded.join(', ')}`);
+  }
+  if (result.errors && result.errors.length > 0) {
+    lines.push(`Local copy issues: ${result.errors.join(' | ')}`);
+  }
+  return lines.join('\n');
+}
+
 function ensureDataSavingModal() {
   let overlay = document.getElementById('data-saving-overlay');
   if (overlay) return overlay;
@@ -308,8 +506,12 @@ function ensureDataSavingModal() {
       </div>
       <div style="display:grid; gap:12px;">
         <label style="display:grid; gap:4px; font-size:13px; color:#334155;">
-          <span>Directory path on server</span>
-          <input id="data-saving-directory" type="text" style="padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px;" placeholder="/app/data_exports">
+          <span>Storage location</span>
+          <div style="display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:8px; align-items:center;">
+            <input id="data-saving-directory" type="text" readonly style="padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px; background:#f8fafc; cursor:default;" placeholder="Choose storage location">
+            <button id="data-saving-choose-local-btn" type="button" aria-label="Choose folder on this computer" title="Choose folder on this computer" style="width:40px; height:40px; border:1px solid #cbd5e1; background:#fff; border-radius:8px; cursor:pointer; font-size:20px; line-height:1;">📁</button>
+          </div>
+          <div id="data-saving-local-note" style="font-size:12px; color:#64748b; line-height:1.45;"></div>
         </label>
         <label style="display:grid; gap:4px; font-size:13px; color:#334155;">
           <span>Base file name</span>
@@ -324,11 +526,11 @@ function ensureDataSavingModal() {
           <span>Also write a NeXus report with the same directory and base name</span>
         </label>
         <div style="font-size:12px; color:#64748b; line-height:1.45;">
-          When running in Docker, use an absolute server-side directory such as <span style="font-family:monospace;">/app/data_exports</span>. That folder is mounted to the project <span style="font-family:monospace;">data_exports/</span> directory on the host and can be used for both CSV and NeXus output.
+          When running in Docker, use an absolute server-side directory such as <span style="font-family:monospace;">/app/data_exports</span> if you want to store files on the server. If you choose a local folder, the finished files will be copied there after saving stops.
         </div>
       </div>
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:18px;">
-        <button id="data-saving-cancel-btn" type="button" style="padding:8px 12px; border:1px solid #cbd5e1; background:#fff; border-radius:8px; cursor:pointer;">Cancel</button>
+        <button id="data-saving-cancel-btn" type="button" style="padding:8px 12px; border:1px solid #cbd5e1; background:#fff; color:#000; border-radius:8px; cursor:pointer;">Cancel</button>
         <button id="data-saving-submit-btn" type="button" style="padding:8px 12px; border:none; background:#2563eb; color:#fff; border-radius:8px; cursor:pointer;">Start Saving</button>
       </div>
     </div>
@@ -339,16 +541,33 @@ function ensureDataSavingModal() {
   overlay.addEventListener('click', (event) => {
     if (event.target === overlay) hide();
   });
+  overlay.dataset.serverDirectoryValue = '/app/data_exports';
   overlay.querySelector('#data-saving-close-btn').addEventListener('click', hide);
   overlay.querySelector('#data-saving-cancel-btn').addEventListener('click', hide);
+  overlay.querySelector('#data-saving-choose-local-btn').addEventListener('click', async () => {
+    try {
+      await chooseDataSavingStorageLocation(overlay);
+    } catch (e) {
+      await showAppAlert(`Failed to choose storage location.\n${e.message || e}`, 'Storage Location');
+    }
+  });
   overlay.querySelector('#data-saving-submit-btn').addEventListener('click', async () => {
-    const directory = overlay.querySelector('#data-saving-directory').value.trim();
+    const directory = overlay.dataset.serverDirectoryValue || '/app/data_exports';
     const fileName = overlay.querySelector('#data-saving-file-name').value.trim();
     const intervalSeconds = overlay.querySelector('#data-saving-interval').value;
     const saveNexus = !!overlay.querySelector('#data-saving-write-nexus').checked;
-    await startDataSaving({ directory: directory, fileName: fileName, intervalSeconds: intervalSeconds, saveNexus: saveNexus });
+    const saveToLocal = !!dataSavingLocalPreference.enabled;
+
+    if (saveToLocal && isDirectLocalExportSupported() && !dataSavingLocalPreference.directoryHandle) {
+      const chosen = await chooseDataSavingStorageLocation(overlay);
+      if (!chosen || !dataSavingLocalPreference.directoryHandle) return;
+    }
+
+    await startDataSaving({ directory: directory, fileName: fileName, intervalSeconds: intervalSeconds, saveNexus: saveNexus, saveToLocal: saveToLocal });
     hide();
   });
+
+  updateDataSavingLocalUi(overlay);
 
   return overlay;
 }
@@ -363,23 +582,35 @@ async function openDataSavingDialog() {
     const fileNameInput = overlay.querySelector('#data-saving-file-name');
     const intervalInput = overlay.querySelector('#data-saving-interval');
     const nexusCheckbox = overlay.querySelector('#data-saving-write-nexus');
-    if (directoryInput) directoryInput.value = exportState.default_directory || exportState.directory || '/app/data_exports';
+    const serverDirectory = exportState.default_directory || exportState.directory || '/app/data_exports';
+    overlay.dataset.serverDirectoryValue = serverDirectory;
+    if (directoryInput && !dataSavingLocalPreference.enabled) {
+      directoryInput.value = serverDirectory;
+      directoryInput.dataset.mode = 'server';
+    }
     if (fileNameInput) fileNameInput.value = exportState.file_name || 'experiment_data.csv';
     if (intervalInput) intervalInput.value = Math.max(1, Math.round(Number(exportState.interval_seconds || 10)));
     if (nexusCheckbox) nexusCheckbox.checked = true;
   } catch (e) {
     const directoryInput = overlay.querySelector('#data-saving-directory');
-    if (directoryInput && !directoryInput.value) directoryInput.value = '/app/data_exports';
+    overlay.dataset.serverDirectoryValue = '/app/data_exports';
+    if (directoryInput && !dataSavingLocalPreference.enabled && !directoryInput.value) {
+      directoryInput.value = '/app/data_exports';
+      directoryInput.dataset.mode = 'server';
+    }
   }
+  updateDataSavingLocalUi(overlay);
   overlay.style.display = 'flex';
 }
 
-async function startDataSaving({ directory, fileName, intervalSeconds, saveNexus }) {
+async function startDataSaving({ directory, fileName, intervalSeconds, saveNexus, saveToLocal }) {
   const parsedInterval = Number(intervalSeconds);
   if (!Number.isFinite(parsedInterval) || parsedInterval <= 0) {
     await showAppAlert('Please enter an interval greater than 0 seconds.', 'Start Data Saving');
     return;
   }
+
+  dataSavingLocalPreference.enabled = !!saveToLocal;
 
   try {
     const resp = await fetch(API_BASE + '/api/data_saving/start', {
@@ -402,6 +633,9 @@ async function startDataSaving({ directory, fileName, intervalSeconds, saveNexus
       `CSV data saving started.`,
       payload.file_path || '',
       payload.nexus_file_path ? `NeXus report: ${payload.nexus_file_path}` : '',
+      dataSavingLocalPreference.enabled
+        ? `Finished files will be copied to this computer: ${dataSavingLocalPreference.directoryName || 'chosen folder'}`
+        : '',
     ].filter(Boolean).join('\n');
     await showAppAlert(message, 'Start Data Saving');
   } catch (e) {
@@ -421,10 +655,15 @@ async function stopDataSaving() {
     }
 
     await refreshDataSavingStatus();
+    let localResult = null;
+    if (dataSavingLocalPreference.enabled) {
+      localResult = await persistFinishedExportsToLocalComputer(payload);
+    }
     const message = [
       `CSV data saving stopped.`,
       payload.file_path || '',
       payload.nexus_file_path ? `NeXus report: ${payload.nexus_file_path}` : '',
+      formatLocalExportResultMessage(localResult),
     ].filter(Boolean).join('\n');
     await showAppAlert(message, 'Stop Data Saving');
   } catch (e) {
