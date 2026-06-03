@@ -1198,7 +1198,6 @@ async function setupValveController(device, domId,isConfigurelayout) {
       valveIcon.style.overflow = 'visible';
       valveIcon.style.zIndex = '20';
       if (isConfigurelayout) valveIcon.classList.add('configure-layout');
-      appendContactPoints(valveIcon);
       
       // Image Container
       const imgContainer = document.createElement('div');

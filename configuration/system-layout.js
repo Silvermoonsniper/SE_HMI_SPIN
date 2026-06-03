@@ -618,17 +618,7 @@ function createDecoration(isConfigurelayout)
     rotateDecorationSwitch(wrapper, 90);
   });
 
-  if (type === 'contact') 
-  {
-    wrapper.classList.add('deco-type-contact');
-    wrapper.style.width = '20px';
-    wrapper.style.height = '20px';
-    wrapper.style.minWidth = '20px';
-    wrapper.style.minHeight = '20px';
-    appendSingleContactPoint(wrapper);
-  }
-
-  else if (type === 'line')
+  if (type === 'line')
   {
     wrapper.classList.add('deco-type-line');
     wrapper.style.width = '120px';
@@ -1033,28 +1023,76 @@ function getStoredLayouts() {
   }
 }
 
-function updateLayoutList() {
+function getLayoutApiBase() {
+  return typeof API_BASE !== 'undefined'
+    ? API_BASE
+    : `${window.location.protocol}//${window.location.hostname}:8001`;
+}
+
+function populateLayoutSelectWithNames(names) {
   const select = document.getElementById('layout-select');
   if (!select) return;
-  
-  // Keep first option
+
   while (select.options.length > 1) select.remove(1);
-  
-  const layouts = getStoredLayouts();
-  Object.keys(layouts).sort().forEach(name => {
+
+  Array.from(new Set(names || [])).sort().forEach(name => {
     const option = document.createElement('option');
     option.value = name;
     option.text = name;
     select.add(option);
   });
+}
 
-  //Also request server-side layouts (if Spin available)
+async function fetchServerLayoutNamesHttp() {
+  const resp = await fetch(`${getLayoutApiBase()}/api/layouts`, {
+    method: 'GET',
+    cache: 'no-store'
+  });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const payload = await resp.json();
+  if (!payload || payload.status !== 'ok' || !Array.isArray(payload.names)) {
+    throw new Error('Invalid layout list response');
+  }
+  return payload.names;
+}
+
+async function fetchServerLayoutHttp(name) {
+  const resp = await fetch(`${getLayoutApiBase()}/api/layouts/${encodeURIComponent(name)}`, {
+    method: 'GET',
+    cache: 'no-store'
+  });
+  if (resp.status === 404) return null;
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const payload = await resp.json();
+  if (!payload || payload.status !== 'ok') {
+    throw new Error('Invalid layout payload');
+  }
+  return payload.layout || null;
+}
+
+async function updateLayoutList() {
+  const select = document.getElementById('layout-select');
+  if (!select) return;
+
+  const layouts = getStoredLayouts();
+  populateLayoutSelectWithNames(Object.keys(layouts));
+
+  // Request server-side layouts via Spin when available.
   if (window.Spin && window.Spin.send_request) {
     try {
       window.Spin.send_request('nodemanager.list_layouts', '', 'read', 'read', null);
     } catch (e) {
       console.error('list_layouts request failed', e);
     }
+  }
+
+  // Also fetch the list over HTTP so fresh remote browsers can populate the dropdown
+  // even when they have no local cache or the Spin response arrives late.
+  try {
+    const serverNames = await fetchServerLayoutNamesHttp();
+    populateLayoutSelectWithNames([...Object.keys(layouts), ...serverNames]);
+  } catch (e) {
+    console.error('HTTP layout list request failed', e);
   }
 }
 
@@ -1108,7 +1146,7 @@ function loadLayoutFromFile() {
   input.click();
 }
 
-function loadSelectedLayout() {
+async function loadSelectedLayout() {
   const select = document.getElementById('layout-select');
   const name = select.value;
   if (!name) {
@@ -1125,12 +1163,23 @@ function loadSelectedLayout() {
     if (window.Spin && window.Spin.send_request) {
       try {
         window.Spin.send_request('nodemanager.get_layout', '', 'read', 'read', {name: name});
+        sessionStorage.setItem('selectedLayout', name);
+        return;
       } catch (e) {
-       
-        alert('Failed to request layout from server.');
+        console.error('Spin layout request failed', e);
       }
-    } else {
-      alert('Layout not found.');
+    }
+
+    try {
+      const layout = await fetchServerLayoutHttp(name);
+      if (!layout) {
+        alert('Layout not found.');
+        return;
+      }
+      sessionStorage.setItem('selectedLayout', name);
+      applyLayout(layout);
+    } catch (e) {
+      alert('Failed to load layout from server.');
     }
   }
 }
@@ -1874,7 +1923,6 @@ function create_valve_icon(availableDevices,iconDef,isconfigure_layout)
         valveIcon.style.overflow = 'visible';
         valveIcon.style.zIndex = '20';
         if (isconfigure_layout) valveIcon.classList.add('configure-layout');
-        appendContactPoints(valveIcon);
        
         
         // Image container

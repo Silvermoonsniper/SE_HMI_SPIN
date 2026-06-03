@@ -31,6 +31,7 @@ from configuration.nexus_export import NexusRunExporter, inspect_export_object, 
 DATA_EXPORT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data_exports'))
 DEFAULT_POSTGRES_STORAGE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'postgres_data'))
 ASSETS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'assets'))
+LAYOUT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'layout'))
 SECOP_STREAM_READER_LIMIT = 10 * 1024 * 1024
 
 
@@ -128,6 +129,38 @@ def _parse_addr_payload(data, backend=None):
         raise ValueError('port must be between 1 and 65535')
 
     return f'{host}:{port}'
+
+
+def _list_saved_layout_names():
+    if not os.path.isdir(LAYOUT_DIR):
+        return []
+
+    names = []
+    for fname in os.listdir(LAYOUT_DIR):
+        if fname.endswith('.json'):
+            names.append(fname[:-5])
+    return sorted(names)
+
+
+def _resolve_layout_file_path(name):
+    raw_name = str(name or '').strip()
+    if not raw_name:
+        raise ValueError('missing layout name')
+
+    safe_name = os.path.basename(raw_name)
+    if safe_name != raw_name:
+        raise ValueError('invalid layout name')
+
+    return os.path.join(LAYOUT_DIR, safe_name + '.json')
+
+
+def _load_saved_layout(name):
+    file_path = _resolve_layout_file_path(name)
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(file_path)
+
+    with open(file_path, 'r') as handle:
+        return json.load(handle)
 
 
 def ensure_data_export_dir():
@@ -1346,6 +1379,27 @@ def start_api_server(backend=None):
    
     def get_latest_values():
         return jsonify(_json_safe_value(ExtendedBackend.latest_values))
+
+    @app.route('/api/layouts', methods=['GET'])
+    def api_layouts():
+        try:
+            return jsonify({'status': 'ok', 'names': _list_saved_layout_names()})
+        except Exception as exc:
+            app.logger.exception('api_layouts failed')
+            return jsonify({'status': 'error', 'error': str(exc)}), 500
+
+    @app.route('/api/layouts/<path:name>', methods=['GET'])
+    def api_layout_by_name(name):
+        try:
+            layout = _load_saved_layout(name)
+            return jsonify({'status': 'ok', 'layout': _json_safe_value(layout)})
+        except ValueError as exc:
+            return jsonify({'status': 'error', 'error': str(exc)}), 400
+        except FileNotFoundError:
+            return jsonify({'status': 'not_found'}), 404
+        except Exception as exc:
+            app.logger.exception('api_layout_by_name failed')
+            return jsonify({'status': 'error', 'error': str(exc)}), 500
 
     @app.route('/api/plot_updates')
     def get_plot_updates():

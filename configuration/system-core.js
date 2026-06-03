@@ -2144,7 +2144,7 @@ function displayNodesInfo(nodesList) {
   infoContent.innerHTML = html;
 }
 
-function connectToGUI(is_configure) {
+async function connectToGUI(is_configure) {
   // Check if Spin is ready before connecting
   if (!window.Spin || !window.Spin.current_socket || window.Spin.current_socket.readyState !== WebSocket.OPEN) {
     alert('Connection to server not ready. Please wait a moment and try again.');
@@ -2178,7 +2178,20 @@ function connectToGUI(is_configure) {
       try {
         window.Spin.send_request('nodemanager.get_layout', '', 'read', 'read', { name: name });
       } catch (e) {
-        alert('Failed to load layout from server.');
+        try {
+          const layout = await fetchServerLayoutHttp(name);
+          if (!layout) {
+            alert('Layout not found on server.');
+            return;
+          }
+          if (is_configure) {
+            applyLayout(layout);
+          } else {
+            connect_to_system(layout);
+          }
+        } catch (httpError) {
+          alert('Failed to load layout from server.');
+        }
       }
     }
 
