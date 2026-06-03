@@ -302,6 +302,11 @@ function isDirectLocalExportSupported() {
   return !!(window.isSecureContext && typeof window.showDirectoryPicker === 'function');
 }
 
+function isFirefoxBrowser() {
+  const userAgent = String(navigator.userAgent || '').toLowerCase();
+  return userAgent.includes('firefox') && !userAgent.includes('seamonkey');
+}
+
 function getFileNameFromPath(filePath) {
   const rawPath = String(filePath || '').trim();
   if (!rawPath) return '';
@@ -344,12 +349,20 @@ function updateDataSavingLocalUi(overlay) {
   if (chooseBtn) {
     chooseBtn.disabled = false;
     chooseBtn.textContent = '📁';
-    chooseBtn.title = hasFolderHandle ? 'Change local folder' : 'Choose folder on this computer';
+    chooseBtn.title = hasFolderHandle
+      ? 'Change local folder'
+      : (isDirectLocalExportSupported()
+          ? 'Choose folder on this computer'
+          : (isFirefoxBrowser()
+              ? 'Firefox does not support the native folder picker for this feature'
+              : 'Choose folder on this computer'));
   }
 
   if (note) {
     if (dataSavingLocalPreference.enabled && hasFolderHandle) {
       note.textContent = `Storage target on this computer: ${dataSavingLocalPreference.directoryName || 'chosen folder'}. The backend still stages files on the server and copies the finished CSV and NeXus files there after saving stops.`;
+    } else if (isFirefoxBrowser() && !isDirectLocalExportSupported()) {
+      note.textContent = 'Firefox does not support the folder chooser used by this feature. Use Edge or Chrome on localhost/HTTPS if you want the system file explorer to open here.';
     } else {
       note.textContent = 'Click the folder button to open the system file explorer and choose a folder on this computer. If no folder is selected, files stay in the server export folder.';
     }
@@ -362,7 +375,9 @@ async function chooseDataSavingStorageLocation(overlay) {
     dataSavingLocalPreference.directoryHandle = null;
     dataSavingLocalPreference.directoryName = '';
     updateDataSavingLocalUi(overlay);
-    let guidance = 'This browser connection cannot open the system folder chooser. To use the native file explorer here, open the app on localhost or over HTTPS in a supported browser.';
+    let guidance = isFirefoxBrowser()
+      ? 'Firefox does not support the native folder chooser used by this feature. Use a Chromium-based browser such as Microsoft Edge or Google Chrome.'
+      : 'This browser connection cannot open the system folder chooser. To use the native file explorer here, open the app on localhost or over HTTPS in a supported browser.';
     if (location && location.hostname && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
       guidance += `\n\nIf this browser is running on the same computer as Docker, open ${location.protocol}//localhost:${location.port || '8080'} instead of ${location.origin}.`;
     }
