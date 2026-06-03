@@ -2178,22 +2178,22 @@ async function connectToGUI(is_configure) {
     else {
       sessionStorage.setItem('selectedLayout', name);
       try {
-        window.Spin.send_request('nodemanager.get_layout', '', 'read', 'read', { name: name });
-      } catch (e) {
+        const layout = await fetchServerLayoutHttp(name);
+        if (!layout) {
+          alert('Layout not found on server.');
+          return;
+        }
+        if (typeof renderServerLayout === 'function') {
+          await renderServerLayout(layout);
+        } else if (is_configure) {
+          applyLayout(layout);
+        } else {
+          connect_to_system(layout);
+        }
+      } catch (httpError) {
         try {
-          const layout = await fetchServerLayoutHttp(name);
-          if (!layout) {
-            alert('Layout not found on server.');
-            return;
-          }
-          if (typeof renderServerLayout === 'function') {
-            await renderServerLayout(layout);
-          } else if (is_configure) {
-            applyLayout(layout);
-          } else {
-            connect_to_system(layout);
-          }
-        } catch (httpError) {
+          window.Spin.send_request('nodemanager.get_layout', '', 'read', 'read', { name: name });
+        } catch (spinError) {
           alert('Failed to load layout from server.');
         }
       }

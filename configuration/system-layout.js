@@ -1160,12 +1160,21 @@ function setPendingLayoutRenderMode(isConfigure) {
 
 async function renderServerLayout(layout) {
   if (!layout) return;
-  const ready = await waitForLayoutDeviceOptions();
-  if (!ready) {
-    const hydratedFromStatic = await hydrateDeviceMetadataFromStaticFile();
-    if (!hydratedFromStatic) {
-      hydrateDeviceMetadataFromLayout(layout);
+  hydrateDeviceMetadataFromLayout(layout);
+  const hasInitialOptions = (() => {
+    const select = document.getElementById('device-select');
+    return !!(select && select.options && select.options.length > 1);
+  })();
+  const hasInitialParams = !!(AppState && typeof AppState.getDeviceParams === 'function' && AppState.getDeviceParams() && Object.keys(AppState.getDeviceParams()).length > 0);
+  if (!hasInitialOptions && !hasInitialParams) {
+    await hydrateDeviceMetadataFromStaticFile();
+  }
+  try {
+    if (typeof fetchDeviceParams === 'function') {
+      fetchDeviceParams();
     }
+  } catch (e) {
+    console.error('Failed to refresh device params during layout render', e);
   }
   hydrateDeviceMetadataFromLayout(layout);
   if (getPendingLayoutRenderMode() === 'connect') {
@@ -1306,17 +1315,6 @@ async function loadSelectedLayout() {
     setPendingLayoutRenderMode(true);
     await renderServerLayout(layouts[name]);
   } else {
-    // Otherwise request it from the server
-    if (window.Spin && window.Spin.send_request) {
-      try {
-        window.Spin.send_request('nodemanager.get_layout', '', 'read', 'read', {name: name});
-        sessionStorage.setItem('selectedLayout', name);
-        return;
-      } catch (e) {
-        console.error('Spin layout request failed', e);
-      }
-    }
-
     try {
       const layout = await fetchServerLayoutHttp(name);
       if (!layout) {
