@@ -5,7 +5,8 @@ let pendingBackendRestartReload = false;
 const BACKEND_RESTART_RECOVERY_KEY = 'pending_backend_restart_recovery';
 const BACKEND_RESTART_ADDR_KEY = 'pending_backend_restart_addr';
 
-function readPendingBackendRestartTimestamp() {
+function readPendingBackendRestartTimestamp() 
+{
   try {
     const raw = sessionStorage.getItem(BACKEND_RESTART_RECOVERY_KEY);
     const parsed = raw ? parseInt(raw, 10) : 0;
@@ -15,10 +16,14 @@ function readPendingBackendRestartTimestamp() {
   }
 }
 
-function writePendingBackendRestartTimestamp(timestampMs) {
-  try {
+function writePendingBackendRestartTimestamp(timestampMs) 
+{
+  try 
+  {
     sessionStorage.setItem(BACKEND_RESTART_RECOVERY_KEY, String(timestampMs));
-  } catch (e) {
+  } 
+  catch (e) 
+  {
     // ignore storage failures
   }
 }
@@ -51,7 +56,8 @@ function writePendingBackendRestartAddr(addr) {
   }
 }
 
-function scheduleBackendRestartReload(startedAtOverride, expectedAddrOverride) {
+function scheduleBackendRestartReload(startedAtOverride, expectedAddrOverride) 
+{
   if (pendingBackendRestartReload) return;
   pendingBackendRestartReload = true;
 
@@ -97,7 +103,9 @@ function scheduleBackendRestartReload(startedAtOverride, expectedAddrOverride) {
         if (window.Spin && typeof window.Spin.reload === 'function') {
           window.Spin.reload();
         }
-      } catch (e) {
+      } 
+      catch (e) 
+      {
         // ignore and fall back to full page reload below
       }
 

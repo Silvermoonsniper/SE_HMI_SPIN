@@ -108,7 +108,8 @@ document.addEventListener('DOMContentLoaded', function()
 });
 // function to delete selected layout
 
-async function deleteSelectedLayout() {
+async function deleteSelectedLayout() 
+{
  
   const select = document.getElementById('layout-select');
  
@@ -186,7 +187,8 @@ const dataSavingLocalPreference = {
   directoryName: '',
 };
 
-function formatBytes(value) {
+function formatBytes(value) 
+{
   const bytes = Number(value);
   if (!Number.isFinite(bytes) || bytes < 0) return 'unknown';
   if (bytes === 0) return '0 B';
@@ -211,7 +213,8 @@ async function refreshNexusExportStatus() {
       ? `NeXus: ${exportState.run_name || 'run'}`
       : 'NeXus idle';
     statusLabel.title = isRunning && exportState.file_path ? exportState.file_path : '';
-  } catch (e) {
+  } catch (e) 
+  {
     statusLabel.textContent = 'NeXus unavailable';
     statusLabel.title = '';
   }
