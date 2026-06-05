@@ -140,6 +140,9 @@ window.addEventListener('spinupdate', function(event)
         }
         AppUi.fetchNodesList();
         AppUi.loadNodesInfo();
+      if (AppUi.refreshAvailableDevicesInfo) {
+        AppUi.refreshAvailableDevicesInfo(nodes).catch(() => {});
+      }
         return;
     }
 
@@ -153,6 +156,9 @@ window.addEventListener('spinupdate', function(event)
         fetchAndMergeLatestValuesOnce()
           .then(() => refreshVisibleDeviceBoxes())
           .catch(() => {});
+        if (AppUi.refreshAvailableDevicesInfo) {
+          AppUi.refreshAvailableDevicesInfo().catch(() => {});
+        }
       }
       if (typeof msg === 'string' && msg.includes('Restarting server')) {
         scheduleBackendRestartReload();
@@ -186,6 +192,9 @@ window.addEventListener('spinupdate', function(event)
             fetchAndMergeLatestValuesOnce()
               .then(() => refreshVisibleDeviceBoxes())
               .catch(() => {});
+            if (AppUi.refreshAvailableDevicesInfo) {
+              AppUi.refreshAvailableDevicesInfo().catch(() => {});
+            }
         }
        
         return;
@@ -290,33 +299,47 @@ window.addEventListener('spinupdate', function(event)
     // Extract device name (everything before the first dot)
     var device = key.split('.')[0];
     var param = key.includes('.') ? key.split('.').slice(1).join('.') : '';
-    var domId = deviceDomId(device);
-    
-    // 1. Update Status Badge
-    var statusEl = document.getElementById('status-' + domId);
-    if (statusEl && (state || state_str)) {
-      statusEl.textContent = state_str || state || 'unknown';
-      statusEl.className = 'status-badge ' + (state ? ('state-' + state) : 'state-warn');
-    } else {}
+    var domIds = typeof getRenderedDeviceDomIds === 'function'
+      ? getRenderedDeviceDomIds(device)
+      : [deviceDomId(device)];
 
     // 2. Update Value/Target Fields (Manual update for dynamic elements)
     var val = event.detail.value;
     var unit = event.detail.unit || '';
     var formatted = (val !== undefined && val !== null) ? (val + (unit ? ' ' + unit : '')) : '--';
 
-    if (param === '' || param === 'value') {
-        // Main value update
-        var valEl = document.getElementById('val-' + domId);
-        if (valEl) valEl.textContent = formatted;
-    } else if (param === 'target') {
-        // Target update
-        var targetEl = document.getElementById('target-' + domId);
-        if (targetEl) targetEl.textContent = formatted;
-    } else if (param === '_gastype') {
-        // Gas type update
-        var gasEl = document.getElementById('gas-' + domId);
-        if (gasEl) gasEl.textContent = formatted;
-    }
+    domIds.forEach((domId) => {
+      // 1. Update Status Badge
+      var statusEl = document.getElementById('status-' + domId);
+      if (statusEl && (state || state_str)) {
+        statusEl.textContent = state_str || state || 'unknown';
+        statusEl.className = 'status-badge ' + (state ? ('state-' + state) : 'state-warn');
+      }
+
+      if (param === '' || param === 'value') {
+          // Main value update
+          var valEl = document.getElementById('val-' + domId);
+          if (valEl) valEl.textContent = formatted;
+      } else if (param === 'target') {
+          // Target update
+          var targetEl = document.getElementById('target-' + domId);
+          if (targetEl) targetEl.textContent = formatted;
+      } else if (param === '_gastype') {
+          // Gas type update
+          var gasEl = document.getElementById('gas-' + domId);
+          if (gasEl) gasEl.textContent = formatted;
+      }
+
+      const paramSelect = document.getElementById('param-select-' + domId);
+      if (paramSelect && paramSelect.value) {
+        updateParamDisplay(device, domId, paramSelect.value);
+      }
+
+      const extraPanel = document.getElementById('extra-' + domId);
+      if (extraPanel && extraPanel.classList.contains('open')) {
+        renderExtra(device, domId);
+      }
+    });
    
     // If this is a sample-magazine-like device, update the slot images.
     if (device.includes('storage')) 
@@ -656,11 +679,25 @@ function refreshVisibleDeviceBoxes() {
   document.querySelectorAll('.device-box[data-device]').forEach((box) => {
     const device = box.dataset.device;
     if (!device) return;
-    applyCachedDeviceState(device, deviceDomId(device));
+    const rawId = typeof box.id === 'string' ? box.id : '';
+    const domId = rawId.startsWith('box-') ? rawId.slice(4) : deviceDomId(device);
+    applyCachedDeviceState(device, domId);
     if (!latestValues[device] || Object.keys(latestValues[device]).length === 0) {
       hydrateDeviceFromNode(device).catch(() => {});
     }
   });
+}
+
+function getRenderedDeviceDomIds(device) {
+  const domIds = [];
+  document.querySelectorAll('.device-box[data-device]').forEach((box) => {
+    if (!box || box.dataset.device !== device) return;
+    const rawId = typeof box.id === 'string' ? box.id : '';
+    if (rawId.startsWith('box-')) {
+      domIds.push(rawId.slice(4));
+    }
+  });
+  return domIds.length ? domIds : [deviceDomId(device)];
 }
 
 // ===== Extra Parameters Panel =====
@@ -728,10 +765,9 @@ function deviceDomId(device)
 
 
 
-function renderExtra(device) 
+function renderExtra(device, domId = deviceDomId(device)) 
 {
-  const id = deviceDomId(device);
-  const panel = document.getElementById('extra-' + id);
+  const panel = document.getElementById('extra-' + domId);
   if (!panel) return;
   
   const data = latestValues[device] || {};
@@ -868,7 +904,7 @@ function toggleExtra(device) {
       .finally(() => {
         delete panel.dataset.loading;
         if (panel.classList.contains('open')) {
-          renderExtra(device);
+          renderExtra(device, domId);
         }
       });
   }
@@ -909,7 +945,7 @@ function toggleDeviceBody(domId) {
     box.style.height = 'auto';
 
     if (extraPanel && device) {
-      renderExtra(device);
+      renderExtra(device, domId);
       extraPanel.classList.add('open');
       extraPanel.setAttribute('aria-hidden', 'false');
     }

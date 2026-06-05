@@ -1,12 +1,14 @@
 const START_PAGE_MODE_KEY = 'startPageMode';
 
-function getAutomaticStartPageMode() {
+function getAutomaticStartPageMode() 
+{
   const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   const hour = new Date().getHours();
   return prefersDark || hour < 7 || hour >= 19 ? 'night' : 'day';
 }
 
-function applyStartPageMode(mode) {
+function applyStartPageMode(mode) 
+{
   const panel = document.getElementById('connection-panel');
   const label = document.getElementById('start-page-mode-label');
   if (!panel || !label) {
@@ -19,7 +21,8 @@ function applyStartPageMode(mode) {
   label.textContent = normalizedMode === 'night' ? 'Night mode' : 'Day mode';
 }
 
-function updateStartPageModeIndicator() {
+function updateStartPageModeIndicator() 
+{
   const storedMode = localStorage.getItem(START_PAGE_MODE_KEY);
   const mode = storedMode === 'day' || storedMode === 'night'
     ? storedMode
@@ -27,7 +30,8 @@ function updateStartPageModeIndicator() {
   applyStartPageMode(mode);
 }
 
-function toggleStartPageMode() {
+function toggleStartPageMode() 
+{
   const panel = document.getElementById('connection-panel');
   if (!panel) {
     return;
@@ -38,7 +42,8 @@ function toggleStartPageMode() {
   applyStartPageMode(nextMode);
 }
 
-function setupStartPageModeIndicator() {
+function setupStartPageModeIndicator() 
+{
   updateStartPageModeIndicator();
 
   const indicator = document.getElementById('start-page-mode-indicator');
@@ -78,7 +83,8 @@ document.addEventListener('DOMContentLoaded', function()
   const cancelBtn = document.getElementById('conn-node-cancel');
 
 
-  if (connectBtn && modal && submitBtn && cancelBtn) {
+  if (connectBtn && modal && submitBtn && cancelBtn) 
+    {
     connectBtn.onclick = () => {
       modal.style.display = 'flex';
       modal.style.alignItems = 'center';
@@ -322,6 +328,7 @@ function updateDataSavingLocalUi(overlay) {
   const chooseBtn = overlay.querySelector('#data-saving-choose-local-btn');
 
   const hasFolderHandle = !!dataSavingLocalPreference.directoryHandle;
+  const usesBrowserDownloadFallback = dataSavingLocalPreference.enabled && !hasFolderHandle;
 
   if (directoryInput) {
     const defaultServerDirectory = overlay.dataset.serverDirectoryValue || '/app/data_exports';
@@ -332,11 +339,11 @@ function updateDataSavingLocalUi(overlay) {
       directoryInput.dataset.syncingLocal = 'true';
       directoryInput.value = hasFolderHandle
         ? `Local folder: ${dataSavingLocalPreference.directoryName}`
-        : 'No local folder selected';
+        : 'Browser downloads on save stop';
       directoryInput.dataset.syncingLocal = 'false';
       directoryInput.title = hasFolderHandle
         ? `Files will be copied to ${dataSavingLocalPreference.directoryName || 'the chosen folder'} after saving stops.`
-        : 'Use the folder button to choose a folder on this computer.';
+        : 'Finished files will be downloaded by the browser after saving stops.';
     } else {
       directoryInput.dataset.mode = 'server';
       directoryInput.dataset.syncingLocal = 'true';
@@ -354,29 +361,32 @@ function updateDataSavingLocalUi(overlay) {
       : (isDirectLocalExportSupported()
           ? 'Choose folder on this computer'
           : (isFirefoxBrowser()
-              ? 'Firefox does not support the native folder picker for this feature'
+              ? 'Firefox will download finished files through the browser instead of choosing a folder'
               : 'Choose folder on this computer'));
   }
 
   if (note) {
     if (dataSavingLocalPreference.enabled && hasFolderHandle) {
       note.textContent = `Storage target on this computer: ${dataSavingLocalPreference.directoryName || 'chosen folder'}. The backend still stages files on the server and copies the finished CSV and NeXus files there after saving stops.`;
+    } else if (usesBrowserDownloadFallback) {
+      note.textContent = 'Finished CSV and NeXus files will be downloaded by Firefox after saving stops. Firefox cannot choose a target folder up front for this feature.';
     } else if (isFirefoxBrowser() && !isDirectLocalExportSupported()) {
-      note.textContent = 'Firefox does not support the folder chooser used by this feature. Use Edge or Chrome on localhost/HTTPS if you want the system file explorer to open here.';
+      note.textContent = 'Firefox cannot open the native folder chooser here. Click the folder button to use browser downloads instead, or use Edge or Chrome if you want to pick a folder directly.';
     } else {
       note.textContent = 'Click the folder button to open the system file explorer and choose a folder on this computer. If no folder is selected, files stay in the server export folder.';
     }
   }
 }
 
-async function chooseDataSavingStorageLocation(overlay) {
+async function chooseDataSavingStorageLocation(overlay) 
+{
   if (!isDirectLocalExportSupported()) {
-    dataSavingLocalPreference.enabled = false;
+    dataSavingLocalPreference.enabled = true;
     dataSavingLocalPreference.directoryHandle = null;
-    dataSavingLocalPreference.directoryName = '';
+    dataSavingLocalPreference.directoryName = 'Browser downloads';
     updateDataSavingLocalUi(overlay);
     let guidance = isFirefoxBrowser()
-      ? 'Firefox does not support the native folder chooser used by this feature. Use a Chromium-based browser such as Microsoft Edge or Google Chrome.'
+      ? 'Firefox does not support the native folder chooser used by this feature. Finished files will be downloaded through Firefox after saving stops.'
       : 'This browser connection cannot open the system folder chooser. To use the native file explorer here, open the app on localhost or over HTTPS in a supported browser.';
     if (location && location.hostname && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
       guidance += `\n\nIf this browser is running on the same computer as Docker, open ${location.protocol}//localhost:${location.port || '8080'} instead of ${location.origin}.`;
@@ -385,7 +395,7 @@ async function chooseDataSavingStorageLocation(overlay) {
       guidance,
       'Storage Location'
     );
-    return false;
+    return true;
   }
 
   return chooseDataSavingLocalDirectory(overlay);
@@ -649,11 +659,15 @@ async function startDataSaving({ directory, fileName, intervalSeconds, saveNexus
       payload.file_path || '',
       payload.nexus_file_path ? `NeXus report: ${payload.nexus_file_path}` : '',
       dataSavingLocalPreference.enabled
-        ? `Finished files will be copied to this computer: ${dataSavingLocalPreference.directoryName || 'chosen folder'}`
+        ? (dataSavingLocalPreference.directoryHandle
+            ? `Finished files will be copied to this computer: ${dataSavingLocalPreference.directoryName || 'chosen folder'}`
+            : 'Finished files will be downloaded to this computer when saving stops.')
         : '',
     ].filter(Boolean).join('\n');
     await showAppAlert(message, 'Start Data Saving');
-  } catch (e) {
+  } 
+  catch (e) 
+  {
     await showAppAlert(`Failed to start CSV data saving.\n${e.message || e}`, 'Start Data Saving');
   }
 }
@@ -1229,7 +1243,12 @@ async function hydrateDeviceFromNode(device) {
       }
     }
 
-    applyCachedDeviceState(device, deviceDomId(device));
+    const renderedDomIds = typeof getRenderedDeviceDomIds === 'function'
+      ? getRenderedDeviceDomIds(device)
+      : [deviceDomId(device)];
+    renderedDomIds.forEach((domId) => {
+      applyCachedDeviceState(device, domId);
+    });
   })().finally(() => {
     deviceHydrationRequests.delete(device);
   });
@@ -2287,6 +2306,224 @@ function fetchNodesList()
     }
 }
 
+let lastKnownStartPageNodes = [];
+const startPageDeviceAddrLookups = new Set();
+
+function getStartPageDeviceType(deviceInfo) {
+  const typeHints = [
+    deviceInfo && deviceInfo.device_type,
+    ...(deviceInfo && Array.isArray(deviceInfo.interface_classes) ? deviceInfo.interface_classes : []),
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  if (typeHints.includes('nicos')) return 'NICOS device';
+  if (typeHints.includes('tango')) return 'Tango device';
+  return 'SECoP device';
+}
+
+function getStartPageStatusInfo(statusEntry) {
+  const fallback = { label: 'UNKNOWN', className: 'state-unknown' };
+  if (!statusEntry || typeof statusEntry !== 'object') {
+    return fallback;
+  }
+
+  const stateName = String(statusEntry.state || '').toUpperCase();
+  const stateText = String(statusEntry.state_str || '').trim().toUpperCase();
+  const tupleValue = Array.isArray(statusEntry.value) ? statusEntry.value : null;
+  const code = tupleValue && tupleValue.length > 0 ? Number(tupleValue[0]) : NaN;
+  const tupleText = tupleValue && tupleValue.length > 1 ? String(tupleValue[1] || '').trim().toUpperCase() : '';
+
+  if ((Number.isFinite(code) && code >= 400) || stateName.includes('ERROR') || stateText.includes('ERROR') || tupleText.includes('ERROR')) {
+    return { label: 'ERROR', className: 'state-error' };
+  }
+  if ((Number.isFinite(code) && code >= 200 && code < 400) || stateName.includes('BUSY') || stateName.includes('WARN') || stateText.includes('BUSY') || stateText.includes('WARN') || tupleText.includes('BUSY') || tupleText.includes('WARN')) {
+    return { label: stateText.includes('WARN') || tupleText.includes('WARN') ? 'BUSY' : 'BUSY', className: 'state-busy' };
+  }
+  if ((Number.isFinite(code) && code >= 100 && code < 200) || stateName.includes('OK') || stateName.includes('IDLE') || stateText.includes('IDLE') || tupleText.includes('IDLE')) {
+    return { label: 'IDLE', className: 'state-idle' };
+  }
+
+  return fallback;
+}
+
+function getLatestValuesCacheForStartPage() {
+  if (typeof latestValues !== 'undefined' && latestValues && typeof latestValues === 'object') {
+    return latestValues;
+  }
+  return {};
+}
+
+function escapeStartPageHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function buildAvailableDevicesRows() {
+  const deviceParams = window.AppState && typeof AppState.getDeviceParams === 'function'
+    ? (AppState.getDeviceParams() || {})
+    : {};
+  const latestCache = getLatestValuesCacheForStartPage();
+
+  return Object.keys(deviceParams)
+    .sort((left, right) => left.localeCompare(right))
+    .map((deviceKey) => {
+      const info = deviceParams[deviceKey] || {};
+      const displayName = info.original_name || info.module_name || deviceKey;
+      const addr = getKnownNodeAddrForDevice(deviceKey) || 'Resolving...';
+      const status = getStartPageStatusInfo(latestCache[deviceKey] ? latestCache[deviceKey].status : null);
+      return {
+        key: deviceKey,
+        address: addr,
+        name: displayName,
+        type: getStartPageDeviceType(info),
+        statusLabel: status.label,
+        statusClassName: status.className,
+      };
+    });
+}
+
+function updateAvailableDevicesFilter(rows) {
+  const select = document.getElementById('available-devices-select');
+  if (!select) return '';
+
+  const previousValue = select.value;
+  select.innerHTML = '';
+
+  const allOption = document.createElement('option');
+  allOption.value = '__all__';
+  allOption.textContent = `All devices (${rows.length})`;
+  select.appendChild(allOption);
+
+  rows.forEach((row) => {
+    const option = document.createElement('option');
+    option.value = row.key;
+    option.textContent = `${row.name} (${row.address})`;
+    select.appendChild(option);
+  });
+
+  const nextValue = rows.some((row) => row.key === previousValue) ? previousValue : '__all__';
+  select.value = nextValue;
+  return nextValue;
+}
+
+function renderAvailableDevicesTable() {
+  const content = document.getElementById('available-devices-content');
+  if (!content) return;
+
+  const deviceParamsLoaded = !!(window.AppState && typeof AppState.getDeviceParams === 'function' && AppState.getDeviceParams());
+  const deviceParams = window.AppState && typeof AppState.getDeviceParams === 'function'
+    ? (AppState.getDeviceParams() || {})
+    : {};
+  const rows = buildAvailableDevicesRows();
+  if (!rows.length) {
+    content.innerHTML = `<div class="available-devices-empty">${deviceParamsLoaded ? 'No devices available yet.' : 'Loading devices...'}</div>`;
+    const select = document.getElementById('available-devices-select');
+    if (select) {
+      select.innerHTML = `<option value="">${deviceParamsLoaded ? 'No devices available' : 'Loading devices...'}</option>`;
+    }
+    return;
+  }
+
+  const selectedValue = updateAvailableDevicesFilter(rows);
+  const filteredRows = selectedValue && selectedValue !== '__all__'
+    ? rows.filter((row) => row.key === selectedValue)
+    : rows;
+  const selectedRow = selectedValue && selectedValue !== '__all__'
+    ? rows.find((row) => row.key === selectedValue)
+    : null;
+
+  const tableRows = filteredRows.map((row) => `
+    <tr>
+      <td>${row.address}</td>
+      <td class="available-devices-name">${row.name}</td>
+      <td>${row.type}</td>
+      <td><span class="status-badge ${row.statusClassName}">${row.statusLabel}</span></td>
+    </tr>
+  `).join('');
+
+  let metadataHtml = '';
+  if (selectedRow) {
+    const metadata = Object.assign({}, deviceParams[selectedRow.key] || {}, {
+      resolved_address: selectedRow.address,
+      display_name: selectedRow.name,
+      device_type: selectedRow.type,
+      device_status: selectedRow.statusLabel,
+    });
+    metadataHtml = `
+      <div class="available-device-metadata">
+        <div class="available-device-metadata-title">Full metadata for ${escapeStartPageHtml(selectedRow.name)}</div>
+        <pre class="available-device-metadata-pre">${escapeStartPageHtml(JSON.stringify(metadata, null, 2))}</pre>
+      </div>
+    `;
+  }
+
+  content.innerHTML = `
+    <table class="available-devices-table">
+      <thead>
+        <tr>
+          <th>IP address</th>
+          <th>Device name</th>
+          <th>Device type</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>${tableRows}</tbody>
+    </table>
+    ${metadataHtml}
+  `;
+}
+
+async function resolveAvailableDeviceAddresses() {
+  const deviceParams = window.AppState && typeof AppState.getDeviceParams === 'function'
+    ? (AppState.getDeviceParams() || {})
+    : {};
+  const pendingDevices = Object.keys(deviceParams).filter((deviceKey) => {
+    if (getKnownNodeAddrForDevice(deviceKey)) return false;
+    if (startPageDeviceAddrLookups.has(deviceKey)) return false;
+    return true;
+  });
+
+  if (!pendingDevices.length) return;
+
+  await Promise.allSettled(pendingDevices.map(async (deviceKey) => {
+    startPageDeviceAddrLookups.add(deviceKey);
+    try {
+      const response = await fetch(API_BASE + '/api/node_for_device', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device: deviceKey }),
+      });
+      if (!response.ok) return;
+      const payload = await response.json();
+      if (payload && payload.status === 'ok' && payload.addr) {
+        runtimeDeviceNodeAddrs[deviceKey] = payload.addr;
+        saveRuntimeDeviceNodeAddrs();
+      }
+    } catch (e) {
+      console.debug('Failed to resolve start-page device address', deviceKey, e);
+    } finally {
+      startPageDeviceAddrLookups.delete(deviceKey);
+    }
+  }));
+}
+
+async function refreshAvailableDevicesInfo(nodesList) {
+  if (Array.isArray(nodesList)) {
+    lastKnownStartPageNodes = nodesList.slice();
+  }
+
+  renderAvailableDevicesTable();
+
+  if (typeof fetchAndMergeLatestValuesOnce === 'function') {
+    await fetchAndMergeLatestValuesOnce();
+    renderAvailableDevicesTable();
+  }
+
+  await resolveAvailableDeviceAddresses();
+  renderAvailableDevicesTable();
+}
+
 // Call fetchNodesList on load and display nodes info
 document.addEventListener('DOMContentLoaded', () => {
   // Wait for Spin to initialize before fetching nodes
@@ -2296,6 +2533,15 @@ document.addEventListener('DOMContentLoaded', () => {
   waitForSpin(() => {
     
     loadNodesInfo();
+    fetchDeviceParams();
+    refreshAvailableDevicesInfo().catch(() => {});
+    const availableDevicesSelect = document.getElementById('available-devices-select');
+    if (availableDevicesSelect && availableDevicesSelect.dataset.ready !== 'true') {
+      availableDevicesSelect.dataset.ready = 'true';
+      availableDevicesSelect.addEventListener('change', () => {
+        renderAvailableDevicesTable();
+      });
+    }
     // Populate dropdown from localStorage immediately and request server list
     try 
     
@@ -2341,61 +2587,23 @@ function waitForSpin(callback) {
 
 
 function loadNodesInfo() {
-  // Use Spin API to get the list of nodes and populate dropdown
-  const dropdown = document.getElementById('nodes-info-dropdown');
- 
-  if (!dropdown) return;
- 
-  dropdown.innerHTML = '<option value="">Loading...</option>';
- 
+  // Use Spin API to get the list of nodes and refresh the available devices panel.
   if (window.Spin && window.Spin.send_request) {
  
     window.Spin.send_request('nodemanager.list_nodes', '', 'read', 'read', null, function(nodesList) {
- 
-      dropdown.innerHTML = '';
- 
-      if (Array.isArray(nodesList) && nodesList.length > 0) {
- 
-        nodesList.forEach(node => {
- 
-          const label = node.equipment_id ? `${node.host}:${node.port} (${node.equipment_id})` : `${node.host}:${node.port}`;
- 
-          dropdown.innerHTML += `<option value="${node.host}:${node.port}">${label}</option>`;
- 
-        });
- 
-      } else {
- 
-        dropdown.innerHTML = '<option value="">No nodes available</option>';
- 
-      }
- 
+
+      displayNodesInfo(nodesList);
+
     });
- 
-  } else {
- 
-    dropdown.innerHTML = '<option value="">Connecting to server...</option>';
  
   }
 
 }
 
 function displayNodesInfo(nodesList) {
-  const infoContent = document.getElementById('nodes-info-content');
-  if (!infoContent) return;
-  if (!nodesList || nodesList.length === 0) {
-    infoContent.textContent = 'No nodes configured';
-    return;
-  }
-  let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
-  nodesList.forEach((node, index) => {
-    const nodeName = `${node.host}:${node.port}`;
-    html += `<li style="padding: 4px 0; border-bottom: 1px solid #e9ecef;">
-      <strong>Node ${index + 1}:</strong> ${nodeName} (${node.equipment_id})
-    </li>`;
-  });
-  html += '</ul>';
-  infoContent.innerHTML = html;
+  const normalizedNodes = Array.isArray(nodesList) ? nodesList : [];
+  lastKnownStartPageNodes = normalizedNodes.slice();
+  refreshAvailableDevicesInfo(normalizedNodes).catch(() => {});
 }
 
 async function connectToGUI(is_configure) {
@@ -2480,12 +2688,14 @@ function enterSystem(isConfigure = true) {
   fetchDeviceParams();
 }
 
-function connectToNode() {
+function connectToNode() 
+{
     // Legacy function kept if needed, but redirected to addNodeConnection logic if called
     addNodeConnection();
 }
 
-function disconnectNode() {
+function disconnectNode() 
+{
   document.getElementById('main-panel').style.display = 'none';
   document.getElementById('connection-panel').style.display = 'flex';
  
@@ -2499,6 +2709,7 @@ window.SEAppUi = Object.assign(window.SEAppUi || {}, {
   toggleConfigView: toggleConfigView,
   fetchNodesList: fetchNodesList,
   loadNodesInfo: loadNodesInfo,
+  refreshAvailableDevicesInfo: refreshAvailableDevicesInfo,
   connectToGUI: connectToGUI,
   disconnectNode: disconnectNode,
 });

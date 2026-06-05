@@ -1,3 +1,5 @@
+"""Extended Spin backend with runtime SECoP management, history storage, and HTTP APIs."""
+
 from spin.backend import Backend, Update, State, Reply, fixup_params
 from spin.config import Device as ConfigDevice, Param
 import asyncio
@@ -37,6 +39,7 @@ SECOP_STREAM_READER_LIMIT = 10 * 1024 * 1024
 
 
 def _split_csv_env(name):
+    """Split a comma-separated environment variable into trimmed entries."""
     raw_value = str(os.environ.get(name, '') or '').strip()
     if not raw_value:
         return []
@@ -44,19 +47,23 @@ def _split_csv_env(name):
 
 
 def _cors_origins_config():
+    """Return the allowed CORS origin configuration for the Flask API."""
     return '*'
 
 
 def _api_auth_token():
+    """Return the configured API authentication token, if any."""
     return str(os.environ.get('SPIN_API_AUTH_TOKEN', '') or '').strip()
 
 
 def _is_loopback_host(host):
+    """Return whether a host string targets the local loopback interface."""
     normalized = str(host or '').strip().lower()
     return normalized in {'127.0.0.1', 'localhost', '::1'}
 
 
 def _is_private_ipv4(host):
+    """Return whether a host string is a private IPv4 address."""
     parts = str(host or '').split('.')
     if len(parts) != 4:
         return False
@@ -77,9 +84,12 @@ def _is_private_ipv4(host):
     return False
 
 def _require_api_auth():
+    """Wrap Flask handlers that are intended to require API authentication."""
     def decorator(view_func):
+        """Decorate one Flask view function with authentication handling."""
         @wraps(view_func)
         def wrapped(*args, **kwargs):
+            """Invoke the wrapped Flask view function."""
             return view_func(*args, **kwargs)
 
         return wrapped
@@ -88,6 +98,7 @@ def _require_api_auth():
 
 
 def _read_json_body(required=False):
+    """Parse the current Flask request body and validate it as a JSON object."""
     data = request.get_json(force=False, silent=True)
     if data is None:
         if required:
@@ -99,6 +110,7 @@ def _read_json_body(required=False):
 
 
 def _parse_positive_float(value, default_value):
+    """Parse a numeric input and enforce that it is greater than zero."""
     if value in (None, ''):
         return float(default_value)
     parsed = float(value)
@@ -108,6 +120,7 @@ def _parse_positive_float(value, default_value):
 
 
 def _parse_addr_payload(data, backend=None):
+    """Extract a host:port target from an API payload."""
     addr = str(data.get('addr') or '').strip()
     if addr:
         try:
@@ -133,6 +146,7 @@ def _parse_addr_payload(data, backend=None):
 
 
 def _list_saved_layout_names():
+    """Return the sorted list of saved layout names without file extensions."""
     if not os.path.isdir(LAYOUT_DIR):
         return []
 
@@ -144,6 +158,7 @@ def _list_saved_layout_names():
 
 
 def _resolve_layout_file_path(name):
+    """Resolve a layout name to a validated JSON file path."""
     raw_name = str(name or '').strip()
     if not raw_name:
         raise ValueError('missing layout name')
@@ -156,6 +171,7 @@ def _resolve_layout_file_path(name):
 
 
 def _load_saved_layout(name):
+    """Load one saved layout JSON document by name."""
     file_path = _resolve_layout_file_path(name)
     if not os.path.exists(file_path):
         raise FileNotFoundError(file_path)
@@ -165,6 +181,7 @@ def _load_saved_layout(name):
 
 
 def ensure_data_export_dir():
+    """Ensure that the default CSV export directory exists."""
     try:
         os.makedirs(DATA_EXPORT_DIR, exist_ok=True)
     except Exception as exc:
@@ -172,6 +189,7 @@ def ensure_data_export_dir():
 
 
 def _all_csv_export_dirs():
+    """Return every directory that may contain CSV exports."""
     ensure_data_export_dir()
     directories = {DATA_EXPORT_DIR}
     directories.update(path for path in EXTRA_CSV_EXPORT_DIRS if path)
@@ -179,12 +197,14 @@ def _all_csv_export_dirs():
 
 
 def register_csv_export_dir(path):
+    """Register an additional absolute directory for CSV export lookup."""
     if not path:
         return
     EXTRA_CSV_EXPORT_DIRS.add(os.path.abspath(path))
 
 
 def _safe_csv_export_name(file_name):
+    """Validate and normalize a CSV export file name."""
     safe_name = os.path.basename(str(file_name or '').strip())
     if not safe_name:
         raise ValueError('missing CSV file name')
@@ -194,6 +214,7 @@ def _safe_csv_export_name(file_name):
 
 
 def resolve_csv_export_file(file_name):
+    """Resolve a CSV export file name against all registered export directories."""
     safe_name = _safe_csv_export_name(file_name)
     for directory in _all_csv_export_dirs():
         file_path = os.path.join(directory, safe_name)
@@ -203,6 +224,7 @@ def resolve_csv_export_file(file_name):
 
 
 def _read_plot_history_limit():
+    """Read the optional in-memory plot history cap from the environment."""
     raw_value = str(os.environ.get('PLOT_HISTORY_LIMIT', '')).strip()
     if not raw_value:
         return None
@@ -214,7 +236,9 @@ def _read_plot_history_limit():
 
 
 def _storage_alert_thresholds():
+    """Return normalized warning and critical storage alert thresholds."""
     def _safe_percent(name, fallback):
+        """Parse a bounded percentage value from the environment."""
         raw_value = os.environ.get(name, fallback)
         try:
             value = float(raw_value)
@@ -230,6 +254,7 @@ def _storage_alert_thresholds():
 
 
 def resolve_storage_monitor_path():
+    """Resolve the filesystem path that should be monitored for storage usage."""
     configured_path = str(os.environ.get('STORAGE_MONITOR_PATH') or os.environ.get('POSTGRES_STORAGE_PATH') or '').strip()
     if configured_path:
         return os.path.abspath(configured_path)
@@ -239,6 +264,7 @@ def resolve_storage_monitor_path():
 
 
 def get_storage_monitor_status(backend=None):
+    """Collect filesystem and database size information for the storage monitor."""
     monitor_path = resolve_storage_monitor_path()
     if not os.path.exists(monitor_path):
         monitor_path = DATA_EXPORT_DIR if os.path.exists(DATA_EXPORT_DIR) else os.path.abspath(os.path.dirname(__file__))
@@ -277,7 +303,9 @@ def get_storage_monitor_status(backend=None):
 
 
 class CsvDataSaver:
+    """Periodically snapshot live backend values into a CSV export file."""
     def __init__(self, backend):
+        """Initialize saver state for one backend instance."""
         self._backend = backend
         self._lock = threading.Lock()
         self._thread = None
@@ -293,6 +321,7 @@ class CsvDataSaver:
         self._header_keys = []
 
     def _resolve_file_path(self, directory, file_name):
+        """Resolve and create the target directory plus safe CSV file path."""
         ensure_data_export_dir()
         raw_directory = str(directory or '').strip()
         if not raw_directory:
@@ -316,6 +345,7 @@ class CsvDataSaver:
         return target_directory, safe_file_name, os.path.join(target_directory, safe_file_name)
 
     def _format_csv_value(self, value):
+        """Convert a backend value into a CSV-friendly scalar or JSON string."""
         if value is None:
             return ''
         safe_value = _json_safe_value(value)
@@ -326,6 +356,7 @@ class CsvDataSaver:
         return json.dumps(safe_value)
 
     def _snapshot_latest_values(self):
+        """Snapshot the latest recorded backend values for one CSV row."""
         snapshot_timestamp_ms = int(time.time() * 1000)
         values_by_key = {}
         for key, payload in list(ExtendedBackend.latest_values.items()):
@@ -335,6 +366,7 @@ class CsvDataSaver:
         return snapshot_timestamp_ms, values_by_key
 
     def _rewrite_with_headers(self, header_keys):
+        """Rewrite the CSV file when the observed column set changes."""
         fieldnames = ['timestamp_iso', 'timestamp_ms', *header_keys]
         existing_rows = []
         if self._file_path and os.path.exists(self._file_path) and os.path.getsize(self._file_path) > 0:
@@ -349,6 +381,7 @@ class CsvDataSaver:
                 writer.writerow({field: row.get(field, '') for field in fieldnames})
 
     def _writer_loop(self):
+        """Background thread loop that appends periodic CSV snapshots."""
         try:
             while not self._stop_event.is_set():
                 snapshot_timestamp_ms, values_by_key = self._snapshot_latest_values()
@@ -386,6 +419,7 @@ class CsvDataSaver:
                 self._thread = None
 
     def start(self, directory=None, file_name=None, interval_seconds=10):
+        """Start periodic CSV export to the requested directory and file."""
         with self._lock:
             if self._is_running:
                 raise RuntimeError('CSV data saving is already running')
@@ -410,6 +444,7 @@ class CsvDataSaver:
             return self._file_path
 
     def stop(self):
+        """Stop the background CSV writer and return the active file path."""
         with self._lock:
             if not self._is_running:
                 return self._file_path
@@ -425,6 +460,7 @@ class CsvDataSaver:
             return self._file_path
 
     def status(self):
+        """Return the current CSV export status for API responses."""
         with self._lock:
             return {
                 'running': bool(self._is_running),
@@ -440,6 +476,7 @@ class CsvDataSaver:
 
 
 def _history_db_connection_settings():
+    """Build PostgreSQL connection settings for persistent history storage."""
     database_url = os.environ.get('HISTORY_DATABASE_URL') or os.environ.get('POSTGRES_URL')
     if database_url:
         return {
@@ -467,10 +504,12 @@ def _history_db_connection_settings():
 
 
 def is_running_in_docker():
+    """Return whether the backend is running inside a container."""
     return os.path.exists('/.dockerenv') or os.path.exists('/run/.containerenv')
 
 
 def resolve_host(host):
+    """Resolve localhost addresses so containerized code can reach host services."""
     if not is_running_in_docker():
         return host
     if host not in ('localhost', '127.0.0.1'):
@@ -479,6 +518,7 @@ def resolve_host(host):
 
 
 def _restart_process():
+    """Re-exec the current backend process using its original launch arguments."""
     original_argv = list(getattr(sys, 'orig_argv', []) or [])
     if original_argv:
         executable = original_argv[0]
@@ -500,10 +540,12 @@ def _restart_process():
 
 class RuntimeSECNode(spin_secop.SECNode):
     def __init__(self, addr, log):
+        """Initialize a runtime SECoP connection with cached descriptive data."""
         super().__init__(addr, log)
         self._description = None
 
     async def _open_connection(self):
+        """Open the TCP connection with an increased stream reader limit."""
         host, port = extract_addr(self.addr, self.default_port)
         reader, writer = await asyncio.open_connection(
             host,
@@ -515,6 +557,7 @@ class RuntimeSECNode(spin_secop.SECNode):
         self.conn_write = writer
 
     async def _synchronize(self):
+        """Perform SECoP startup synchronization and cache the node description."""
         self.log.info('connected to node')
         await self._send(b'*IDN?')
         proto = await self._receive()
@@ -538,6 +581,7 @@ class RuntimeSECNode(spin_secop.SECNode):
             self.log.warning('not all initial updates from SEC node received (missing %s)', unseen)
 
     async def _set_units_for_device(self, device):
+        """Apply datainfo metadata from the cached node description to one device."""
         if not self._description:
             return
         modules = self._description.get('modules', {})
@@ -551,6 +595,7 @@ class RuntimeSECNode(spin_secop.SECNode):
                 device.set_datainfo(param, datainfo)
 
     async def _activate_device(self, device):
+        """Activate one hot-added runtime device on the live SECoP connection."""
         try:
             await self._set_units_for_device(device)
             await self._send(f'activate {device.device}'.encode())
@@ -559,15 +604,18 @@ class RuntimeSECNode(spin_secop.SECNode):
             await device.send(State.ERROR, f'Could not activate device: {exc}')
 
     def add_device(self, device):
+        """Register a device and activate it immediately when already connected."""
         super().add_device(device)
         if self.is_initialized:
             device.run_task(self._activate_device(device))
 
 
 class Device(spin_secop.Device):
+    """Runtime SECoP device that mirrors live values into backend caches."""
     _connclass = RuntimeSECNode
 
     async def update(self, action, ident, data):
+        """Process live SECoP updates and mirror them into latest-value storage."""
         await super().update(action, ident, data)
 
         if action != 'update':
@@ -593,6 +641,7 @@ class Device(spin_secop.Device):
 
 
 def _json_safe_value(value):
+    """Convert enums and nested containers into JSON-safe values."""
     if isinstance(value, enum.Enum):
         return value.value
     if isinstance(value, EnumMember):
@@ -605,6 +654,7 @@ def _json_safe_value(value):
 
 
 def _build_device_aliases(device_name):
+    """Build fallback aliases that can identify a device across config sources."""
     aliases = set()
     if not device_name:
         return aliases
@@ -631,6 +681,7 @@ def _build_device_aliases(device_name):
 
 
 def _resolve_device_addr(backend, device_name):
+    """Resolve the node address responsible for a given device name."""
     if not backend or not hasattr(backend, '_devices'):
         runtime_addrs = getattr(backend, '_runtime_device_addrs', {}) if backend else {}
         return runtime_addrs.get(device_name)
@@ -664,15 +715,13 @@ def _resolve_device_addr(backend, device_name):
 
     return None
 
-"""
-an extended backend to poll all device parameters to port 8001 every poll_interval
-for frontend spin updates
-"""
 class ExtendedBackend(Backend):
+    """Backend extension that adds runtime polling, history storage, and REST APIs."""
     # Store latest values for API
     latest_values = {}
 
     def stop_api_server(self):
+        """Stop the background Flask API server thread if it is running."""
         server = getattr(self, '_api_server', None)
         thread = getattr(self, '_api_server_thread', None)
 
@@ -696,6 +745,7 @@ class ExtendedBackend(Backend):
         self._api_server_thread = None
 
     def _ensure_runtime_storage(self):
+        """Lazily initialize runtime caches, exporters, and history writer state."""
         if not hasattr(self, '_runtime_node_configs'):
             self._runtime_node_configs = {}
         if not hasattr(self, '_runtime_node_tasks'):
@@ -731,10 +781,12 @@ class ExtendedBackend(Backend):
             self._csv_data_saver = CsvDataSaver(self)
 
     def _open_history_db_connection(self):
+        """Open a new PostgreSQL connection for history persistence operations."""
         db_info = getattr(self, '_history_db_info', None) or _history_db_connection_settings()
         return psycopg.connect(db_info['dsn'], autocommit=True)
 
     def _init_history_db(self):
+        """Create the PostgreSQL history table and required indexes."""
         with self._open_history_db_connection() as connection:
             connection.execute(
                 '''
@@ -757,11 +809,13 @@ class ExtendedBackend(Backend):
             )
 
     def _start_history_writer(self):
+        """Start the background thread that flushes queued history samples."""
         writer = threading.Thread(target=self._history_writer_loop, name='device-history-writer', daemon=True)
         writer.start()
         return writer
 
     def _dequeue_history_samples(self, max_items=1000):
+        """Remove up to max_items pending history records from the write queue."""
         batch = []
         with self._history_db_lock:
             while self._history_write_queue and len(batch) < max_items:
@@ -769,6 +823,7 @@ class ExtendedBackend(Backend):
         return batch
 
     def _requeue_history_samples(self, samples):
+        """Push failed history samples back onto the front of the queue."""
         if not samples:
             return
         with self._history_db_lock:
@@ -776,6 +831,7 @@ class ExtendedBackend(Backend):
                 self._history_write_queue.appendleft(sample)
 
     def _history_writer_loop(self):
+        """Continuously flush queued history samples to PostgreSQL."""
         connection = None
         while not self._history_writer_stop.is_set():
             self._history_writer_event.wait(timeout=1.0)
@@ -819,6 +875,7 @@ class ExtendedBackend(Backend):
             pass
 
     def _append_persistent_history_sample(self, key, payload, timestamp_ms):
+        """Queue one changed sample for persistent history storage."""
         self._ensure_runtime_storage()
         record = (
             key,
@@ -833,6 +890,7 @@ class ExtendedBackend(Backend):
         self._history_writer_event.set()
 
     def _append_plot_history_sample(self, key, payload, timestamp_ms):
+        """Append one changed sample to the in-memory plot history buffer."""
         self._ensure_runtime_storage()
 
         sample = {
@@ -851,6 +909,7 @@ class ExtendedBackend(Backend):
             history.append(sample)
 
     def _record_latest_value(self, key, unit, state, state_str, value):
+        """Update latest-value caches and fan changed samples out to storage sinks."""
         safe_value = _json_safe_value(value)
         timestamp_ms = int(time.time() * 1000)
         payload = {
@@ -874,6 +933,7 @@ class ExtendedBackend(Backend):
         return safe_value, payload, is_changed
 
     def get_device_history(self, keys=None, start_ms=None, end_ms=None, limit=10000, offset=0, cursor_timestamp_ms=None, cursor_id=None):
+        """Fetch paged history samples from PostgreSQL with key and time filters."""
         self._ensure_runtime_storage()
         clauses = []
         params = []
@@ -955,6 +1015,7 @@ class ExtendedBackend(Backend):
         }
 
     def get_device_history_stats(self):
+        """Return aggregate row-count and time-range information for device history."""
         self._ensure_runtime_storage()
         with self._open_history_db_connection() as connection:
             row = connection.execute(
@@ -976,6 +1037,7 @@ class ExtendedBackend(Backend):
         }
 
     def get_device_history_keys(self, limit=2000):
+        """Return the distinct history keys stored in PostgreSQL."""
         self._ensure_runtime_storage()
         safe_limit = max(1, min(int(limit or 2000), 10000))
         with self._open_history_db_connection() as connection:
@@ -1008,6 +1070,7 @@ class ExtendedBackend(Backend):
         }
 
     def get_plot_updates(self, since_ms=None):
+        """Return either a latest-value snapshot or incremental plot samples."""
         self._ensure_runtime_storage()
         server_time_ms = int(time.time() * 1000)
 
@@ -1041,6 +1104,7 @@ class ExtendedBackend(Backend):
         }
 
     def _recover_runtime_nodes_from_files(self):
+        """Reconstruct runtime node polling state from saved node metadata files."""
         self._ensure_runtime_storage()
 
         device_params_path = os.path.join(os.path.dirname(__file__), 'device_params.json')
@@ -1097,6 +1161,7 @@ class ExtendedBackend(Backend):
                 candidate_devices.discard(unique_name)
 
     def _create_runtime_device(self, name, device_conf):
+        """Instantiate and initialize one runtime-added Spin device."""
         parsed = urlparse(device_conf.device)
         if parsed.scheme not in self.protos:
             raise ValueError(f'{device_conf.device}: unknown protocol')
@@ -1115,6 +1180,7 @@ class ExtendedBackend(Backend):
         return dev
 
     def add_runtime_secop_node(self, host, port, mod_list, para_map, device_data=None):
+        """Register a live runtime node and create any missing device instances."""
         if device_data:
             self.register_runtime_secop_node(host, port, mod_list, device_data)
 
@@ -1122,6 +1188,7 @@ class ExtendedBackend(Backend):
             addr = f"{resolved_host}:{port}"
 
             async def _prime_once():
+                """Fetch and publish one immediate snapshot for a newly added node."""
                 try:
                     snapshot_updates = await asyncio.to_thread(self._collect_runtime_snapshot, addr)
                     if snapshot_updates:
@@ -1152,6 +1219,7 @@ class ExtendedBackend(Backend):
         return added
 
     def register_runtime_secop_node(self, host, port, mod_list, device_data, poll_interval=2.0):
+        """Register runtime polling metadata for a node and start its poll task."""
         self._ensure_runtime_storage()
 
         resolved_host = resolve_host(host)
@@ -1174,6 +1242,7 @@ class ExtendedBackend(Backend):
             task.add_done_callback(self._tasks.discard)
 
     async def _publish_runtime_snapshot(self, snapshot_updates):
+        """Publish one batch of runtime snapshot values to Spin subscribers."""
         for key, unit, state, state_str, value, is_main in snapshot_updates:
             safe_value, _, changed = self._record_latest_value(key, unit, state, state_str, value)
             if not changed:
@@ -1184,6 +1253,7 @@ class ExtendedBackend(Backend):
                 await self.send_update(Update(device_name, unit, state, state_str, safe_value))
 
     def refresh_runtime_latest_values(self):
+        """Synchronously refresh latest-value caches from all registered runtime nodes."""
         self._recover_runtime_nodes_from_files()
         runtime_nodes = list(getattr(self, '_runtime_node_configs', {}).keys())
         for addr in runtime_nodes:
@@ -1197,6 +1267,7 @@ class ExtendedBackend(Backend):
                 self._record_latest_value(key, unit, state, state_str, value)
 
     def _collect_runtime_snapshot(self, addr):
+        """Collect a full parameter snapshot from one runtime SECoP node."""
         node_cfg = getattr(self, '_runtime_node_configs', {}).get(addr)
         if not node_cfg:
             return []
@@ -1244,6 +1315,7 @@ class ExtendedBackend(Backend):
         return updates
 
     async def _poll_runtime_node(self, addr):
+        """Continuously poll one runtime node and publish changed values."""
         while True:
             try:
                 snapshot_updates = await asyncio.to_thread(self._collect_runtime_snapshot, addr)
@@ -1256,12 +1328,14 @@ class ExtendedBackend(Backend):
             await asyncio.sleep(node_cfg.get('poll_interval', 2.0))
 
     def prime_runtime_secop_node(self, host, port, mod_list, device_data):
+        """Register a runtime node and schedule an initial snapshot publish."""
         self.register_runtime_secop_node(host, port, mod_list, device_data)
 
         resolved_host = resolve_host(host)
         addr = f"{resolved_host}:{port}"
 
         async def _prime_once():
+            """Fetch and publish a one-off snapshot for the primed runtime node."""
             try:
                 snapshot_updates = await asyncio.to_thread(self._collect_runtime_snapshot, addr)
                 if snapshot_updates:
@@ -1272,6 +1346,7 @@ class ExtendedBackend(Backend):
         self.run_task(_prime_once())
     
     async def poll_all_parameters(self, poll_interval=2):
+        """Poll every configured device parameter and broadcast changed values."""
        
         while True:
             for devname, dev in list(self._devices.items()):
@@ -1325,6 +1400,7 @@ class ExtendedBackend(Backend):
 
 
     def start(self, conf, asset_list):
+        """Start the backend, initialize runtime state, and launch polling plus APIs."""
         # Add nodemanager protocol if missing, use correct module name
         self.protos['secop'] = 'configuration.extended_backend'
         if 'nodemanager' not in self.protos:
@@ -1368,6 +1444,7 @@ class ExtendedBackend(Backend):
 
 
 def start_api_server(backend=None):
+    """Start the Flask API server that exposes backend state to the frontend."""
    
     app = Flask(__name__)
    
@@ -1375,6 +1452,7 @@ def start_api_server(backend=None):
 
     @app.route('/api/runtime_node_ready')
     def get_runtime_node_ready():
+        """Return whether a runtime node has produced latest values yet."""
         addr = (request.args.get('addr') or '').strip()
         if not addr:
             return jsonify({'status': 'error', 'error': 'missing addr'}), 400
@@ -1411,10 +1489,12 @@ def start_api_server(backend=None):
     @app.route('/api/latest_values')
    
     def get_latest_values():
+        """Return the latest cached device values as JSON."""
         return jsonify(_json_safe_value(ExtendedBackend.latest_values))
 
     @app.route('/api/layouts', methods=['GET'])
     def api_layouts():
+        """List the names of saved frontend layout presets."""
         try:
             return jsonify({'status': 'ok', 'names': _list_saved_layout_names()})
         except Exception as exc:
@@ -1423,6 +1503,7 @@ def start_api_server(backend=None):
 
     @app.route('/api/layouts/<path:name>', methods=['GET'])
     def api_layout_by_name(name):
+        """Load one saved frontend layout by name."""
         try:
             layout = _load_saved_layout(name)
             return jsonify({'status': 'ok', 'layout': _json_safe_value(layout)})
@@ -1436,6 +1517,7 @@ def start_api_server(backend=None):
 
     @app.route('/api/plot_updates')
     def get_plot_updates():
+        """Return plot snapshots or incremental samples for frontend charts."""
         since_raw = request.args.get('since')
         try:
             since_ms = int(since_raw) if since_raw not in (None, '') else None
@@ -1466,6 +1548,7 @@ def start_api_server(backend=None):
 
     @app.route('/api/device_history')
     def get_device_history():
+        """Return paged device history samples using query-string filters."""
         keys_raw = request.args.get('keys', '')
         keys = [item for item in keys_raw.split(',') if item.strip()]
 
@@ -1537,6 +1620,7 @@ def start_api_server(backend=None):
 
     @app.route('/api/device_history/stats')
     def get_device_history_stats():
+        """Return aggregate device history statistics for the frontend."""
         if backend and hasattr(backend, 'get_device_history_stats'):
             payload = backend.get_device_history_stats()
         else:
@@ -1556,6 +1640,7 @@ def start_api_server(backend=None):
 
     @app.route('/api/device_history/keys')
     def get_device_history_keys():
+        """Return the distinct history keys available in persistent storage."""
         limit_raw = request.args.get('limit')
 
         try:
@@ -1582,6 +1667,7 @@ def start_api_server(backend=None):
 
     @app.route('/api/nexus_export/status', methods=['GET'])
     def api_nexus_export_status():
+        """Return the current NeXus exporter status payload."""
         try:
             if backend and hasattr(backend, '_ensure_runtime_storage'):
                 backend._ensure_runtime_storage()
@@ -1598,6 +1684,7 @@ def start_api_server(backend=None):
 
     @app.route('/api/nexus_export/files', methods=['GET'])
     def api_nexus_export_files():
+        """List saved NeXus export files for the in-app browser."""
         try:
             return jsonify({'status': 'ok', 'files': list_export_files()})
         except Exception as exc:
@@ -1606,6 +1693,7 @@ def start_api_server(backend=None):
 
     @app.route('/api/nexus_export/download', methods=['GET'])
     def api_nexus_export_download():
+        """Download one saved NeXus export file by name."""
         file_name = request.args.get('file')
         if not file_name:
             return jsonify({'status': 'error', 'error': 'missing file'}), 400
@@ -1628,6 +1716,7 @@ def start_api_server(backend=None):
 
     @app.route('/api/nexus_export/inspect', methods=['GET'])
     def api_nexus_export_inspect():
+        """Inspect one object path within a saved NeXus export file."""
         file_name = request.args.get('file')
         object_path = request.args.get('path') or '/'
         if not file_name:
@@ -1647,6 +1736,7 @@ def start_api_server(backend=None):
     @app.route('/api/nexus_export/start', methods=['POST'])
     @_require_api_auth()
     def api_nexus_export_start():
+        """Start a manual NeXus export run on the backend."""
         try:
             if not backend:
                 return jsonify({'status': 'error', 'error': 'backend unavailable'}), 500
@@ -1664,6 +1754,7 @@ def start_api_server(backend=None):
     @app.route('/api/nexus_export/stop', methods=['POST'])
     @_require_api_auth()
     def api_nexus_export_stop():
+        """Stop the currently active NeXus export run."""
         try:
             if not backend:
                 return jsonify({'status': 'error', 'error': 'backend unavailable'}), 500
@@ -1676,6 +1767,7 @@ def start_api_server(backend=None):
 
     @app.route('/api/data_saving/status', methods=['GET'])
     def api_data_saving_status():
+        """Return the current CSV data-saving status and linked NeXus status."""
         try:
             if backend and hasattr(backend, '_ensure_runtime_storage'):
                 backend._ensure_runtime_storage()
@@ -1704,6 +1796,7 @@ def start_api_server(backend=None):
 
     @app.route('/api/data_saving/download', methods=['GET'])
     def api_data_saving_download():
+        """Download one generated CSV export file by name."""
         file_name = request.args.get('file')
         if not file_name:
             return jsonify({'status': 'error', 'error': 'missing file'}), 400
@@ -1727,6 +1820,7 @@ def start_api_server(backend=None):
     @app.route('/api/data_saving/start', methods=['POST'])
     @_require_api_auth()
     def api_data_saving_start():
+        """Start periodic CSV data saving and optional paired NeXus export."""
         try:
             if not backend:
                 return jsonify({'status': 'error', 'error': 'backend unavailable'}), 500
@@ -1757,6 +1851,7 @@ def start_api_server(backend=None):
     @app.route('/api/data_saving/stop', methods=['POST'])
     @_require_api_auth()
     def api_data_saving_stop():
+        """Stop periodic CSV saving and finalize any active paired NeXus run."""
         try:
             if not backend:
                 return jsonify({'status': 'error', 'error': 'backend unavailable'}), 500
@@ -1772,6 +1867,7 @@ def start_api_server(backend=None):
 
     @app.route('/api/storage/status', methods=['GET'])
     def api_storage_status():
+        """Return storage usage information for the backend host."""
         try:
             payload = get_storage_monitor_status(backend=backend)
             return jsonify({'status': 'ok', 'storage': payload})
@@ -1806,6 +1902,7 @@ def start_api_server(backend=None):
 
     @app.route('/api/plot_configs', methods=['GET'])
     def api_plot_configs():
+        """List the saved plot configuration names."""
         plot_config_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plot_config'))
         try:
             names = []
@@ -1820,6 +1917,7 @@ def start_api_server(backend=None):
 
     @app.route('/api/plot_configs/<path:name>', methods=['GET'])
     def api_plot_config(name):
+        """Load one saved plot configuration by name."""
         plot_config_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plot_config'))
         safe_name = os.path.basename(name)
         file_path = os.path.join(plot_config_dir, safe_name + '.json')
@@ -1837,6 +1935,7 @@ def start_api_server(backend=None):
 
     @app.route('/api/assets/svg', methods=['GET'])
     def api_assets_svg():
+        """List SVG assets available to the frontend asset browser."""
         try:
             files = []
             if os.path.isdir(ASSETS_DIR):
@@ -1885,6 +1984,7 @@ def start_api_server(backend=None):
             return jsonify({'status': 'error', 'error': str(e)}), 500
 
         async def _send_and_recv(a, line):
+            """Send one raw line to a TCP node and read a single reply line."""
             conn = StreamConnection(a, app.logger)
             # open connection and send line (StreamConnection expects bytes)
             await conn._open_connection()
@@ -1929,6 +2029,7 @@ def start_api_server(backend=None):
                     app.logger.exception('Failed to schedule nodemanager restart')
             # Fallback: restart the current process directly.
             def _delayed_restart_process():
+                """Restart the current backend process after a short delay."""
                 try:
                     import time
                     time.sleep(1.0)

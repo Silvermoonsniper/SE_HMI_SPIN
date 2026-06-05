@@ -582,11 +582,11 @@ function populateDeviceList(data)
   });
 }
 
-function createDeviceDisplay(isConfigurelayout) 
+function createDeviceDisplay(isConfigurelayout, options = {}) 
 
 {
   const select = document.getElementById('device-select');
-  const device = select.value;
+  const device = options.device || (select ? select.value : '');
   
   if (!device)  
   
@@ -595,8 +595,8 @@ function createDeviceDisplay(isConfigurelayout)
     return;
   }
   
-  const domId = deviceDomId(device);
-  if (document.getElementById('box-' + domId)) 
+  const domId = options.instanceDomId || deviceDomId(device);
+  if (!options.allowDuplicate && document.getElementById('box-' + domId)) 
   {
     // alert('Display for ' + device + ' already exists.');
     return;
