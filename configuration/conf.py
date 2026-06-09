@@ -1,3 +1,5 @@
+"""Spin configuration bootstrap utilities and startup wiring for the SE HMI."""
+
 from spin.config import Config, Device, Page, Param
 import json
 import os
@@ -36,15 +38,22 @@ def resolve_host(host):
 
 
 def connect_node(host, port):
+    """Resolve a node address before connecting to it.
+
+    This top-level helper is currently kept only for compatibility.
+    """
     # Resolve the host for Docker environment
-      resolved_host = resolve_host(host)
+    resolved_host = resolve_host(host)
+    return f"{resolved_host}:{port}"
 
 
 
 # Top-level SpinConfigManager class for use by spin and as script
 class SpinConfigManager:
+    """Discover SECoP nodes and build the runtime Spin configuration."""
     
     def __init__(self, nodes_file=None):
+        """Initialize file paths and in-memory config state."""
     
         self.base_dir = os.path.dirname(__file__)
     
@@ -59,131 +68,132 @@ class SpinConfigManager:
    
 
     def resolve_host(self, host):
-    
-            
-    
-            if host not in ('localhost', '127.0.0.1'):
-    
-                return host
-    
+        """Return the host string to use for direct node access."""
+
+        if host not in ('localhost', '127.0.0.1'):
             return host
 
+        return host
+
     def extract_modules_and_parameters(self, data, prefix=""):
-    
-            modules = data.get("modules", {})
-    
-            parameter_map = {}
-    
-            device_data_map = {}
-    
-            module_list = []
-    
-            for module_name, module_info in modules.items():
-   
-                unique_name = f"{prefix}_{module_name}" if prefix else module_name
-   
-                module_list.append((module_name, unique_name))
-   
-                params = module_info.get("accessibles", {})
-   
-                parameter_list = []
-   
-                writable_list = []
-   
-                command_list = []
+        """Extract module names and parameter metadata from SECoP descriptive data."""
 
-                param_info_List = []
-   
-                for param_name, param_info in params.items():
-   
-                    datainfo = param_info.get("datainfo", {})
-   
-                    dtype = datainfo.get("type")
-   
-                    parameter_list.append(param_name)
-   
-                    if dtype == 'command':
-   
-                        command_list.append(param_name)
-   
-                    elif not param_info.get("readonly", False):
-   
-                        writable_list.append(param_name)
+        modules = data.get("modules", {})
 
-                    param_info_List.append({param_name: param_info})
-   
-                parameter_map[unique_name] = parameter_list
-   
-                device_data_map[unique_name] = {
-   
-                    "params": writable_list,
-   
-                    "all_params": parameter_list,
-   
-                    "commands": command_list,
-   
-                    "original_name": module_name,
-   
-                    "interface_classes": module_info.get("interface_classes", []),
+        parameter_map = {}
 
-                    "module_name": module_name,
+        device_data_map = {}
 
-                     "param_info": list(param_info_List),
-                }
-   
-            return module_list, parameter_map, device_data_map
+        module_list = []
+
+        for module_name, module_info in modules.items():
+
+            unique_name = f"{prefix}_{module_name}" if prefix else module_name
+
+            module_list.append((module_name, unique_name))
+
+            params = module_info.get("accessibles", {})
+
+            parameter_list = []
+
+            writable_list = []
+
+            command_list = []
+
+            param_info_List = []
+
+            for param_name, param_info in params.items():
+
+                datainfo = param_info.get("datainfo", {})
+
+                dtype = datainfo.get("type")
+
+                parameter_list.append(param_name)
+
+                if dtype == 'command':
+
+                    command_list.append(param_name)
+
+                elif not param_info.get("readonly", False):
+
+                    writable_list.append(param_name)
+
+                param_info_List.append({param_name: param_info})
+
+            parameter_map[unique_name] = parameter_list
+
+            device_data_map[unique_name] = {
+
+                "params": writable_list,
+
+                "all_params": parameter_list,
+
+                "commands": command_list,
+
+                "original_name": module_name,
+
+                "interface_classes": module_info.get("interface_classes", []),
+
+                "module_name": module_name,
+
+                "param_info": list(param_info_List),
+            }
+
+        return module_list, parameter_map, device_data_map
 
     def connect_node(self, host, port):
-   
-         resolved_host = self.resolve_host(host)
-   
-         url = f"{resolved_host}:{port}"
-         
-        
-         print(f"Connecting to {url}...")
-   
-         try:
-   
-                client = SecopClient(url)
-   
-                client.connect()
-   
-                equipment_id = client.descriptive_data.get("equipment_id", "")
-   
-                prefix = equipment_id if equipment_id else ""
-   
-                mod_list, para_map, dev_data = self.extract_modules_and_parameters(client.descriptive_data, prefix)
-   
-                if equipment_id:
-   
-                    print(f"{equipment_id} ready")
-   
-                return mod_list, para_map, dev_data
-   
-         except Exception as e:
-   
-                print(f"Failed to connect to {url}: {e}")
-   
-                return [], {}, {}
+        """Connect to one node and collect module and parameter metadata."""
+
+        resolved_host = self.resolve_host(host)
+
+        url = f"{resolved_host}:{port}"
+
+        print(f"Connecting to {url}...")
+
+        try:
+
+            client = SecopClient(url)
+
+            client.connect()
+
+            equipment_id = client.descriptive_data.get("equipment_id", "")
+
+            prefix = equipment_id if equipment_id else ""
+
+            mod_list, para_map, dev_data = self.extract_modules_and_parameters(client.descriptive_data, prefix)
+
+            if equipment_id:
+
+                print(f"{equipment_id} ready")
+
+            return mod_list, para_map, dev_data
+
+        except Exception as e:
+
+            print(f"Failed to connect to {url}: {e}")
+
+            return [], {}, {}
 
     async def discover_and_save_nodes(self, timeout=2.0):
+            """Broadcast a SECoP discovery request and persist discovered nodes."""
             
             class FrappyDiscoveryProtocol(asyncio.DatagramProtocol):
+                """Collect UDP discovery responses from reachable SECoP nodes."""
    
                 def __init__(self):
+                    """Prepare transport and response storage."""
    
                     self.transport = None
    
                     self.responses = []
    
                 def connection_made(self, transport):
+                    """Store the datagram transport used for discovery replies."""
    
                     self.transport = transport
                 
                 def get_local_ip(self):
-                   """
-                   Function to automatically get the local IP address
-                   """
+                   """Best-effort detection of the local outbound IPv4 address."""
                    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                    
                    s.settimeout(0)
@@ -198,6 +208,7 @@ class SpinConfigManager:
                    return local_ip    
    
                 def datagram_received(self, data, addr):
+                    """Parse one discovery response and deduplicate the node entry."""
 
                     # get local ip 
                     local_ip = self.get_local_ip()  
@@ -276,6 +287,7 @@ class SpinConfigManager:
             return self.nodes
 
     def spin_server_start(self, nodes):
+            """Build the Spin Config object and device metadata from discovered nodes."""
    
             all_device_data = {}
    
@@ -349,6 +361,7 @@ class SpinConfigManager:
             return config
 
     def start_extended_backend(self, config):
+            """Start the extended backend that serves polling and Flask APIs."""
    
             loop = asyncio.get_event_loop()
    

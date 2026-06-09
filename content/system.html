@@ -48,12 +48,15 @@
       </div>
     </div>
     
-    <!-- SEC Nodes Information -->
-    <div id="nodes-info-box" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
-      <div style="font-size: 12px; font-weight: bold; color: #495057; margin-bottom: 8px;">
-        Available SEC Nodes:
+    <!-- Available Devices -->
+    <div id="available-devices-box" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
+      <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:10px;">
+        <label for="available-devices-select" style="font-size: 12px; font-weight: bold; color: #495057;">Available devices</label>
+        <select id="available-devices-select" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; min-width: 220px;">
+          <option value="">Loading devices...</option>
+        </select>
       </div>
-      <div id="nodes-info-content" style="font-size: 11px; color: #6c757d;">
+      <div id="available-devices-content" style="font-size: 11px; color: #6c757d;">
         Loading...
       </div>
     </div>

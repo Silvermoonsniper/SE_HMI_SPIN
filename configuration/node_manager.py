@@ -1,3 +1,4 @@
+"""Node-manager plugin helpers for runtime node discovery and config persistence."""
 
 from spin.device import BaseDevice
 from spin.backend import Reply
@@ -21,6 +22,7 @@ LAYOUT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'layo
 PLOT_CONFIG_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plot_config'))
 
 def ensure_layout_dir():
+    """Create the persisted layout directory if it does not already exist."""
 
     try:
 
@@ -31,6 +33,7 @@ def ensure_layout_dir():
         print(f"Failed to create layout dir {LAYOUT_DIR}: {e}")
 
 def ensure_plot_config_dir():
+    """Create the persisted plot-config directory if it does not already exist."""
 
     try:
 
@@ -65,6 +68,7 @@ def resolve_host(host):
 
 
 def _restart_process():
+    """Re-exec the current Python process using the original launch arguments."""
     original_argv = list(getattr(sys, 'orig_argv', []) or [])
     if original_argv:
         executable = original_argv[0]
@@ -94,6 +98,7 @@ returns:
        
 """
 def extract_modules_and_parameters(data, prefix=""):
+    """Flatten SECoP descriptive data into module and parameter lookup tables."""
    
     modules = data.get("modules", {})
     
@@ -174,6 +179,7 @@ returns:
    dev_data: dict of unique_name -> device data dict
 """
 def connect_and_fetch_params(host, port):
+    """Connect to a node and return its modules plus parameter metadata."""
     # Resolve the host for Docker environment
     resolved_host = resolve_host(host)
  
@@ -210,19 +216,23 @@ def connect_and_fetch_params(host, port):
         return None, None, None
 
 class NodeManagerDevice(BaseDevice):
+    """Spin device that manages node registration and saved layout metadata."""
     
     def read(self, param):
+        """Return a node-manager attribute value as a readable parameter."""
         # Try to read from attributes, or return None if not found
         # You can extend this logic to read from internal state, files, etc.
         return getattr(self, param, None)
     
     def init(self):
+        """Initialize the device and emit a startup log message."""
     
         self.log.info("NodeManager initialized")
     
  
 
     def update_nodes_param(self):
+        """Push the current nodes.json contents to the exported nodes parameter."""
     
         nodes = []
     
@@ -240,6 +250,7 @@ class NodeManagerDevice(BaseDevice):
         self.run_task(self.send_param('nodes', nodes, ''))
 
     def update_device_params_param(self):
+        """Push the merged device parameter metadata to the exported parameter."""
         data = {}
         if os.path.exists(DEVICE_PARAMS_FILE):
             try:
@@ -283,6 +294,7 @@ class NodeManagerDevice(BaseDevice):
         self.run_task(self.send_param('device_params', data, ''))
 
     async def _clear_status(self):
+        """Clear the transient status message after a short delay."""
         await asyncio.sleep(3)
         await self.send_param('status', '', '')
 
@@ -310,6 +322,7 @@ class NodeManagerDevice(BaseDevice):
             os._exit(0)
 
     async def handle_request(self, request):
+        """Handle node-manager commands for nodes, layouts, plot configs, and restart."""
         # request.key is 'nodemanager.something'
         cmd = request.key.split('.')[-1]
 
@@ -655,6 +668,7 @@ class NodeManagerDevice(BaseDevice):
         return None
 
 def init_plugin(conf, loop):
+    """Expose the node-manager protocol mapping to Spin's plugin loader."""
     return {
         'protos': {
             'nodemanager': NodeManagerDevice
@@ -666,5 +680,6 @@ def init_plugin(conf, loop):
 # used by Spin so the nodemanager protocol never falls back to an unimplemented
 # BaseDevice subclass.
 class Device(NodeManagerDevice):
+    """Concrete plugin export used by Spin when loading the node-manager device."""
     pass
 

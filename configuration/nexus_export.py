@@ -1,3 +1,5 @@
+"""Helpers for writing, listing, and inspecting NeXus export files."""
+
 import json
 import os
 from datetime import datetime, timezone
@@ -12,10 +14,12 @@ EXTRA_EXPORT_DIRS = set()
 
 
 def ensure_export_dir():
+    """Ensure that the default NeXus export directory exists."""
     os.makedirs(EXPORT_DIR, exist_ok=True)
 
 
 def _all_export_dirs():
+    """Return the ordered set of directories that may contain NeXus exports."""
     ensure_export_dir()
     directories = {EXPORT_DIR}
     directories.update(path for path in EXTRA_EXPORT_DIRS if path)
@@ -23,12 +27,14 @@ def _all_export_dirs():
 
 
 def register_export_dir(path):
+    """Register an additional absolute directory for NeXus export lookup."""
     if not path:
         return
     EXTRA_EXPORT_DIRS.add(os.path.abspath(path))
 
 
 def _sanitize_name(value):
+    """Convert arbitrary text into a filesystem-safe NeXus name fragment."""
     text = str(value or '').strip()
     if not text:
         return 'unnamed'
@@ -37,10 +43,12 @@ def _sanitize_name(value):
 
 
 def _utc_now_iso():
+    """Return the current UTC timestamp in ISO 8601 format."""
     return datetime.now(timezone.utc).isoformat()
 
 
 def _safe_export_name(file_name):
+    """Validate and normalize a user-provided NeXus export file name."""
     safe_name = os.path.basename(str(file_name or '').strip())
     if not safe_name:
         raise ValueError('missing export file name')
@@ -50,6 +58,7 @@ def _safe_export_name(file_name):
 
 
 def resolve_export_file(file_name):
+    """Resolve an export file name against all registered export directories."""
     safe_name = _safe_export_name(file_name)
     for directory in _all_export_dirs():
         file_path = os.path.join(directory, safe_name)
@@ -59,6 +68,7 @@ def resolve_export_file(file_name):
 
 
 def list_export_files():
+    """List available NeXus exports with size, timestamp, and directory metadata."""
     exports = []
     seen = set()
     for directory in _all_export_dirs():
@@ -89,6 +99,7 @@ def list_export_files():
 
 
 def _attrs_to_json(attrs):
+    """Convert HDF5 attribute mappings into JSON-friendly Python values."""
     values = {}
     for key, value in attrs.items():
         values[str(key)] = _jsonable_data(value)
@@ -96,6 +107,7 @@ def _attrs_to_json(attrs):
 
 
 def _normalize_object_path(object_path):
+    """Normalize a NeXus object path so it is rooted and non-empty."""
     text = str(object_path or '/').strip() or '/'
     if not text.startswith('/'):
         text = '/' + text
@@ -103,6 +115,7 @@ def _normalize_object_path(object_path):
 
 
 def _jsonable_data(value):
+    """Convert NumPy and bytes values into JSON-serializable Python objects."""
     if isinstance(value, np.ndarray):
         return _jsonable_data(value.tolist())
     if isinstance(value, np.generic):
@@ -117,6 +130,7 @@ def _jsonable_data(value):
 
 
 def _dataset_preview(dataset):
+    """Return a bounded preview payload for a dataset without loading it fully."""
     if dataset.shape == ():
         return _jsonable_data(dataset[()])
 
@@ -131,6 +145,7 @@ def _dataset_preview(dataset):
 
 
 def inspect_export_object(file_name, object_path='/'):
+    """Inspect one group or dataset inside a saved NeXus export file."""
     file_path = resolve_export_file(file_name)
     normalized_path = _normalize_object_path(object_path)
 
@@ -164,7 +179,9 @@ def inspect_export_object(file_name, object_path='/'):
 
 
 class NexusRunExporter:
+    """Incrementally build a NeXus log file from live backend updates."""
     def __init__(self):
+        """Initialize exporter state with no active output file."""
         self.file_handle = None
         self.file_path = None
         self.run_name = None
@@ -173,9 +190,11 @@ class NexusRunExporter:
 
     @property
     def is_running(self):
+        """Return whether a NeXus file is currently open for writing."""
         return self.file_handle is not None
 
     def start(self, run_name=None, directory=None, file_name=None):
+        """Open a new NeXus run file and seed its root structure."""
         if self.is_running:
             return self.file_path
 
@@ -221,6 +240,7 @@ class NexusRunExporter:
         return self.file_path
 
     def stop(self):
+        """Finalize the active NeXus file and close its HDF5 handle."""
         if not self.is_running:
             return None
 
@@ -242,6 +262,7 @@ class NexusRunExporter:
         return path
 
     def status(self):
+        """Return the exporter's current run metadata for the API layer."""
         return {
             'running': self.is_running,
             'file_path': self.file_path,
@@ -250,6 +271,7 @@ class NexusRunExporter:
         }
 
     def append_update(self, key, payload):
+        """Append one device update sample to its corresponding NeXus signal log."""
         if not self.is_running or not key:
             return
 
@@ -272,6 +294,7 @@ class NexusRunExporter:
         self.file_handle.flush()
 
     def _ensure_signal_group(self, key, payload):
+        """Create the HDF5 group and datasets backing one signal stream."""
         if key in self.signal_groups:
             return self.signal_groups[key]
 

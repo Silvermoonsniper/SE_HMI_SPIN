@@ -4,6 +4,9 @@ var AppUi = window.SEAppUi;
 let selectedDeco = null;
 let selectedTextDeco = null;
 let selectedDecorationLine = null;
+let selectedCanvasElement = null;
+let canvasClipboard = null;
+let lastCanvasPointer = { left: 200, top: 80 };
 const DECORATION_LINE_MIN_LENGTH_PX = 38;
 const SWITCH_SVG_DATA_URI = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI0IiBoZWlnaHQ9IjEwNiIgZmlsbD0id2hpdGUiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Miw1MykiPjxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSI0NSIgZmlsbD0id2hpdGUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTSAtNDQuMyA2LjcgQSA0NSA0NSAwIDAgMSAtNi43IDQ0LjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNIDQ0LjMgLTYuNyBBIDQ1IDQ1IDAgMCAxIDYuNyAtNDQuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvZz48L3N2Zz4=';
 
@@ -11,6 +14,334 @@ function areDecorationEditsEnabled() {
   return typeof window.isConfigurationModeActive === 'function'
     ? window.isConfigurationModeActive()
     : document.body.dataset.configurationMode === 'true';
+}
+
+function getSelectableCanvasElement(target) {
+  if (!target || !target.closest) return null;
+  const match = target.closest('.plot-panel, .deco-box, .valve-icon, .device-box');
+  return match instanceof HTMLElement ? match : null;
+}
+
+function clearCanvasElementSelectionState(element) {
+  if (!element) return;
+  element.classList.remove('selected');
+  if (selectedDeco === element) {
+    selectedDeco = null;
+  }
+}
+
+function setSelectedCanvasElement(element) {
+  if (element && !areDecorationEditsEnabled()) {
+    return;
+  }
+
+  if (selectedCanvasElement && selectedCanvasElement !== element) {
+    if (selectedCanvasElement.classList.contains('deco-box')) {
+      selectDeco(null);
+    } else {
+      clearCanvasElementSelectionState(selectedCanvasElement);
+    }
+  }
+
+  selectedCanvasElement = element || null;
+
+  if (!element) {
+    if (selectedDeco) {
+      selectDeco(null);
+    }
+    return;
+  }
+
+  if (typeof clearConnectionLineSelection === 'function') {
+    clearConnectionLineSelection();
+  }
+
+  if (element.classList.contains('deco-box')) {
+    selectDeco(element);
+    return;
+  }
+
+  if (selectedDeco) {
+    selectDeco(null);
+  }
+  element.classList.add('selected');
+}
+
+function updateLastCanvasPointer(event) {
+  const grid = document.getElementById('device-grid');
+  if (!grid || typeof event.clientX !== 'number' || typeof event.clientY !== 'number') return;
+  const rect = grid.getBoundingClientRect();
+  if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) {
+    return;
+  }
+  const zoom = (typeof currentZoom === 'number' && isFinite(currentZoom) && currentZoom > 0) ? currentZoom : 1;
+  lastCanvasPointer = {
+    left: Math.max(0, Math.round((event.clientX - rect.left) / zoom)),
+    top: Math.max(0, Math.round((event.clientY - rect.top) / zoom))
+  };
+}
+
+function isShortcutInputTarget(target) {
+  if (!target) return false;
+  const tagName = typeof target.tagName === 'string' ? target.tagName.toUpperCase() : '';
+  if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT') {
+    return true;
+  }
+  return !!(target.closest && target.closest('input, textarea, select'));
+}
+
+function cloneClipboardNode(node) {
+  return node && typeof node.cloneNode === 'function' ? node.cloneNode(true) : null;
+}
+
+function buildCanvasClipboard() {
+  if (!selectedCanvasElement) return null;
+
+  if (
+    selectedCanvasElement.classList.contains('device-box') &&
+    !selectedCanvasElement.classList.contains('plot-panel') &&
+    selectedCanvasElement.dataset &&
+    selectedCanvasElement.dataset.device
+  ) {
+    return {
+      kind: 'device',
+      device: selectedCanvasElement.dataset.device || '',
+      width: selectedCanvasElement.style.width || '',
+      height: selectedCanvasElement.style.height || '',
+      bodyOpen: (() => {
+        const rawId = typeof selectedCanvasElement.id === 'string' ? selectedCanvasElement.id : '';
+        const domId = rawId.startsWith('box-') ? rawId.slice(4) : '';
+        if (!domId) return false;
+        const body = selectedCanvasElement.querySelector('#body-' + domId);
+        return !!(body && body.style.display !== 'none');
+      })()
+    };
+  }
+
+  if (selectedCanvasElement.classList.contains('plot-panel')) {
+    const layout = getCurrentLayoutData();
+    const plotEntry = Array.isArray(layout.plots)
+      ? layout.plots.find((plot) => plot && plot.id === selectedCanvasElement.id)
+      : null;
+    if (!plotEntry) return null;
+    return {
+      kind: 'plot',
+      plot: JSON.parse(JSON.stringify(plotEntry))
+    };
+  }
+
+  return {
+    kind: 'dom',
+    elementType: selectedCanvasElement.classList.contains('valve-icon')
+      ? 'valve-icon'
+      : selectedCanvasElement.classList.contains('deco-box')
+        ? 'deco-box'
+        : 'device-box',
+    node: cloneClipboardNode(selectedCanvasElement)
+  };
+}
+
+function remapElementAttributeValue(value, fromToken, toToken) {
+  if (typeof value !== 'string' || !fromToken) return value;
+  return value.split(fromToken).join(toToken);
+}
+
+function remapElementIdentifiers(root, fromToken, toToken) {
+  if (!root || !fromToken || !toToken || fromToken === toToken) return;
+  const attributesToPatch = ['id', 'for', 'list', 'aria-controls', 'aria-labelledby', 'onclick', 'onchange'];
+  const elements = [root, ...root.querySelectorAll('*')];
+  elements.forEach((element) => {
+    attributesToPatch.forEach((attributeName) => {
+      if (!element.hasAttribute || !element.hasAttribute(attributeName)) return;
+      const currentValue = element.getAttribute(attributeName);
+      const nextValue = remapElementAttributeValue(currentValue, fromToken, toToken);
+      if (nextValue !== currentValue) {
+        element.setAttribute(attributeName, nextValue);
+      }
+    });
+  });
+}
+
+function makeUniqueClipboardToken(prefix) {
+  const safePrefix = String(prefix || 'item').replace(/[^a-zA-Z0-9_-]+/g, '_');
+  return `${safePrefix}_copy_${Date.now()}`;
+}
+
+function bindCloneRemoveButtons(root) {
+  if (!root || !root.querySelectorAll) return;
+  root.querySelectorAll('.deco-remove').forEach((button) => {
+    button.onclick = (event) => {
+      event.stopPropagation();
+      const owner = button.closest('.device-box, .deco-box, .valve-icon');
+      if (owner === selectedCanvasElement) {
+        setSelectedCanvasElement(null);
+      }
+      if (owner) owner.remove();
+      if (typeof refreshConnectionLines === 'function') {
+        refreshConnectionLines();
+      }
+    };
+  });
+}
+
+function prepareClonedCanvasElement(element) {
+  if (!element) return null;
+
+  element.classList.remove('selected');
+  element.querySelectorAll('.selected').forEach((selectedNode) => {
+    selectedNode.classList.remove('selected');
+  });
+
+  if (element.classList.contains('valve-icon')) {
+    const oldToken = (element.id || 'icon').replace(/^icon-/, '');
+    const newToken = makeUniqueClipboardToken(oldToken || 'valve');
+    remapElementIdentifiers(element, oldToken, newToken);
+    element.id = `icon-${newToken}`;
+    return element;
+  }
+
+  if (element.classList.contains('device-box')) {
+    const rawId = element.id || 'device';
+    if (rawId.startsWith('box-')) {
+      const oldToken = rawId.replace(/^box-/, '');
+      const newToken = makeUniqueClipboardToken(oldToken || 'device');
+      remapElementIdentifiers(element, oldToken, newToken);
+      element.id = `box-${newToken}`;
+    } else {
+      element.id = makeUniqueClipboardToken(rawId);
+    }
+    return element;
+  }
+
+  if (element.classList.contains('deco-box')) {
+    element.id = makeUniqueClipboardToken(element.id || 'deco');
+  }
+
+  return element;
+}
+
+function bindClonedCanvasElement(element) {
+  if (!element) return;
+
+  if (element.classList.contains('valve-icon')) {
+    const imageContainer = element.querySelector('[id^="img-"]');
+    if (typeof makeValveIconDraggable === 'function') {
+      makeValveIconDraggable(element);
+    }
+    if (typeof makeValveIconResizable === 'function') {
+      makeValveIconResizable(element, imageContainer);
+    }
+  } else {
+    makeDraggable(element);
+    makeResizable(element);
+  }
+
+  bindCloneRemoveButtons(element);
+
+  if ((element.classList.contains('device-box') || element.classList.contains('valve-icon')) && window.Spin && typeof window.Spin.reload === 'function') {
+    window.Spin.reload();
+  }
+}
+
+function removeSelectedPlotPanel(element) {
+  const plotsState = AppState && typeof AppState.ensurePlots === 'function'
+    ? AppState.ensurePlots()
+    : (AppState && typeof AppState.getPlots === 'function' ? AppState.getPlots() : null);
+  const plotsMap = plotsState && plotsState.plotsMap ? plotsState.plotsMap : null;
+
+  if (plotsMap) {
+    Object.keys(plotsMap).forEach((key) => {
+      const entry = plotsMap[key];
+      if (!entry || entry.containerDiv !== element) return;
+      try {
+        if (entry.plotDiv) Plotly.purge(entry.plotDiv);
+      } catch (e) {}
+      delete plotsMap[key];
+    });
+  }
+
+  if (element && element.parentNode) {
+    element.parentNode.removeChild(element);
+  }
+}
+
+function removeSelectedCanvasElement() {
+  if (!selectedCanvasElement) return;
+  if (selectedCanvasElement.classList.contains('plot-panel')) {
+    removeSelectedPlotPanel(selectedCanvasElement);
+  } else {
+    selectedCanvasElement.remove();
+  }
+  setSelectedCanvasElement(null);
+  if (typeof refreshConnectionLines === 'function') {
+    refreshConnectionLines();
+  }
+}
+
+function pasteCanvasClipboard() {
+  if (!canvasClipboard || !areDecorationEditsEnabled()) return null;
+  const grid = document.getElementById('device-grid');
+  if (!grid) return null;
+
+  if (canvasClipboard.kind === 'device') {
+    const device = canvasClipboard.device;
+    if (!device || typeof createDeviceDisplay !== 'function') return null;
+    const pastedBox = createDeviceDisplay(true, {
+      device,
+      allowDuplicate: true,
+      instanceDomId: makeUniqueClipboardToken(deviceDomId(device || 'device'))
+    });
+    if (!pastedBox) return null;
+    pastedBox.style.left = `${lastCanvasPointer.left}px`;
+    pastedBox.style.top = `${lastCanvasPointer.top}px`;
+    if (canvasClipboard.width) pastedBox.style.width = canvasClipboard.width;
+    if (canvasClipboard.height) pastedBox.style.height = canvasClipboard.height;
+    if (canvasClipboard.bodyOpen) {
+      const rawId = typeof pastedBox.id === 'string' ? pastedBox.id : '';
+      const domId = rawId.startsWith('box-') ? rawId.slice(4) : '';
+      if (domId && typeof toggleDeviceBody === 'function') {
+        toggleDeviceBody(domId);
+      }
+    }
+    setSelectedCanvasElement(pastedBox);
+    if (typeof refreshConnectionLines === 'function') {
+      refreshConnectionLines();
+    }
+    return pastedBox;
+  }
+
+  if (canvasClipboard.kind === 'plot') {
+    const plotDef = JSON.parse(JSON.stringify(canvasClipboard.plot));
+    plotDef.id = '';
+    plotDef.left = `${lastCanvasPointer.left}px`;
+    plotDef.top = `${lastCanvasPointer.top}px`;
+    create_plot({ plots: [plotDef] }, true);
+    const plots = grid.querySelectorAll('.plot-panel');
+    const pastedPlot = plots.length ? plots[plots.length - 1] : null;
+    if (pastedPlot) {
+      pastedPlot.style.left = plotDef.left;
+      pastedPlot.style.top = plotDef.top;
+      setSelectedCanvasElement(pastedPlot);
+    }
+    if (typeof refreshConnectionLines === 'function') {
+      refreshConnectionLines();
+    }
+    return pastedPlot;
+  }
+
+  const snapshot = cloneClipboardNode(canvasClipboard.node);
+  if (!snapshot) return null;
+
+  prepareClonedCanvasElement(snapshot);
+  snapshot.style.left = `${lastCanvasPointer.left}px`;
+  snapshot.style.top = `${lastCanvasPointer.top}px`;
+  grid.appendChild(snapshot);
+  bindClonedCanvasElement(snapshot);
+  setSelectedCanvasElement(snapshot);
+  if (typeof refreshConnectionLines === 'function') {
+    refreshConnectionLines();
+  }
+  return snapshot;
 }
 
 function getDecorationLineType(box) {
@@ -361,8 +692,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const grid = document.getElementById('device-grid');
   if (grid) {
     grid.addEventListener('mousedown', (e) => {
-      if (e.target === grid) selectDeco(null);
+      updateLastCanvasPointer(e);
+      const selectedElement = getSelectableCanvasElement(e.target);
+      if (selectedElement) {
+        setSelectedCanvasElement(selectedElement);
+      } else if (e.target === grid) {
+        setSelectedCanvasElement(null);
+      }
     });
+    grid.addEventListener('mousemove', updateLastCanvasPointer);
     // Enable dropping device-boxes back onto the grid
     grid.ondragover = (e) => { e.preventDefault(); };
     grid.ondrop = (e) => {
@@ -380,6 +718,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Ensure device box is visible and interactive
         box.style.display = 'block';
         box.style.pointerEvents = 'auto';
+        setSelectedCanvasElement(box);
       }
     };
   }
@@ -402,6 +741,36 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    document.addEventListener('keydown', (event) => {
+      if (!areDecorationEditsEnabled()) return;
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      if (isShortcutInputTarget(event.target)) return;
+
+      const key = typeof event.key === 'string' ? event.key.toLowerCase() : '';
+      if (key === 'c') {
+        const clipboard = buildCanvasClipboard();
+        if (!clipboard) return;
+        canvasClipboard = clipboard;
+        event.preventDefault();
+        return;
+      }
+
+      if (key === 'x') {
+        const clipboard = buildCanvasClipboard();
+        if (!clipboard) return;
+        canvasClipboard = clipboard;
+        removeSelectedCanvasElement();
+        event.preventDefault();
+        return;
+      }
+
+      if (key === 'v') {
+        if (!canvasClipboard) return;
+        pasteCanvasClipboard();
+        event.preventDefault();
+      }
+    });
 });
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -1381,13 +1750,15 @@ function getCurrentLayoutData() {
   document.querySelectorAll('.device-box:not(.plot-panel)').forEach(box => {
   const titleEl = box.querySelector('.device-title');
   const title = titleEl ? titleEl.textContent : '';
-  // Try to get logical device name from box id
-  const logicalName = box.id.replace(/^box-/, '');
+  const deviceKey = box.dataset && box.dataset.device
+    ? box.dataset.device
+    : box.id.replace(/^box-/, '');
+  const logicalName = deviceKey;
     const deviceParams = AppState.getDeviceParams();
     // Get device info from runtime metadata if available
     let deviceInfo = {};
-    if (deviceParams && deviceParams[logicalName]) {
-      deviceInfo = deviceParams[logicalName];
+    if (deviceParams && deviceParams[deviceKey]) {
+      deviceInfo = deviceParams[deviceKey];
     }
     // If this device-box contains an image (sample slot), record it so layouts
     // can restore per-slot images.
@@ -1413,6 +1784,7 @@ function getCurrentLayoutData() {
     layout.devices.push({
       id: box.id,
       device: title,
+      deviceKey: deviceKey,
       logicalName: logicalName,
       left: left,
       top: top,
@@ -1576,8 +1948,10 @@ function connect_to_system(layout)
     const select = document.getElementById('device-select');
     const availableDevices = Array.from(select.options).map(opt => opt.value);
     layout.devices.forEach(d => {
+      const savedDeviceKey = d.deviceKey || d.logicalName;
       // Try to match by logicalName first
-      let match = availableDevices.find(dev => dev === d.logicalName);
+      let match = availableDevices.find(dev => dev === savedDeviceKey);
+      if (!match) match = availableDevices.find(dev => dev === d.logicalName);
       // If not found, try by device title
       if (!match) match = availableDevices.find(dev => dev === d.device);
       const deviceParams = AppState.getDeviceParams();
@@ -1590,13 +1964,15 @@ function connect_to_system(layout)
       }
       if (match) 
         {
-        select.value = match;
-        dev_box = createDeviceDisplay(false);
+        const savedDomId = d.id && d.id.startsWith('box-') ? d.id.slice(4) : (d.id || deviceDomId(match));
+        dev_box = createDeviceDisplay(false, {
+          device: match,
+          allowDuplicate: true,
+          instanceDomId: savedDomId
+        });
          
         // This creates it at default pos
-        // Find the newly created box (last one)
-        const boxes = document.querySelectorAll('.device-box');
-        const newBox = boxes[boxes.length - 1];
+        const newBox = dev_box || document.getElementById(d.id || `box-${savedDomId}`);
         if (newBox) {
           newBox.style.left = d.left;
           newBox.style.top = d.top;
@@ -1702,8 +2078,10 @@ function applyLayout(layout) {
     const select = document.getElementById('device-select');
     const availableDevices = Array.from(select.options).map(opt => opt.value);
     layout.devices.forEach(d => {
+      const savedDeviceKey = d.deviceKey || d.logicalName;
       // Try to match by logicalName first
-      let match = availableDevices.find(dev => dev === d.logicalName);
+      let match = availableDevices.find(dev => dev === savedDeviceKey);
+      if (!match) match = availableDevices.find(dev => dev === d.logicalName);
       // If not found, try by device title
       if (!match) match = availableDevices.find(dev => dev === d.device);
       const deviceParams = AppState.getDeviceParams();
@@ -1716,16 +2094,14 @@ function applyLayout(layout) {
       }
       if (match) 
         {
-        select.value = match;
-        
-        dev_block = createDeviceDisplay(isConfigurelayout);
-          // Initialize draggable & resizable
-        makeDraggable(dev_block);
-        makeResizable(dev_block); 
+        const savedDomId = d.id && d.id.startsWith('box-') ? d.id.slice(4) : (d.id || deviceDomId(match));
+        dev_block = createDeviceDisplay(isConfigurelayout, {
+          device: match,
+          allowDuplicate: true,
+          instanceDomId: savedDomId
+        });
         // This creates it at default pos
-        // Find the newly created box (last one)
-        const boxes = document.querySelectorAll('.device-box');
-        const newBox = boxes[boxes.length - 1];
+        const newBox = dev_block || document.getElementById(d.id || `box-${savedDomId}`);
         if (newBox) {
           newBox.style.left = d.left;
           newBox.style.top = d.top;
