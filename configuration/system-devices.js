@@ -1167,13 +1167,13 @@ async function setupValveController(device, domId,isConfigurelayout) {
     // Remove the controller box when creating individual valve icons
     controllerBox.remove();
   }
-  
+  console.log(valueData)
   // Create a separate draggable SVG icon for each valve (no box)
   Object.keys(valueData).forEach((fieldName, index) => {
        
       const lowerField = fieldName.toLowerCase();
       const isSwitch = lowerField.includes('switch');
-      const isValve = lowerField.includes('valve') || fieldName.startsWith('V');
+      const isValve = lowerField.includes('valve') || fieldName.startsWith('V')|| fieldName.startsWith('C')|| fieldName.startsWith('H');
       
       
       

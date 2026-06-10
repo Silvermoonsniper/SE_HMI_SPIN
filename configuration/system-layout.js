@@ -2458,7 +2458,7 @@ function create_valve_icon(availableDevices,iconDef,isconfigure_layout)
 
         const lowerField = (fieldName || '').toLowerCase();
         const isSwitch = lowerField.includes('switch');
-        const isValve = lowerField.includes('valve') || (fieldName && fieldName.startsWith('V'));
+        const isValve = lowerField.includes('valve') || (fieldName && fieldName.startsWith('V'))|| fieldName.startsWith('C')|| fieldName.startsWith('H');
 
         if (isValve) {
           initializeValveSvgChoices(valveIcon, {

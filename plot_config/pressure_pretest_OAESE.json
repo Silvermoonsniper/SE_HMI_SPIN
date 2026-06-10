@@ -59,35 +59,7 @@
         "lineWidth": 2,
         "lineColor": "#ed333b"
       }
-    },
-    {
-      "key": "reactor_cell_pressure_inlet.value",
-      "suffix": "reactor_cell_pressure_inlet.value",
-      "xKey": "",
-      "yKey": "",
-      "xSuffix": "",
-      "ySuffix": "",
-      "label": "",
-      "style": {
-        "lineType": "solid",
-        "lineWidth": 2,
-        "lineColor": "#33d17a"
-      }
-    },
-    {
-      "key": "reactor_cell_pressure_outlet.value",
-      "suffix": "reactor_cell_pressure_outlet.value",
-      "xKey": "",
-      "yKey": "",
-      "xSuffix": "",
-      "ySuffix": "",
-      "label": "",
-      "style": {
-        "lineType": "solid",
-        "lineWidth": 2,
-        "lineColor": "#ff7800"
-      }
     }
   ],
-  "savedAt": "2026-06-02T11:47:40.813Z"
+  "savedAt": "2026-06-10T14:14:13.088Z"
 }

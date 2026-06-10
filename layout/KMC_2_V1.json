@@ -3,6 +3,7 @@
     {
       "id": "box-gas_dosing_massflow_contr1",
       "device": "massflow_contr1",
+      "deviceKey": "gas_dosing_massflow_contr1",
       "logicalName": "gas_dosing_massflow_contr1",
       "left": "23px",
       "top": "11px",
@@ -367,11 +368,12 @@
     {
       "id": "box-gas_dosing_massflow_contr2",
       "device": "massflow_contr2",
+      "deviceKey": "gas_dosing_massflow_contr2",
       "logicalName": "gas_dosing_massflow_contr2",
-      "left": "25px",
-      "top": "151px",
+      "left": "21px",
+      "top": "160px",
       "width": "246px",
-      "height": "125px",
+      "height": "auto",
       "info": {
         "params": [
           "_D_value",
@@ -732,6 +734,7 @@
     {
       "id": "box-gas_dosing_massflow_contr3",
       "device": "massflow_contr3",
+      "deviceKey": "gas_dosing_massflow_contr3",
       "logicalName": "gas_dosing_massflow_contr3",
       "left": "23px",
       "top": "297px",
@@ -1096,6 +1099,7 @@
     {
       "id": "box-gas_dosing_massflow_contr4",
       "device": "massflow_contr4",
+      "deviceKey": "gas_dosing_massflow_contr4",
       "logicalName": "gas_dosing_massflow_contr4",
       "left": "20px",
       "top": "445px",
@@ -1460,11 +1464,12 @@
     {
       "id": "box-gas_dosing_massflow_contr5",
       "device": "massflow_contr5",
+      "deviceKey": "gas_dosing_massflow_contr5",
       "logicalName": "gas_dosing_massflow_contr5",
-      "left": "17px",
-      "top": "594px",
+      "left": "16px",
+      "top": "598px",
       "width": "248px",
-      "height": "122px",
+      "height": "auto",
       "info": {
         "params": [
           "_D_value",
@@ -1822,174 +1827,9 @@
       "image": null
     },
     {
-      "id": "box-reactor_cell_pressure_inlet",
-      "device": "pressure_inlet",
-      "logicalName": "reactor_cell_pressure_inlet",
-      "left": "757px",
-      "top": "89px",
-      "width": "221px",
-      "height": "120px",
-      "info": {
-        "params": [
-          "_pre_flux",
-          "pollinterval"
-        ],
-        "all_params": [
-          "_pre_flux",
-          "pollinterval"
-        ],
-        "commands": [],
-        "original_name": "pressure_inlet",
-        "interface_classes": [
-          "Readable"
-        ],
-        "module_name": "pressure_inlet",
-        "param_info": [
-          {
-            "value": {
-              "description": "Pressure inlet/outlet at reactor cell",
-              "datainfo": {
-                "unit": "bar",
-                "min": 0,
-                "max": 5000,
-                "type": "double"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "status": {
-              "description": "current status of the module",
-              "datainfo": {
-                "type": "tuple",
-                "members": [
-                  {
-                    "type": "enum",
-                    "members": {
-                      "IDLE": 100,
-                      "WARN": 200,
-                      "ERROR": 400
-                    }
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              },
-              "readonly": true
-            }
-          },
-          {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
-            "_pre_flux": {
-              "description": "Constant for simulation of pressure flux",
-              "datainfo": {
-                "min": 0,
-                "max": 20,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          }
-        ]
-      },
-      "image": null
-    },
-    {
-      "id": "box-reactor_cell_pressure_outlet",
-      "device": "pressure_outlet",
-      "logicalName": "reactor_cell_pressure_outlet",
-      "left": "777px",
-      "top": "504px",
-      "width": "222px",
-      "height": "120px",
-      "info": {
-        "params": [
-          "_pre_flux",
-          "pollinterval"
-        ],
-        "all_params": [
-          "_pre_flux",
-          "pollinterval"
-        ],
-        "commands": [],
-        "original_name": "pressure_outlet",
-        "interface_classes": [
-          "Readable"
-        ],
-        "module_name": "pressure_outlet",
-        "param_info": [
-          {
-            "value": {
-              "description": "Pressure inlet/outlet at reactor cell",
-              "datainfo": {
-                "unit": "bar",
-                "min": 0,
-                "max": 5000,
-                "type": "double"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "status": {
-              "description": "current status of the module",
-              "datainfo": {
-                "type": "tuple",
-                "members": [
-                  {
-                    "type": "enum",
-                    "members": {
-                      "IDLE": 100,
-                      "WARN": 200,
-                      "ERROR": 400
-                    }
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              },
-              "readonly": true
-            }
-          },
-          {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
-            "_pre_flux": {
-              "description": "Constant for simulation of pressure flux",
-              "datainfo": {
-                "min": 0,
-                "max": 20,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          }
-        ]
-      },
-      "image": null
-    },
-    {
       "id": "box-reactor_cell_temperature_reg",
       "device": "temperature_reg",
+      "deviceKey": "reactor_cell_temperature_reg",
       "logicalName": "reactor_cell_temperature_reg",
       "left": "756px",
       "top": "230px",
@@ -2244,91 +2084,9 @@
       "image": null
     },
     {
-      "id": "box-reactor_cell_temperature_sam",
-      "device": "temperature_sam",
-      "logicalName": "reactor_cell_temperature_sam",
-      "left": "772px",
-      "top": "362px",
-      "width": "227px",
-      "height": "121px",
-      "info": {
-        "params": [
-          "_heat_flux",
-          "pollinterval"
-        ],
-        "all_params": [
-          "_heat_flux",
-          "pollinterval"
-        ],
-        "commands": [],
-        "original_name": "temperature_sam",
-        "interface_classes": [
-          "Readable"
-        ],
-        "module_name": "temperature_sam",
-        "param_info": [
-          {
-            "value": {
-              "description": "Heater temperature at reactor cell",
-              "datainfo": {
-                "unit": "\u00b0C",
-                "min": 0,
-                "max": 5000,
-                "type": "double"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "status": {
-              "description": "current status of the module",
-              "datainfo": {
-                "type": "tuple",
-                "members": [
-                  {
-                    "type": "enum",
-                    "members": {
-                      "IDLE": 100,
-                      "WARN": 200,
-                      "ERROR": 400
-                    }
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              },
-              "readonly": true
-            }
-          },
-          {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
-            "_heat_flux": {
-              "description": "Constant for simulation of heat flux",
-              "datainfo": {
-                "min": 0,
-                "max": 20,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          }
-        ]
-      },
-      "image": null
-    },
-    {
       "id": "box-gas_dosing_backpress_contr1",
       "device": "backpress_contr1",
+      "deviceKey": "gas_dosing_backpress_contr1",
       "logicalName": "gas_dosing_backpress_contr1",
       "left": "1132px",
       "top": "543px",
@@ -2668,6 +2426,7 @@
     {
       "id": "box-gas_dosing_backpress_contr2",
       "device": "backpress_contr2",
+      "deviceKey": "gas_dosing_backpress_contr2",
       "logicalName": "gas_dosing_backpress_contr2",
       "left": "1169px",
       "top": "735px",
@@ -3007,6 +2766,7 @@
     {
       "id": "box-gas_analysis_myspot_sim_mass_spec",
       "device": "mass_spec",
+      "deviceKey": "gas_analysis_myspot_sim_mass_spec",
       "logicalName": "gas_analysis_myspot_sim_mass_spec",
       "left": "916px",
       "top": "670px",
@@ -3398,11 +3158,11 @@
   ],
   "valveIcons": [
     {
-      "id": "icon-gas_dosing_valve_controller_V1_1",
+      "id": "icon-gas_dosing_valve_controller_CO",
       "device": "gas_dosing_valve_controller",
-      "field": "V1_1",
-      "left": "425px",
-      "top": "32px",
+      "field": "CO",
+      "left": "428px",
+      "top": "42px",
       "width": "80px",
       "height": "100px",
       "rotationDegrees": "0",
@@ -3413,11 +3173,11 @@
       "switchOpenSvg": ""
     },
     {
-      "id": "icon-gas_dosing_valve_controller_V2_1",
+      "id": "icon-gas_dosing_valve_controller_H2",
       "device": "gas_dosing_valve_controller",
-      "field": "V2_1",
-      "left": "426px",
-      "top": "168px",
+      "field": "H2",
+      "left": "425px",
+      "top": "622px",
       "width": "80px",
       "height": "100px",
       "rotationDegrees": "0",
@@ -3448,8 +3208,8 @@
     {
       "id": "deco-1777024086479",
       "type": "line",
-      "left": "296px",
-      "top": "209px",
+      "left": "289px",
+      "top": "654px",
       "width": "120px",
       "height": "12px",
       "color": "transparent",
@@ -3480,8 +3240,8 @@
     {
       "id": "deco-1777024741166",
       "type": "line",
-      "left": "291px",
-      "top": "652px",
+      "left": "293px",
+      "top": "236px",
       "width": "277px",
       "height": "13px",
       "color": "transparent",
@@ -3512,8 +3272,8 @@
     {
       "id": "deco-1777024847886",
       "type": "line",
-      "left": "518px",
-      "top": "212px",
+      "left": "519px",
+      "top": "657px",
       "width": "51px",
       "height": "12px",
       "color": "transparent",
@@ -3576,8 +3336,8 @@
     {
       "id": "deco-1777025403314",
       "type": "line",
-      "left": "450px",
-      "top": "445px",
+      "left": "451px",
+      "top": "449px",
       "width": "239px",
       "height": "192px",
       "color": "transparent",
@@ -3656,8 +3416,8 @@
     {
       "id": "deco-1777028703822",
       "type": "line",
-      "left": "535px",
-      "top": "458px",
+      "left": "537px",
+      "top": "459px",
       "width": "303px",
       "height": "200px",
       "color": "transparent",
@@ -3688,10 +3448,10 @@
     {
       "id": "deco-1777029147351",
       "type": "line",
-      "left": "828px",
-      "top": "63px",
-      "width": "40px",
-      "height": "12px",
+      "left": "763px",
+      "top": "47px",
+      "width": "171px",
+      "height": "175px",
       "color": "transparent",
       "text": "",
       "fontFamily": "",
@@ -3721,7 +3481,7 @@
       "id": "deco-1777029211333",
       "type": "line",
       "left": "605px",
-      "top": "453px",
+      "top": "452px",
       "width": "303px",
       "height": "141px",
       "color": "transparent",
@@ -3736,9 +3496,9 @@
     {
       "id": "deco-1777029417137",
       "type": "line",
-      "left": "855px",
-      "top": "648px",
-      "width": "40px",
+      "left": "728px",
+      "top": "519px",
+      "width": "298px",
       "height": "12px",
       "color": "transparent",
       "text": "",
@@ -3801,7 +3561,7 @@
       "id": "deco-1777034772928",
       "type": "label",
       "left": "70px",
-      "top": "763px",
+      "top": "759px",
       "width": "",
       "height": "",
       "color": "rgb(0, 0, 0)",
@@ -3821,14 +3581,14 @@
       "configName": "pressure_plot",
       "xAxisTitle": "",
       "yAxisTitle": "",
-      "left": "804px",
-      "top": "47px",
-      "width": "700px",
+      "left": "799px",
+      "top": "31px",
+      "width": "723.833px",
       "height": "451px",
-      "transform": "translate(204.281px, -10.293px)",
+      "transform": "translate(199.698px, -16.7097px)",
       "zIndex": "5",
-      "dataX": "204.28125",
-      "dataY": "-10.29296875",
+      "dataX": "199.697998046875",
+      "dataY": "-16.70965576171875",
       "traces": [
         "sim_gas_dosing_backpress_contr1.value",
         "sim_gas_dosing_backpress_contr1.target",

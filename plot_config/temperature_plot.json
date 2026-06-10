@@ -31,21 +31,7 @@
         "lineWidth": 2,
         "lineColor": "#ff2600"
       }
-    },
-    {
-      "key": "reactor_cell_temperature_sam.value",
-      "suffix": "reactor_cell_temperature_sam.value",
-      "xKey": "",
-      "yKey": "",
-      "xSuffix": "",
-      "ySuffix": "",
-      "label": "",
-      "style": {
-        "lineType": "solid",
-        "lineWidth": 2,
-        "lineColor": "#0061ff"
-      }
     }
   ],
-  "savedAt": "2026-05-29T12:39:53.780Z"
+  "savedAt": "2026-06-10T14:14:35.239Z"
 }
