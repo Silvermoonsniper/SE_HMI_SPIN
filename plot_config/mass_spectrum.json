@@ -1,0 +1,24 @@
+{
+  "name": "mass_spectrum",
+  "plotType": "xy",
+  "xAxisTitle": "mass (amu)",
+  "yAxisTitle": "partial gas concentration",
+  "lines": [
+    {
+      "key": "xy:Hiden_MS_mass_spec._mass::Hiden_MS_mass_spec.value",
+      "suffix": "xy:Hiden_MS_mass_spec._mass::Hiden_MS_mass_spec.value",
+      "xKey": "Hiden_MS_mass_spec._mass",
+      "yKey": "Hiden_MS_mass_spec.value",
+      "xSuffix": "Hiden_MS_mass_spec._mass",
+      "ySuffix": "Hiden_MS_mass_spec.value",
+      "label": "Hiden_MS_mass_spec.value vs Hiden_MS_mass_spec._mass",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#ff8080",
+        "xyChartType": "bar"
+      }
+    }
+  ],
+  "savedAt": "2026-06-16T09:06:51.527Z"
+}

@@ -1,0 +1,149 @@
+{
+  "name": "OAESE_massflow_Plot",
+  "plotType": "line",
+  "xAxisTitle": "",
+  "yAxisTitle": "",
+  "lines": [
+    {
+      "key": "gas_dosing_massflow_contr1.value",
+      "suffix": "gas_dosing_massflow_contr1.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#ff8080"
+      }
+    },
+    {
+      "key": "gas_dosing_massflow_contr1.target",
+      "suffix": "gas_dosing_massflow_contr1.target",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#ff8080"
+      }
+    },
+    {
+      "key": "gas_dosing_massflow_contr2.value",
+      "suffix": "gas_dosing_massflow_contr2.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#80ff80"
+      }
+    },
+    {
+      "key": "gas_dosing_massflow_contr2.target",
+      "suffix": "gas_dosing_massflow_contr2.target",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#80ff80"
+      }
+    },
+    {
+      "key": "gas_dosing_massflow_contr3.value",
+      "suffix": "gas_dosing_massflow_contr3.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#0080ff"
+      }
+    },
+    {
+      "key": "gas_dosing_massflow_contr3.target",
+      "suffix": "gas_dosing_massflow_contr3.target",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#0080ff"
+      }
+    },
+    {
+      "key": "gas_dosing_massflow_contr4.value",
+      "suffix": "gas_dosing_massflow_contr4.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#ff0000"
+      }
+    },
+    {
+      "key": "gas_dosing_massflow_contr4.target",
+      "suffix": "gas_dosing_massflow_contr4.target",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#ff0000"
+      }
+    },
+    {
+      "key": "gas_dosing_massflow_contr5.value",
+      "suffix": "gas_dosing_massflow_contr5.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#ff00ff"
+      }
+    },
+    {
+      "key": "gas_dosing_massflow_contr5.target",
+      "suffix": "gas_dosing_massflow_contr5.target",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#ff00ff"
+      }
+    }
+  ],
+  "savedAt": "2026-06-16T08:58:50.418Z"
+}
