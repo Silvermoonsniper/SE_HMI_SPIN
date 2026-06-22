@@ -439,6 +439,33 @@ function sendValue(key, inputElementId) {
   }
 }
 
+function parseTypedParameterValue(rawValue, datainfo) {
+  const value = typeof rawValue === 'string' ? rawValue.trim() : rawValue;
+  const type = datainfo && datainfo.type ? datainfo.type : '';
+
+  if (type === 'array' || type === 'tuple' || type === 'struct') {
+    return JSON.parse(value);
+  }
+
+  if (type === 'double' || type === 'scaled' || type === 'int') {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      throw new Error(`Expected a ${type} value`);
+    }
+    return type === 'int' ? Math.trunc(numericValue) : numericValue;
+  }
+
+  if (type === 'bool') {
+    if (typeof value === 'boolean') return value;
+    const normalized = String(value).toLowerCase();
+    if (normalized === 'true' || normalized === '1') return true;
+    if (normalized === 'false' || normalized === '0') return false;
+    throw new Error('Expected a boolean value (true/false)');
+  }
+
+  return isNaN(value) ? value : parseFloat(value);
+}
+
 async function sendSelectedParam(device, domId) {
   try {
     const paramSelect = document.getElementById('param-select-' + domId);
@@ -456,8 +483,24 @@ async function sendSelectedParam(device, domId) {
       await AppUi.showAppAlert('Please enter a value.', 'Set Parameter');
       return;
     }
+
+    const deviceParams = AppState.getDeviceParams();
+    const deviceInfo = deviceParams && deviceParams[device] ? deviceParams[device] : null;
+    const paramInfo = getParamInfoMap(deviceInfo);
+    const found = paramInfo[param] || null;
     
-    let finalValue = isNaN(value) ? value : parseFloat(value);
+    let finalValue;
+    try {
+      finalValue = parseTypedParameterValue(value, found && found.datainfo ? found.datainfo : null);
+    } catch (parseError) {
+      const details = (found && found.datainfo && found.datainfo.type === 'array')
+        ? 'Use JSON array syntax, for example [1, 2, 3].'
+        : (found && found.datainfo && (found.datainfo.type === 'tuple' || found.datainfo.type === 'struct'))
+          ? `Use valid JSON for ${found.datainfo.type} values.`
+          : parseError.message;
+      await AppUi.showAppAlert(details, 'Invalid Parameter Value');
+      return;
+    }
     const key = device + '.' + param;
 
     Spin.send_request(key, "", "input", "", finalValue);
@@ -613,6 +656,10 @@ function updateParamDisplay(device, domId, param)
       const inp = document.createElement('input');
       inp.type = 'text'; inp.id = 'param-value-' + domId; inp.className = 'control-input'; inp.placeholder = 'val'; inp.style.flex = '1';
       inputContainer.appendChild(inp);
+      existing = inp;
+    }
+    if (existing && found.datainfo && (found.datainfo.type === 'array' || found.datainfo.type === 'tuple' || found.datainfo.type === 'struct')) {
+      existing.placeholder = found.datainfo.type === 'array' ? '[1, 2, 3]' : '{}';
     }
     // don't overwrite existing.value here; leave user input intact
   }
