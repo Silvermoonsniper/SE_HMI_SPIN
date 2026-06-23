@@ -502,8 +502,21 @@ async function sendSelectedParam(device, domId) {
       return;
     }
     const key = device + '.' + param;
+    const spinSocketOpen = window.Spin && window.Spin.current_socket && window.Spin.current_socket.readyState === WebSocket.OPEN;
 
-    Spin.send_request(key, "", "input", "", finalValue);
+    if (spinSocketOpen && typeof Spin.send_request === 'function') {
+      Spin.send_request(key, "", "input", "", finalValue);
+    } else {
+      const response = await fetch('/api/device_parameter', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ device, param, value: finalValue })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.status !== 'ok') {
+        throw new Error(payload.error || `HTTP ${response.status}`);
+      }
+    }
 
     fetchAndMergeLatestValuesOnce()
       .then(() => applyCachedDeviceState(device, domId))

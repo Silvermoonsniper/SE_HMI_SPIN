@@ -1,6 +1,6 @@
 """Extended Spin backend with runtime SECoP management, history storage, and HTTP APIs."""
 
-from spin.backend import Backend, Update, State, Reply, fixup_params
+from spin.backend import Backend, Update, State, Reply, Request as SpinRequest, fixup_params
 from spin.config import Device as ConfigDevice, Param
 import asyncio
 from collections import deque
@@ -2009,6 +2009,39 @@ def start_api_server(backend=None):
         except Exception as e:
             app.logger.exception('api_send_request failed')
             return jsonify({'status': 'error', 'error': str(e)}), 500
+
+    @app.route('/api/device_parameter', methods=['POST'])
+    def api_device_parameter():
+        """Write one device parameter through the backend without requiring a websocket."""
+        data, error_response = _read_json_body(required=True)
+        if error_response:
+            return error_response
+
+        device = str(data.get('device') or '').strip()
+        param = str(data.get('param') or '').strip()
+        value = data.get('value')
+
+        if not device or not param:
+            return jsonify({'status': 'error', 'error': 'missing device or param'}), 400
+        if not backend or not hasattr(backend, '_devices'):
+            return jsonify({'status': 'error', 'error': 'backend unavailable'}), 503
+
+        dev = backend._devices.get(device)
+        if dev is None:
+            return jsonify({'status': 'error', 'error': f'unknown device {device}'}), 404
+
+        request_obj = SpinRequest(None, f'{device}.{param}', '', 'input', '', value)
+
+        async def _perform_write():
+            await dev.handle_request(request_obj)
+
+        try:
+            future = asyncio.run_coroutine_threadsafe(_perform_write(), backend._loop)
+            future.result(timeout=10.0)
+            return jsonify({'status': 'ok'})
+        except Exception as exc:
+            app.logger.exception('api_device_parameter failed')
+            return jsonify({'status': 'error', 'error': str(exc)}), 500
 
     @app.route('/api/restart', methods=['POST'])
     @_require_api_auth()
