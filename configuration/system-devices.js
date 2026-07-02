@@ -18,12 +18,14 @@ function getValveIconRotationDegrees(valveIcon) {
 }
 
 function getSwitchStateRotationDegrees(imgContainer, valveIcon) {
-  const positionValue = valveIcon && valveIcon.dataset
-    ? valveIcon.dataset.open
-    : imgContainer && imgContainer.dataset
-      ? imgContainer.dataset.switchPosition
-      : '0';
-  return String(positionValue) === '1' ? 90 : 0;
+  const closedSvg = valveIcon && valveIcon.dataset ? (valveIcon.dataset.switchClosedSvg || '') : '';
+  const openSvg = valveIcon && valveIcon.dataset ? (valveIcon.dataset.switchOpenSvg || '') : '';
+  const usesDistinctStateArtwork = !!closedSvg && !!openSvg && closedSvg !== openSvg;
+  if (usesDistinctStateArtwork) {
+    return 0;
+  }
+
+  
 }
 
 function syncValveIconTransform(valveIcon) {
