@@ -25,6 +25,13 @@ function getSwitchStateRotationDegrees(imgContainer, valveIcon) {
     return 0;
   }
 
+  const positionValue = valveIcon && valveIcon.dataset
+    ? valveIcon.dataset.open
+    : imgContainer && imgContainer.dataset
+      ? imgContainer.dataset.switchPosition
+      : '0';
+  return String(positionValue) === '1' ? 90 : 0;
+
   
 }
 

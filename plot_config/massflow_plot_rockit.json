@@ -1,0 +1,149 @@
+{
+  "name": "massflow_plot_rockit",
+  "plotType": "line",
+  "xAxisTitle": "",
+  "yAxisTitle": "",
+  "lines": [
+    {
+      "key": "sim_gas_dosing_massflow_contr1.value",
+      "suffix": "sim_gas_dosing_massflow_contr1.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#007bff"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_massflow_contr1.setpoint",
+      "suffix": "sim_gas_dosing_massflow_contr1.setpoint",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#007bff"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_massflow_contr2.value",
+      "suffix": "sim_gas_dosing_massflow_contr2.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#f9f06b"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_massflow_contr2.setpoint",
+      "suffix": "sim_gas_dosing_massflow_contr2.setpoint",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#f9f06b"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_massflow_contr3.value",
+      "suffix": "sim_gas_dosing_massflow_contr3.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#f66151"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_massflow_contr3.setpoint",
+      "suffix": "sim_gas_dosing_massflow_contr3.setpoint",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#f66151"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_massflow_contr4.value",
+      "suffix": "sim_gas_dosing_massflow_contr4.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#8ff0a4"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_massflow_contr4.setpoint",
+      "suffix": "sim_gas_dosing_massflow_contr4.setpoint",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#8ff0a4"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_massflow_contr5.value",
+      "suffix": "sim_gas_dosing_massflow_contr5.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#3584e4"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_massflow_contr5.setpoint",
+      "suffix": "sim_gas_dosing_massflow_contr5.setpoint",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#3584e4"
+      }
+    }
+  ],
+  "savedAt": "2026-07-02T13:03:15.752Z"
+}
