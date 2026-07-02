@@ -696,6 +696,8 @@ function applyCachedDeviceState(device, domId) {
       displayValue = '[' + value.join(', ') + ']';
     } else if (typeof value === 'object') {
       displayValue = JSON.stringify(value);
+    } else if (typeof value === 'number' && Number.isFinite(value) && !Number.isInteger(value)) {
+      displayValue = value.toFixed(2);
     } else {
       displayValue = String(value);
     }

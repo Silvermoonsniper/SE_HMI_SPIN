@@ -1,24 +1,24 @@
 {
   "name": "mass_spectrum",
   "plotType": "xy",
-  "xAxisTitle": "mass (amu)",
-  "yAxisTitle": "partial gas concentration",
+  "xAxisTitle": "m/z (amu)",
+  "yAxisTitle": "partial gas concentration (mbar)",
   "lines": [
     {
-      "key": "xy:Hiden_MS_mass_spec._mass::Hiden_MS_mass_spec.value",
-      "suffix": "xy:Hiden_MS_mass_spec._mass::Hiden_MS_mass_spec.value",
-      "xKey": "Hiden_MS_mass_spec._mass",
-      "yKey": "Hiden_MS_mass_spec.value",
-      "xSuffix": "Hiden_MS_mass_spec._mass",
-      "ySuffix": "Hiden_MS_mass_spec.value",
-      "label": "Hiden_MS_mass_spec.value vs Hiden_MS_mass_spec._mass",
+      "key": "xy:gas_analysis_myspot_sim_mass_spec._mass::gas_analysis_myspot_sim_mass_spec.value",
+      "suffix": "xy:gas_analysis_myspot_sim_mass_spec._mass::gas_analysis_myspot_sim_mass_spec.value",
+      "xKey": "gas_analysis_myspot_sim_mass_spec._mass",
+      "yKey": "gas_analysis_myspot_sim_mass_spec.value",
+      "xSuffix": "gas_analysis_myspot_sim_mass_spec._mass",
+      "ySuffix": "gas_analysis_myspot_sim_mass_spec.value",
+      "label": "gas_analysis_myspot_sim_mass_spec.value vs gas_analysis_myspot_sim_mass_spec._mass",
       "style": {
-        "lineType": "dashed",
+        "lineType": "solid",
         "lineWidth": 2,
-        "lineColor": "#ff8080",
+        "lineColor": "#007bff",
         "xyChartType": "bar"
       }
     }
   ],
-  "savedAt": "2026-06-16T09:06:51.527Z"
+  "savedAt": "2026-07-01T20:09:08.330Z"
 }

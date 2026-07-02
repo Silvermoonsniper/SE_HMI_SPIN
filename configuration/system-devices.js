@@ -1214,7 +1214,7 @@ async function setupValveController(device, domId,isConfigurelayout) {
         imgContainer.appendChild(img);
         
         // Click to toggle between position 0 and 1
-        imgContainer.onclick = () => {
+        imgContainer.onclick = async () => {
           const data = latestValues[device];
           let currentValue = 0;
           if (data && data[paramName] && data[paramName].value && data[paramName].value[fieldName] !== undefined) {
@@ -1222,6 +1222,9 @@ async function setupValveController(device, domId,isConfigurelayout) {
           }
           currentValue = toNumeric(currentValue);
           const newValue = currentValue === 0 ? 1 : 0;
+          if (!await confirmValveStateChange(device, fieldName, newValue, true)) {
+            return;
+          }
           setValveField(device, fieldName, newValue);
           updateSwitchRotation(imgContainer, newValue);
         };
@@ -1236,7 +1239,7 @@ async function setupValveController(device, domId,isConfigurelayout) {
         imgContainer.appendChild(img);
         
         // Click to toggle valve ON/OFF
-        imgContainer.onclick = () => {
+        imgContainer.onclick = async () => {
           const data = latestValues[device];
           let currentValue = 0;
           if (data && data[paramName] && data[paramName].value && data[paramName].value[fieldName] !== undefined) {
@@ -1244,6 +1247,9 @@ async function setupValveController(device, domId,isConfigurelayout) {
           }
           currentValue = toNumeric(currentValue);
           const newValue = currentValue === 1 ? 0 : 1;
+          if (!await confirmValveStateChange(device, fieldName, newValue, false)) {
+            return;
+          }
           setValveField(device, fieldName, newValue);
           // Immediately update the visual
           updateValveImage(valveDomId, newValue);
@@ -1365,6 +1371,17 @@ async function setupValveController(device, domId,isConfigurelayout) {
     // Set up listeners for value updates to update images
     setupValveImageListeners(device, domId);
 }
+
+async function confirmValveStateChange(device, fieldName, newValue, isSwitch = false) {
+  const action = Number(newValue) === 1 ? 'on' : 'off';
+  const subject = isSwitch ? 'switch' : 'valve';
+  const message = `Do you want to switch ${subject} ${fieldName} for ${device} ${action}?`;
+  if (typeof AppUi !== 'undefined' && AppUi && typeof AppUi.showAppConfirm === 'function') {
+    return !!(await AppUi.showAppConfirm(message, 'Confirm Valve Change'));
+  }
+  return window.confirm(message);
+}
+
 // update image after switch rotation
 function updateSwitchRotation(imgContainer, position) {
   const img = imgContainer.querySelector('img');
@@ -1396,6 +1413,38 @@ function updateValveImage(valveDomId, isOpen) {
       }
     } catch (e) { /* ignore */ }
   }
+}
+
+function hydrateValveIconState(valveIcon) {
+  if (!valveIcon) return;
+
+  const device = valveIcon.dataset.device || '';
+  const fieldName = valveIcon.dataset.field || '';
+  if (!device || !fieldName) return;
+
+  const deviceEntry = latestValues && latestValues[device] ? latestValues[device] : null;
+  let rawValue;
+  if (deviceEntry && deviceEntry.value && deviceEntry.value.value && typeof deviceEntry.value.value[fieldName] !== 'undefined') {
+    rawValue = deviceEntry.value.value[fieldName];
+  } else if (deviceEntry && deviceEntry.target && deviceEntry.target.value && typeof deviceEntry.target.value[fieldName] !== 'undefined') {
+    rawValue = deviceEntry.target.value[fieldName];
+  }
+  if (typeof rawValue === 'undefined') return;
+
+  const normalizedValue = toNumeric(rawValue);
+  const lowerField = fieldName.toLowerCase();
+  const domId = `${deviceDomId(device)}_${fieldName}`;
+  const imgContainer = document.getElementById(`img-${domId}`);
+
+  if (lowerField.includes('switch')) {
+    if (imgContainer) {
+      updateSwitchRotation(imgContainer, normalizedValue);
+    }
+  } else {
+    updateValveImage(domId, normalizedValue === 1);
+  }
+
+  valveIcon.dataset.open = normalizedValue === 1 ? '1' : '0';
 }
 
 function setupValveImageListeners(device, domId) {

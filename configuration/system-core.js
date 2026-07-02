@@ -2635,9 +2635,9 @@ async function connectToGUI(is_configure) {
       if (typeof renderServerLayout === 'function') {
         await renderServerLayout(layouts[name]);
       } else if (is_configure) {
-        applyLayout(layouts[name]);
+        await applyLayout(layouts[name]);
       } else {
-        connect_to_system(layouts[name]);
+        await connect_to_system(layouts[name]);
       }
     }
     else {
@@ -2650,15 +2650,21 @@ async function connectToGUI(is_configure) {
         }
         if (typeof renderServerLayout === 'function') {
           await renderServerLayout(layout);
-        } else if (is_configure) {
-          applyLayout(layout);
-        } else {
-          connect_to_system(layout);
+        } 
+        else if (is_configure) {
+          await applyLayout(layout);
+        } 
+        else {
+          await connect_to_system(layout);
         }
-      } catch (httpError) {
-        try {
+      } 
+      catch (httpError) {
+        try 
+        {
           window.Spin.send_request('nodemanager.get_layout', '', 'read', 'read', { name: name });
-        } catch (spinError) {
+        } 
+        catch (spinError)
+         {
           alert('Failed to load layout from server.');
         }
       }
@@ -2699,6 +2705,14 @@ function connectToNode()
 
 function disconnectNode() 
 {
+  try {
+    const plotsState = AppState.getPlots();
+    if (plotsState && typeof plotsState.closeAllPlotWindows === 'function') {
+      plotsState.closeAllPlotWindows();
+    }
+  } catch (e) {
+    console.debug('disconnectNode: failed to close floating plot windows', e);
+  }
   document.getElementById('main-panel').style.display = 'none';
   document.getElementById('connection-panel').style.display = 'flex';
  

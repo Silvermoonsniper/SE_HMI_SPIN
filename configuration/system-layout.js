@@ -1799,56 +1799,35 @@ function getCurrentLayoutData() {
   try {
     const plotsState = AppState.getPlots();
     const plotsMap = plotsState && plotsState.plotsMap ? plotsState.plotsMap : null;
-    document.querySelectorAll('.plot-panel').forEach(box => {
-      const plotId = box.id || null; // e.g., 'plot_1_panel'
-      const titleEl = box.querySelector('.plot-title-label');
-      const title = titleEl ? titleEl.textContent : (box.querySelector('.plot-header strong') ? box.querySelector('.plot-header strong').textContent : '');
-      // find traces from plotsMap if available
-      let traces = [];
-      let configName = '';
-      let xAxisTitle = '';
-      let yAxisTitle = '';
-      let geometry = null;
-      if (plotsMap) {
-        Object.keys(plotsMap).forEach(pid => {
-          const p = plotsMap[pid];
-          try {
-            if (p && p.containerDiv && p.containerDiv.id === plotId) {
-              traces = Object.keys(p.traces || {}).map(k => k);
-              configName = p.configName || '';
-              xAxisTitle = p.xAxisTitle || '';
-              yAxisTitle = p.yAxisTitle || '';
-              if (typeof plotsState.capturePlotPanelGeometry === 'function') {
-                geometry = plotsState.capturePlotPanelGeometry(p);
-              }
-            }
-          } catch (e) { }
-        });
-      }
-      // compute fallback from bounding rect relative to device-grid
-      const rect = box.getBoundingClientRect();
-      const leftVal = geometry && geometry.left ? geometry.left : (box.style.left && box.style.left.trim() ? box.style.left : Math.round(rect.left - gridRect.left) + 'px');
-      const topVal = geometry && geometry.top ? geometry.top : (box.style.top && box.style.top.trim() ? box.style.top : Math.round(rect.top - gridRect.top) + 'px');
-      const widthVal = geometry && geometry.width ? geometry.width : (box.style.width && box.style.width.trim() ? box.style.width : Math.round(rect.width) + 'px');
-      const heightVal = geometry && geometry.height ? geometry.height : (box.style.height && box.style.height.trim() ? box.style.height : Math.round(rect.height) + 'px');
+    if (plotsMap) {
+      Object.keys(plotsMap).forEach(pid => {
+        const plotEntry = plotsMap[pid];
+        if (!plotEntry || !plotEntry.containerDiv) return;
+        const plotId = plotEntry.containerDiv.id || pid;
+        const titleEl = plotEntry.containerDiv.querySelector('.plot-title-label');
+        const title = titleEl ? titleEl.textContent : (plotEntry.configName || '');
+        const geometry = typeof plotsState.capturePlotPanelGeometry === 'function'
+          ? plotsState.capturePlotPanelGeometry(plotEntry)
+          : null;
 
-      layout.plots.push({
-        id: plotId,
-        title: title,
-        configName: configName,
-        xAxisTitle: xAxisTitle,
-        yAxisTitle: yAxisTitle,
-        left: leftVal,
-        top: topVal,
-        width: widthVal,
-        height: heightVal,
-        transform: geometry && geometry.transform ? geometry.transform : (box.style.transform || ''),
-        zIndex: geometry && geometry.zIndex ? geometry.zIndex : (box.style.zIndex || ''),
-        dataX: geometry && geometry.dataX ? geometry.dataX : (box.getAttribute('data-x') || ''),
-        dataY: geometry && geometry.dataY ? geometry.dataY : (box.getAttribute('data-y') || ''),
-        traces: traces
+        layout.plots.push({
+          id: plotId,
+          title: title,
+          configName: plotEntry.configName || '',
+          xAxisTitle: plotEntry.xAxisTitle || '',
+          yAxisTitle: plotEntry.yAxisTitle || '',
+          left: geometry && geometry.left ? geometry.left : '0px',
+          top: geometry && geometry.top ? geometry.top : '0px',
+          width: geometry && geometry.width ? geometry.width : '760px',
+          height: geometry && geometry.height ? geometry.height : '560px',
+          transform: geometry && geometry.transform ? geometry.transform : '',
+          zIndex: geometry && geometry.zIndex ? geometry.zIndex : '',
+          dataX: geometry && geometry.dataX ? geometry.dataX : '',
+          dataY: geometry && geometry.dataY ? geometry.dataY : '',
+          traces: Object.keys(plotEntry.traces || {})
+        });
       });
-    });
+    }
   } 
   catch 
   (e) 
@@ -1933,7 +1912,7 @@ function getCurrentLayoutData() {
 
 // function to show the system GUI with chosen layout configs, all elements are fixed, not draggable or resizeable or removable
 
-function connect_to_system(layout)
+async function connect_to_system(layout)
 {
 
   const isconfigure_layout = false; 
@@ -2027,6 +2006,14 @@ function connect_to_system(layout)
 
   // Restore Valve Icons (individual valve/switch icons) if present in layout
   if (layout.valveIcons && Array.isArray(layout.valveIcons)) {
+    const restoredValveIcons = [];
+    try {
+      if (typeof fetchAndMergeLatestValuesOnce === 'function') {
+        await fetchAndMergeLatestValuesOnce();
+      }
+    } catch (e) {
+      console.debug('connect_to_system: failed to refresh latest values before valve restore', e);
+    }
     const select = document.getElementById('device-select');
     const availableDevices = select ? Array.from(select.options).map(opt => opt.value) : [];
 
@@ -2036,15 +2023,21 @@ function connect_to_system(layout)
         
         valve_element = create_valve_icon(availableDevices,iconDef,isconfigure_layout);
         const grid = document.getElementById('device-grid');
-        if (grid) {
+        if (grid && valve_element && valve_element[0]) {
           grid.appendChild(valve_element[0]);
+          restoredValveIcons.push(valve_element[0]);
+          if (typeof hydrateValveIconState === 'function') {
+            hydrateValveIconState(valve_element[0]);
+          }
         }
        
 
         // Ensure we have image listeners for this device (safe to call multiple times)
         try 
         {
-           setupValveImageListeners(realDevice, deviceDomId(realDevice)); 
+           if (valve_element && valve_element[0]) {
+             setupValveImageListeners(valve_element[0].dataset.device, deviceDomId(valve_element[0].dataset.device));
+           }
         } 
         catch (e) 
         {}
@@ -2052,6 +2045,18 @@ function connect_to_system(layout)
       catch (e) 
       {}
     });
+
+    if (restoredValveIcons.length && typeof hydrateDeviceFromNode === 'function') {
+      const valveDevices = [...new Set(restoredValveIcons
+        .map((icon) => icon && icon.dataset ? icon.dataset.device : '')
+        .filter(Boolean))];
+      await Promise.all(valveDevices.map((device) => hydrateDeviceFromNode(device).catch(() => {})));
+      restoredValveIcons.forEach((icon) => {
+        if (typeof hydrateValveIconState === 'function') {
+          hydrateValveIconState(icon);
+        }
+      });
+    }
    
   }
 
@@ -2066,7 +2071,7 @@ function connect_to_system(layout)
 }
 
 
-function applyLayout(layout) {
+async function applyLayout(layout) {
   // Clear current
   document.getElementById('device-grid').innerHTML = '';
   getConnectionSvg();
@@ -2157,6 +2162,13 @@ function applyLayout(layout) {
 
   // Restore Valve Icons (individual valve/switch icons) if present in layout
   if (layout.valveIcons && Array.isArray(layout.valveIcons)) {
+    try {
+      if (typeof fetchAndMergeLatestValuesOnce === 'function') {
+        await fetchAndMergeLatestValuesOnce();
+      }
+    } catch (e) {
+      console.debug('applyLayout: failed to refresh latest values before valve restore', e);
+    }
     const select = document.getElementById('device-select');
     const availableDevices = select ? Array.from(select.options).map(opt => opt.value) : [];
 
@@ -2166,8 +2178,11 @@ function applyLayout(layout) {
         
         valve_element = create_valve_icon(availableDevices,iconDef,isconfigure_layout);
         const grid = document.getElementById('device-grid');
-        if (grid) {
+        if (grid && valve_element && valve_element[0]) {
           grid.appendChild(valve_element[0]);
+          if (typeof hydrateValveIconState === 'function') {
+            hydrateValveIconState(valve_element[0]);
+          }
         }
         makeValveIconDraggable(valve_element[0]);
         makeValveIconResizable(valve_element[0], valve_element[1]);
@@ -2175,7 +2190,9 @@ function applyLayout(layout) {
         // Ensure we have image listeners for this device (safe to call multiple times)
         try 
         {
-           setupValveImageListeners(realDevice, deviceDomId(realDevice)); 
+           if (valve_element && valve_element[0]) {
+             setupValveImageListeners(valve_element[0].dataset.device, deviceDomId(valve_element[0].dataset.device));
+           }
         } 
         catch (e) 
         {}
@@ -2273,66 +2290,7 @@ function create_plot(layout,isconfigure_layout)
             plotsState.restorePlotPanelFromLayout(p, isconfigure_layout);
             return;
           }
-
-          const grid = document.getElementById('device-grid');
-          if (!grid) return;
-          const container = document.createElement('div');
-          container.className = 'device-box plot-panel';
-          container.id = p.id || ('restored_plot_' + AppState.nextPlotRestoreCounter() + '_panel');
-          container.style.position = 'absolute';
-          if (p.left) container.style.left = p.left;
-          if (p.top) container.style.top = p.top;
-          if (p.width) container.style.width = p.width;
-          if (p.height) container.style.height = p.height;
-          container.style.maxWidth = 'none';
-          container.style.boxSizing = 'border-box';
-          container.style.zIndex = '5';
-
-          const titleDiv = document.createElement('div');
-          titleDiv.className = 'plot-title-label';
-          titleDiv.contentEditable = true;
-          titleDiv.innerText = p.title || '';
-          titleDiv.style.fontWeight = 'bold';
-          titleDiv.style.fontSize = '18px';
-          titleDiv.style.textAlign = 'center';
-          titleDiv.style.margin = '8px 0 4px 0';
-          titleDiv.style.outline = 'none';
-          container.appendChild(titleDiv);
-
-          const plotDiv = document.createElement('div');
-          plotDiv.id = (container.id ? container.id + '_plot' : ('restored_plot_' + plotsState._restoreCounter + '_plot'));
-          plotDiv.style.width = '100%';
-          plotDiv.style.height = (p.height || '360px');
-          container.appendChild(plotDiv);
-
-          grid.appendChild(container);
-          if (isconfigure_layout)
-          {
-          try { makeDraggable(container); } catch (e) {}
-          try { makeResizable(container); } catch (e) {}
-          }
-
-          try { container.style.transform = ''; container.removeAttribute('data-x'); container.removeAttribute('data-y'); } catch(e){}
-
-          const newKey = 'restored_plot_' + AppState.nextPlotRestoreCounter();
-          const plotEntry = { id: newKey, containerDiv: container, plotDiv: plotDiv, traces: {}, configName: p.configName || p.title || '' };
-          if (Array.isArray(p.traces)) {
-            p.traces.forEach(tkey => {
-              const trace = { x: [], y: [], mode: 'lines+markers', name: tkey };
-              plotEntry.traces[tkey] = { traceObj: trace, suffix: tkey, _traceIndex: undefined, _lastSent: 0 };
-            });
-          }
-          plotsState.plotsMap[newKey] = plotEntry;
-
-          try 
-          {
-            const data = Object.values(plotEntry.traces).map(t => t.traceObj);
-            Plotly.newPlot(plotDiv, data, getTimeRangePlotLayout({ margin: { t: 30 } })).then(() => {
-              Object.values(plotEntry.traces).forEach((t, i) => { t._traceIndex = i; t._lastSent = t.traceObj.x.length; });
-            }).catch(()=>{});
-          } 
-          catch(e) 
-          {}
+          console.debug('create_plot: popup plot restorer unavailable, skipping inline plot fallback');
 
         } 
         catch (err) 
@@ -2485,7 +2443,7 @@ function create_valve_icon(availableDevices,iconDef,isconfigure_layout)
         attachValveSvgPicker(valveIcon, isValve || isSwitch);
 
         // Click handler toggles by reading latestValues and sending setValveField
-        imgContainer.onclick = () => {
+        imgContainer.onclick = async () => {
         
           // If Spin is not connected, do not attempt to send (no persistent red border)
           if (!window.Spin || !window.Spin.current_socket || window.Spin.current_socket.readyState !== WebSocket.OPEN) {
@@ -2502,6 +2460,9 @@ function create_valve_icon(availableDevices,iconDef,isconfigure_layout)
           // Normalize different shapes ('0'/'1', booleans, {value:'0'}) to numeric
           currentValue = toNumeric(currentValue);
           const newValue = isSwitch ? (currentValue === 0 ? 1 : 0) : (currentValue === 1 ? 0 : 1);
+          if (typeof confirmValveStateChange === 'function' && !await confirmValveStateChange(realDevice, fieldName, newValue, isSwitch)) {
+            return;
+          }
           setValveField(realDevice, fieldName, newValue);
           // optimistic UI update: rotate switches, update valve visuals
           if (isSwitch) {
