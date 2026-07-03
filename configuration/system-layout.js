@@ -625,6 +625,327 @@ function setupTextContextMenu() {
   }
 }
 
+let pendingCanvasCreatePosition = null;
+
+function getCanvasCreateMenu() {
+  return document.getElementById('canvas-create-menu');
+}
+
+function getCanvasCoordinatesFromClient(clientX, clientY) {
+  const grid = document.getElementById('device-grid');
+  if (!grid) {
+    return { left: '100px', top: '100px' };
+  }
+
+  const rect = grid.getBoundingClientRect();
+  const zoom = (typeof currentZoom === 'number' && isFinite(currentZoom) && currentZoom > 0) ? currentZoom : 1;
+  const left = Math.max(0, Math.round((clientX - rect.left) / zoom));
+  const top = Math.max(0, Math.round((clientY - rect.top) / zoom));
+  return { left: `${left}px`, top: `${top}px` };
+}
+
+function hideCanvasCreateMenu() {
+  const menu = getCanvasCreateMenu();
+  if (!menu) return;
+  menu.style.display = 'none';
+  menu.querySelectorAll('.canvas-create-submenu').forEach((submenu) => {
+    submenu.classList.remove('is-open');
+  });
+}
+
+function isCanvasCreateMenuVisible() {
+  const menu = getCanvasCreateMenu();
+  return !!(menu && menu.style.display === 'block');
+}
+
+function getOpenCanvasCreateSubmenu() {
+  const menu = getCanvasCreateMenu();
+  if (!menu) return null;
+  return menu.querySelector('.canvas-create-submenu.is-open');
+}
+
+function scrollCanvasCreateSubmenu(event) {
+  if (!isCanvasCreateMenuVisible()) return false;
+
+  const submenu = getOpenCanvasCreateSubmenu();
+  if (!submenu) return false;
+
+  const key = event.key;
+  const lineStep = 36;
+  const pageStep = Math.max(120, submenu.clientHeight - 24);
+  let nextScrollTop = submenu.scrollTop;
+
+  if (key === 'ArrowDown') {
+    nextScrollTop += lineStep;
+  } else if (key === 'ArrowUp') {
+    nextScrollTop -= lineStep;
+  } else if (key === 'PageDown') {
+    nextScrollTop += pageStep;
+  } else if (key === 'PageUp') {
+    nextScrollTop -= pageStep;
+  } else if (key === 'Home') {
+    nextScrollTop = 0;
+  } else if (key === 'End') {
+    nextScrollTop = submenu.scrollHeight;
+  } else {
+    return false;
+  }
+
+  event.preventDefault();
+  event.stopPropagation();
+  submenu.scrollTop = nextScrollTop;
+  return true;
+}
+
+function populateCanvasCreateSubmenu(submenu, items) {
+  if (!submenu) return;
+  submenu.innerHTML = '';
+
+  if (!items.length) {
+    const empty = document.createElement('div');
+    empty.className = 'canvas-create-empty';
+    empty.textContent = 'No options';
+    submenu.appendChild(empty);
+    return;
+  }
+
+  items.forEach((item) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'canvas-create-submenu-item';
+    button.textContent = item.label;
+    button.title = item.title || item.label;
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      hideCanvasCreateMenu();
+      item.action();
+    });
+    submenu.appendChild(button);
+  });
+}
+
+function buildPlotMenuItems() {
+  const items = [
+    {
+      label: 'New plot',
+      action: () => {
+        if (window.SEPlotUi && typeof window.SEPlotUi.openConfigurationWindow === 'function') {
+          window.SEPlotUi.openConfigurationWindow({ position: pendingCanvasCreatePosition, reset: true });
+        }
+      }
+    }
+  ];
+
+  if (window.SEPlotUi && typeof window.SEPlotUi.refreshSavedPlotNames === 'function') {
+    window.SEPlotUi.refreshSavedPlotNames();
+  }
+
+  const savedNames = window.SEPlotUi && typeof window.SEPlotUi.getSavedPlotNames === 'function'
+    ? window.SEPlotUi.getSavedPlotNames()
+    : [];
+
+  savedNames.forEach((name) => {
+    items.push({
+      label: name,
+      action: () => {
+        if (window.SEPlotUi && typeof window.SEPlotUi.createSavedPlotByName === 'function') {
+          window.SEPlotUi.createSavedPlotByName(name, { position: pendingCanvasCreatePosition });
+        }
+      }
+    });
+  });
+
+  return items;
+}
+
+function buildDeviceMenuItems() {
+  const select = document.getElementById('device-select');
+  if (!select) return [];
+
+  return Array.from(select.options)
+    .filter((option) => option && option.value)
+    .map((option) => ({
+      label: option.textContent || option.value,
+      title: option.value,
+      action: () => {
+        select.value = option.value;
+        const created = createDeviceDisplay(true, Object.assign({ device: option.value }, pendingCanvasCreatePosition || {}));
+        if (created) {
+          setSelectedCanvasElement(created);
+        }
+      }
+    }));
+}
+
+function buildDecorationMenuItems() {
+  const select = document.getElementById('deco-select');
+  if (!select) return [];
+
+  return Array.from(select.options)
+    .filter((option) => option && option.value)
+    .map((option) => ({
+      label: option.textContent || option.value,
+      title: option.value,
+      action: () => {
+        select.value = option.value;
+        const created = createDecoration(true, Object.assign({ type: option.value }, pendingCanvasCreatePosition || {}));
+        if (created) {
+          setSelectedCanvasElement(created);
+        }
+      }
+    }));
+}
+
+function buildLayoutMenuItems() {
+  return [
+    {
+      label: 'Zoom in',
+      action: () => {
+        zoomCanvas(0.1);
+      }
+    },
+    {
+      label: 'Zoom out',
+      action: () => {
+        zoomCanvas(-0.1);
+      }
+    },
+    {
+      label: 'Reset view',
+      action: () => {
+        resetView();
+      }
+    },
+    {
+      label: 'Save layout',
+      action: () => {
+        saveLayoutToStorage();
+      }
+    },
+    {
+      label: 'Load layout',
+      action: () => {
+        loadLayoutFromFile();
+      }
+    },
+    {
+      label: 'New layout',
+      action: () => {
+        create_newLayoutFile();
+      }
+    }
+  ];
+}
+
+function refreshCanvasCreateMenuContents(menu) {
+  populateCanvasCreateSubmenu(menu.querySelector('#canvas-create-submenu-plot'), buildPlotMenuItems());
+  populateCanvasCreateSubmenu(menu.querySelector('#canvas-create-submenu-device'), buildDeviceMenuItems());
+  populateCanvasCreateSubmenu(menu.querySelector('#canvas-create-submenu-decoration'), buildDecorationMenuItems());
+  populateCanvasCreateSubmenu(menu.querySelector('#canvas-create-submenu-layout'), buildLayoutMenuItems());
+}
+
+function showCanvasCreateSubmenu(menu, submenuKey) {
+  if (!menu) return;
+  menu.querySelectorAll('.canvas-create-submenu').forEach((submenu) => {
+    submenu.classList.toggle('is-open', submenu.id === `canvas-create-submenu-${submenuKey}`);
+  });
+  menu.querySelectorAll('.canvas-create-menu-entry').forEach((entry) => {
+    entry.classList.toggle('is-open', entry.dataset.submenu === submenuKey);
+  });
+
+  const openSubmenu = getOpenCanvasCreateSubmenu();
+  if (openSubmenu) {
+    openSubmenu.setAttribute('tabindex', '-1');
+    openSubmenu.focus({ preventScroll: true });
+  }
+}
+
+function showCanvasCreateMenu(clientX, clientY) {
+  const menu = getCanvasCreateMenu();
+  if (!menu) return;
+
+  pendingCanvasCreatePosition = getCanvasCoordinatesFromClient(clientX, clientY);
+  refreshCanvasCreateMenuContents(menu);
+
+  menu.style.display = 'block';
+  menu.classList.toggle('canvas-create-menu-align-left', clientX > (window.innerWidth - 320));
+  menu.style.left = `${Math.max(12, Math.min(clientX, window.innerWidth - menu.offsetWidth - 12))}px`;
+  menu.style.top = `${Math.max(12, Math.min(clientY, window.innerHeight - menu.offsetHeight - 12))}px`;
+  showCanvasCreateSubmenu(menu, 'plot');
+}
+
+function isEmptyCanvasContextTarget(target) {
+  const grid = document.getElementById('device-grid');
+  const viewport = document.getElementById('viewport');
+  if (!grid || !viewport || !target || !target.closest) return false;
+
+  const inCanvasArea = !!target.closest('#device-grid, #viewport');
+  if (!inCanvasArea) return false;
+
+  const blockedInteractiveTarget = target.closest(
+    '.device-box, .deco-box, .plot-panel, .valve-icon, .line-context-menu, .text-context-menu, .canvas-create-menu, .valve-icon-action-menu, .valve-svg-picker-menu'
+  );
+  if (blockedInteractiveTarget) return false;
+
+  return true;
+}
+
+function ensureCanvasCreateMenu() {
+  let menu = getCanvasCreateMenu();
+  if (menu) return menu;
+
+  menu = document.createElement('div');
+  menu.id = 'canvas-create-menu';
+  menu.className = 'canvas-create-menu';
+  menu.innerHTML = [
+    '<div class="canvas-create-menu-entry" data-submenu="plot"><span>Add plot</span><span class="canvas-create-menu-arrow">&#8250;</span><div class="canvas-create-submenu" id="canvas-create-submenu-plot"></div></div>',
+    '<div class="canvas-create-menu-entry" data-submenu="device"><span>Add device</span><span class="canvas-create-menu-arrow">&#8250;</span><div class="canvas-create-submenu" id="canvas-create-submenu-device"></div></div>',
+    '<div class="canvas-create-menu-entry" data-submenu="decoration"><span>Add customized element</span><span class="canvas-create-menu-arrow">&#8250;</span><div class="canvas-create-submenu" id="canvas-create-submenu-decoration"></div></div>',
+    '<div class="canvas-create-menu-entry" data-submenu="layout"><span>Layout actions</span><span class="canvas-create-menu-arrow">&#8250;</span><div class="canvas-create-submenu" id="canvas-create-submenu-layout"></div></div>'
+  ].join('');
+
+  menu.querySelectorAll('.canvas-create-menu-entry').forEach((entry) => {
+    entry.addEventListener('mouseenter', () => {
+      showCanvasCreateSubmenu(menu, entry.dataset.submenu);
+    });
+  });
+
+  document.body.appendChild(menu);
+  return menu;
+}
+
+function setupCanvasCreateContextMenu() {
+  const menu = ensureCanvasCreateMenu();
+  if (!menu || menu.dataset.canvasCreateReady === 'true') return;
+
+  menu.dataset.canvasCreateReady = 'true';
+
+  document.addEventListener('contextmenu', (event) => {
+    if (!areDecorationEditsEnabled()) return;
+    if (!isEmptyCanvasContextTarget(event.target)) return;
+    event.preventDefault();
+    hideDecorationLineContextMenu();
+    hideTextContextMenu();
+    showCanvasCreateMenu(event.clientX, event.clientY);
+  });
+
+  document.addEventListener('mousedown', (event) => {
+    if (menu.contains(event.target)) return;
+    hideCanvasCreateMenu();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (scrollCanvasCreateSubmenu(event)) {
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      hideCanvasCreateMenu();
+    }
+  }, true);
+}
+
 function selectDeco(el) {
   if (el && !areDecorationEditsEnabled()) {
     return;
@@ -776,6 +1097,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('DOMContentLoaded', () => {
     setupTextContextMenu();
     setupDecorationLineContextMenu();
+    setupCanvasCreateContextMenu();
   }, { once: true });
 
 function makeDraggable(el) 
@@ -957,12 +1279,12 @@ function makeResizable(el) {
   window.addEventListener('mouseup', onMouseUp);
 }
 
-function createDecoration(isConfigurelayout) 
+function createDecoration(isConfigurelayout, options = {}) 
 {
   const select = document.getElementById('deco-select');
   const colorInput = document.getElementById('deco-color');
-  const type = select.value;
-  const color = colorInput ? colorInput.value : '#cccccc';
+  const type = options.type || (select ? select.value : '');
+  const color = options.color || (colorInput ? colorInput.value : '#cccccc');
   
  
 
@@ -1082,8 +1404,8 @@ function createDecoration(isConfigurelayout)
   
   
   // Position randomly or in a default location
-  wrapper.style.left = '100px';
-  wrapper.style.top = '100px';
+  wrapper.style.left = options.left || '100px';
+  wrapper.style.top = options.top || '100px';
   
   // Append to device-grid
   const grid = document.getElementById('device-grid');

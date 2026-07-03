@@ -158,6 +158,8 @@ startPollingLatestValues();
   const MAX_RENDERED_PLOT_POINTS = 2000;
   let currentDeviceParamsData = {};
   let plotCounter = 0;
+  let pendingPlotPanelPosition = null;
+  let plotConfigWindowBackdrop = null;
 
   function isXYPlotType(typeOverride){
     const type = typeOverride || (plotTypeSelect && plotTypeSelect.value ? plotTypeSelect.value : 'line');
@@ -738,6 +740,134 @@ startPollingLatestValues();
   function setPlotConfigSelection(name){
     activeSavedPlotName = name || '';
     refreshPlotConfigSelectors();
+  }
+
+  function normalizeRequestedPanelPosition(position){
+    if(!position || typeof position !== 'object') 
+      return null;
+    const normalized = {};
+    if(position.left) 
+      normalized.left = position.left;
+    if(position.top) 
+      normalized.top = position.top;
+      return (normalized.left || normalized.top) ? normalized : null;
+  }
+
+  function resetPlotConfigurationEditor(){
+    clearStagedLines();
+    setPlotConfigSelection('');
+    if(plotConfigSelect) plotConfigSelect.value = '';
+    if(plotTypeSelect) plotTypeSelect.value = 'line';
+    if(deviceParamsSelect) deviceParamsSelect.value = '';
+    if(xyCurveXSelect) xyCurveXSelect.value = '';
+    if(xyCurveYSelect) xyCurveYSelect.value = '';
+    if(xyAxisTitleXInput) xyAxisTitleXInput.value = '';
+    if(xyAxisTitleYInput) xyAxisTitleYInput.value = '';
+    if(xyChartTypeSelect) xyChartTypeSelect.value = 'area';
+    if(curveLineTypeSelect) curveLineTypeSelect.value = 'solid';
+    if(curveLineWidthSelect) curveLineWidthSelect.value = '2';
+    if(curveLineColorInput) curveLineColorInput.value = '#007bff';
+    updatePlotTypeControls({ clearIncompatibleStaged: false });
+    setArrayElementStyleDropdownOpen(true);
+    refreshArrayElementStylePanel();
+    refreshPlot();
+  }
+
+  function ensurePlotConfigurationWindowShell(){
+    const panel = document.getElementById('plots-panel');
+    if(!panel) return null;
+
+    panel.classList.add('plot-config-window-hidden');
+
+    if(panel.dataset.plotWindowReady === 'true') {
+      return panel;
+    }
+
+    panel.dataset.plotWindowReady = 'true';
+    panel.classList.add('plot-config-window-shell');
+
+    const header = document.createElement('div');
+    header.className = 'plot-config-window-header';
+
+    const title = document.createElement('div');
+    title.className = 'plot-config-window-title';
+    title.textContent = 'Plot configuration';
+
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.className = 'plot-config-window-close';
+    closeButton.textContent = 'Close';
+    closeButton.addEventListener('click', () => {
+      closePlotConfigurationWindow();
+    });
+
+    header.appendChild(title);
+    header.appendChild(closeButton);
+    panel.insertBefore(header, panel.firstChild);
+
+    plotConfigWindowBackdrop = document.createElement('div');
+    plotConfigWindowBackdrop.className = 'plot-config-window-backdrop';
+    plotConfigWindowBackdrop.addEventListener('click', () => {
+      closePlotConfigurationWindow();
+    });
+    document.body.appendChild(plotConfigWindowBackdrop);
+
+    return panel;
+  }
+
+  function openPlotConfigurationWindow(options){
+    const panel = ensurePlotConfigurationWindowShell();
+    if(!panel) return;
+
+    const settings = options || {};
+    pendingPlotPanelPosition = normalizeRequestedPanelPosition(settings.position);
+    if(settings.reset !== false) {
+      resetPlotConfigurationEditor();
+    }
+
+    panel.classList.remove('plot-config-window-hidden');
+    panel.classList.add('plot-config-window-open');
+    if(plotConfigWindowBackdrop) {
+      plotConfigWindowBackdrop.classList.add('is-open');
+    }
+  }
+
+  function closePlotConfigurationWindow(){
+    const panel = document.getElementById('plots-panel');
+    if(!panel) return;
+    panel.classList.remove('plot-config-window-open');
+    panel.classList.add('plot-config-window-hidden');
+    if(plotConfigWindowBackdrop) {
+      plotConfigWindowBackdrop.classList.remove('is-open');
+    }
+    pendingPlotPanelPosition = null;
+  }
+
+  function getSavedPlotNames(){
+    return Object.keys(getStoredPlotConfigs()).sort();
+  }
+
+  function createSavedPlotByName(name, options){
+    return new Promise((resolve) => {
+      if(!name) {
+        resolve(null);
+        return;
+      }
+
+      loadPlotConfigByName(name, (config) => {
+        if(!config) {
+          resolve(null);
+          return;
+        }
+
+        const plotEntry = createPlotPanelFromConfig(config, options);
+        if(plotEntry) {
+          setPlotConfigSelection(name);
+          focusExistingPlot(plotEntry);
+        }
+        resolve(plotEntry);
+      });
+    });
   }
 
   function updatePlotConfigList(selectedName){
@@ -1417,7 +1547,7 @@ startPollingLatestValues();
     return plotEntry;
   }
 
-  function createPlotPanelFromConfig(config){
+  function createPlotPanelFromConfig(config, panelOptions){
     if(!config || !Array.isArray(config.lines) || config.lines.length === 0) {
       alert('No lines staged. Use Add Line to stage parameters before creating a plot.');
       return null;
@@ -1427,6 +1557,7 @@ startPollingLatestValues();
     removePlotEntryByName(plotName);
 
     const id = 'plot_' + (++plotCounter);
+    const requestedPosition = normalizeRequestedPanelPosition(panelOptions && panelOptions.position ? panelOptions.position : panelOptions) || pendingPlotPanelPosition;
 
     const container = document.createElement('div'); container.className = 'plot-panel'; container.id = id + '_panel';
     container.dataset.plotName = plotName;
@@ -1456,8 +1587,8 @@ startPollingLatestValues();
     container.appendChild(plotDiv);
     const grid = document.getElementById('device-grid');
     container.style.position = 'absolute';
-    container.style.left = '200px';
-    container.style.top = '80px';
+    container.style.left = requestedPosition && requestedPosition.left ? requestedPosition.left : '200px';
+    container.style.top = requestedPosition && requestedPosition.top ? requestedPosition.top : '80px';
     container.style.width = '700px';
     container.style.maxWidth = 'none';
     container.style.zIndex = '5';
@@ -1658,6 +1789,7 @@ startPollingLatestValues();
     }
 
     makePanelDraggableResizable(container, plotDiv);
+    pendingPlotPanelPosition = null;
     return plotEntry;
   }
 
@@ -2334,7 +2466,8 @@ startPollingLatestValues();
         storePlotConfigLocally(plotName, config);
         updatePlotConfigList(plotName);
         setPlotConfigSelection(plotName);
-        createPlotPanelFromConfig(config);
+        const createdPlot = createPlotPanelFromConfig(config, { position: pendingPlotPanelPosition });
+        if(!createdPlot) return;
         if(window.Spin && window.Spin.send_request){
           try {
             window.Spin.send_request('nodemanager.save_plot_config', '', 'input', 'set', {name: plotName, config: config});
@@ -2343,9 +2476,12 @@ startPollingLatestValues();
             console.error('save_plot_config request failed', e);
           }
         }
+        closePlotConfigurationWindow();
       });
 
   // start
+  ensurePlotConfigurationWindowShell();
+  closePlotConfigurationWindow();
   updatePlotTypeControls({ clearIncompatibleStaged: false });
   setArrayElementStyleDropdownOpen(true);
   refreshArrayElementStylePanel();
@@ -2535,6 +2671,15 @@ startPollingLatestValues();
   }
 
   setTimeout(scanDataSpinPlots, 500);
+
+  window.SEPlotUi = {
+    openConfigurationWindow: openPlotConfigurationWindow,
+    closeConfigurationWindow: closePlotConfigurationWindow,
+    resetConfigurationEditor: resetPlotConfigurationEditor,
+    getSavedPlotNames: getSavedPlotNames,
+    createSavedPlotByName: createSavedPlotByName,
+    refreshSavedPlotNames: updatePlotConfigList
+  };
 
   // expose minimal API for debugging
   window.SEAppState.setPlots({ plotsMap: plotsMap, staged: staged, restorePlotPanelFromLayout: restorePlotPanelFromLayout, capturePlotPanelGeometry: capturePlotPanelGeometry, applyPlotPanelGeometry: applyPlotPanelGeometry, _restoreCounter: window.SEAppState.getPlots()._restoreCounter || 0 });

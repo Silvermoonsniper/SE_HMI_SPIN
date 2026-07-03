@@ -1184,6 +1184,160 @@ body[data-configuration-mode="true"] .device-connection-line {
   min-width: 170px;
 }
 
+#plots-panel.plot-config-window-hidden {
+  display: none !important;
+}
+
+#plots-panel.plot-config-window-open {
+  position: fixed !important;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(980px, calc(100vw - 48px));
+  max-width: min(980px, calc(100vw - 48px));
+  max-height: calc(100vh - 64px);
+  z-index: 3200;
+  display: block !important;
+  flex: none !important;
+}
+
+#plots-panel.plot-config-window-open .plots-container {
+  max-height: calc(100vh - 120px);
+  overflow: auto;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.22);
+}
+
+.plot-config-window-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid #c7f0c7;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+}
+
+.plot-config-window-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.plot-config-window-close {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: #475569;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.plot-config-window-close:hover {
+  background: #334155;
+}
+
+.plot-config-window-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.32);
+  backdrop-filter: blur(2px);
+  z-index: 3190;
+}
+
+.plot-config-window-backdrop.is-open {
+  display: block;
+}
+
+.canvas-create-menu {
+  display: none;
+  position: fixed;
+  min-width: 220px;
+  padding: 6px;
+  border: 1px solid #cfd8dc;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+  z-index: 3210;
+}
+
+.canvas-create-menu-entry {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: #263238;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.canvas-create-menu-entry:hover,
+.canvas-create-menu-entry.is-open {
+  background: #eef5ff;
+}
+
+.canvas-create-menu-arrow {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.canvas-create-submenu {
+  display: none;
+  position: absolute;
+  top: -6px;
+  left: calc(100% - 4px);
+  min-width: 220px;
+  max-height: 320px;
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid #cfd8dc;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+}
+
+.canvas-create-menu-align-left .canvas-create-submenu {
+  left: auto;
+  right: calc(100% - 4px);
+}
+
+.canvas-create-submenu.is-open {
+  display: block;
+}
+
+.canvas-create-submenu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #263238;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+
+.canvas-create-submenu-item:hover {
+  background: #eef5ff;
+}
+
+.canvas-create-empty {
+  padding: 8px 10px;
+  color: #64748b;
+  font-size: 12px;
+}
+
 .text-context-field {
   display: block;
   margin: 6px 0 4px;

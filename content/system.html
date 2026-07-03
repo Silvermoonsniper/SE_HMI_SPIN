@@ -209,40 +209,21 @@
     </div>
   </div>
 
-  <!-- Right: existing device/decoration/viewport area -->
-  <div id="config-panel" style="flex: 1 1 60%; max-width:760px; display:flex; flex-direction:column;">
-
-  <div id="device-manager" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; gap: 10px; align-items: center;">
-  <label for="device-select" style="font-weight: bold; font-size: 12px;">Add Device:</label>
-  <select id="device-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; min-width: 150px;">
-    <option value="">-- Select Module --</option>
-  </select>
-  <button onclick="createDeviceDisplay(true)" style="padding: 4px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Create Display</button>
+  <div id="config-panel" style="display:none;">
+    <div id="canvas-create-sources" style="display:none;">
+      <select id="device-select">
+        <option value="">-- Select Module --</option>
+      </select>
+      <select id="deco-select">
+        <option value="">-- Select Decoration --</option>
+        <option value="line">Line</option>
+        <option value="switch">Valve Switch</option>
+        <option value="label">Text Label</option>
+        <option value="control-panel">Control Panel</option>
+      </select>
+      <input id="deco-color" type="color" value="#cccccc">
+    </div>
   </div>
-
-  <div id="decoration-manager" style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
-  <div id="decoration-controls" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-    <label for="deco-select" style="font-weight: bold; font-size: 12px;">Add customized display:</label>
-    <select id="deco-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; min-width: 150px;">
-      <option value="">-- Select Decoration --</option>
-      <option value="line">Line</option>
-      <option value="switch">Valve Switch</option>
-      <option value="label">Text Label</option>
-      <option value="control-panel">Control Panel</option>
-    </select>
-    <button onclick="createDecoration(true)" style="padding: 4px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Create customized display</button>
-  </div>
-  <div id="layout-controls" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto;">
-    <button onclick="zoomCanvas(0.1)" style="padding: 4px 8px; font-weight:bold;" title="Zoom In">+</button>
-    <button onclick="zoomCanvas(-0.1)" style="padding: 4px 8px; font-weight:bold;" title="Zoom Out">-</button>
-    <button onclick="resetView()" style="padding: 4px 8px; font-size:11px;">Reset View</button>
-    <button onclick="saveLayoutToStorage()" style="padding: 4px 8px; font-size:11px;">Save layout</button>
-    <button onclick="loadLayoutFromFile()" style="padding: 4px 8px; font-size:11px;">Load layout</button>
-     <button onclick="create_newLayoutFile()" style="padding: 4px 8px; font-size:11px;">New layout</button>
-  </div>
-  </div>
-
-  </div> <!-- end config-panel -->
 
 </div> <!-- end two-column area -->
 

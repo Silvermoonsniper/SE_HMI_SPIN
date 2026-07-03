@@ -2036,8 +2036,9 @@ function applyConfigurationPanelVisibility() {
   const deviceManager = document.getElementById('device-manager');
   const decorationControls = document.getElementById('decoration-controls');
   const configPanel = document.getElementById('config-panel');
+  const hasVisibleConfigPanels = !!(deviceManager || decorationControls);
 
-  if (toggleBtn) {
+  if (toggleBtn && hasVisibleConfigPanels) {
     toggleBtn.textContent = configurationPanelsHidden ? 'Show configuration panel' : 'Hide configuration panel';
   }
 
@@ -2046,7 +2047,7 @@ function applyConfigurationPanelVisibility() {
     return;
   }
 
-  if (toggleBtn) toggleBtn.style.display = '';
+  if (toggleBtn) toggleBtn.style.display = hasVisibleConfigPanels ? '' : 'none';
   if (plotsPanel) plotsPanel.style.display = configurationPanelsHidden ? 'none' : '';
   if (deviceManager) deviceManager.style.display = configurationPanelsHidden ? 'none' : 'flex';
   if (decorationControls) decorationControls.style.display = configurationPanelsHidden ? 'none' : 'flex';

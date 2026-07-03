@@ -5,10 +5,10 @@
       "device": "massflow_contr1",
       "deviceKey": "gas_dosing_massflow_contr1",
       "logicalName": "gas_dosing_massflow_contr1",
-      "left": "23px",
-      "top": "11px",
-      "width": "245px",
-      "height": "auto",
+      "left": "189px",
+      "top": "25px",
+      "width": "388px",
+      "height": "119px",
       "info": {
         "params": [
           "_D_value",
@@ -19,7 +19,7 @@
           "_gastype_select",
           "_inverse_calibration_coefficients",
           "_tolerance",
-          "pollinterval",
+          "_valveposition",
           "ramp",
           "target"
         ],
@@ -28,23 +28,22 @@
           "_I_value",
           "_P_value",
           "_control_mode",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_gastype_select",
           "_inverse_calibration_coefficients",
+          "_test_cmd",
           "_tolerance",
-          "pollinterval",
+          "_valveposition",
           "ramp",
           "stop",
           "target"
         ],
         "commands": [
-          "_factory_reset",
+          "_test_cmd",
           "stop"
         ],
         "original_name": "massflow_contr1",
         "interface_classes": [
-          "_Calibratable",
           "Drivable"
         ],
         "module_name": "massflow_contr1",
@@ -90,17 +89,7 @@
               "datainfo": {
                 "unit": "mln/min",
                 "min": 0,
-                "max": 1000,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
+                "max": 200,
                 "type": "double"
               },
               "readonly": false
@@ -111,19 +100,20 @@
               "description": "desired ramp speed for gas flow of gas",
               "datainfo": {
                 "unit": "mln/min^2",
+                "min": 0,
+                "max": 200,
                 "type": "double"
               },
-              "readonly": false,
-              "group": "control parameter"
+              "readonly": false
             }
           },
           {
             "setpoint": {
-              "description": "setpoint of massflow controller reported by the hardware",
+              "description": "setpoint of  massflow controller",
               "datainfo": {
                 "unit": "mln/min",
                 "min": 0,
-                "max": 1000,
+                "max": 200,
                 "type": "double"
               },
               "readonly": true
@@ -131,15 +121,7 @@
           },
           {
             "stop": {
-              "description": "Stop ramping the setpoint\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
+              "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
               "datainfo": {
                 "type": "command"
               }
@@ -183,8 +165,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -193,8 +174,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -206,32 +186,13 @@
                   {
                     "unit": "mln/min",
                     "min": 0,
-                    "max": 1000,
+                    "max": 200,
                     "type": "double"
                   },
                   {
                     "unit": "mln/min",
                     "min": 0,
-                    "max": 1000,
-                    "type": "double"
-                  }
-                ]
-              },
-              "readonly": true
-            }
-          },
-          {
-            "ramp_limits": {
-              "description": "Limits for ramp speed of gas flow",
-              "datainfo": {
-                "type": "tuple",
-                "members": [
-                  {
-                    "unit": "mln/min^2",
-                    "type": "double"
-                  },
-                  {
-                    "unit": "mln/min^2",
+                    "max": 200,
                     "type": "double"
                   }
                 ]
@@ -258,8 +219,7 @@
                 "max": 100,
                 "type": "double"
               },
-              "readonly": false,
-              "group": "control parameter"
+              "readonly": false
             }
           },
           {
@@ -300,11 +260,16 @@
           },
           {
             "_gastype_select": {
-              "description": "gaslist of MFC",
+              "description": "enum of gastype",
               "datainfo": {
                 "type": "enum",
                 "members": {
-                  "CO": 0
+                  "H2": 1,
+                  "CO": 2,
+                  "CO2": 3,
+                  "O2": 4,
+                  "He": 5,
+                  "N2": 6
                 }
               },
               "readonly": false
@@ -319,46 +284,52 @@
                 "max": 100,
                 "type": "double"
               },
-              "readonly": true,
-              "group": "control parameter"
-            }
-          },
-          {
-            "_node_address": {
-              "description": "node address for FLOW-BUS communication",
-              "datainfo": {
-                "min": 0,
-                "max": 128,
-                "type": "int"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_capacity": {
-              "description": "Capacity of the massflow controller in mln/min",
-              "datainfo": {
-                "unit": "mln/min",
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": true,
+              "readonly": false,
               "group": "control parameter"
             }
           },
           {
             "_control_mode": {
-              "description": "control mode of massflow controller",
+              "description": "control mode of  massflow controller",
               "datainfo": {
                 "type": "enum",
                 "members": {
                   "RS232": 0,
-                  "fully_closed": 3,
-                  "controller_idle": 4,
-                  "fully_open": 8
+                  "fully_open": 3,
+                  "fully_closed": 8
                 }
               },
               "readonly": false
+            }
+          },
+          {
+            "_test_cmd": {
+              "description": "testing with ophyd secop integration",
+              "datainfo": {
+                "type": "command",
+                "argument": {
+                  "type": "struct",
+                  "members": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "min": 0,
+                      "max": 1000,
+                      "type": "int"
+                    },
+                    "sort": {
+                      "type": "bool"
+                    }
+                  },
+                  "optional": []
+                },
+                "result": {
+                  "min": -16777216,
+                  "max": 16777216,
+                  "type": "int"
+                }
+              }
             }
           }
         ]
@@ -370,10 +341,10 @@
       "device": "massflow_contr2",
       "deviceKey": "gas_dosing_massflow_contr2",
       "logicalName": "gas_dosing_massflow_contr2",
-      "left": "21px",
-      "top": "160px",
-      "width": "246px",
-      "height": "auto",
+      "left": "74px",
+      "top": "172px",
+      "width": "358px",
+      "height": "116px",
       "info": {
         "params": [
           "_D_value",
@@ -384,7 +355,7 @@
           "_gastype_select",
           "_inverse_calibration_coefficients",
           "_tolerance",
-          "pollinterval",
+          "_valveposition",
           "ramp",
           "target"
         ],
@@ -393,23 +364,22 @@
           "_I_value",
           "_P_value",
           "_control_mode",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_gastype_select",
           "_inverse_calibration_coefficients",
+          "_test_cmd",
           "_tolerance",
-          "pollinterval",
+          "_valveposition",
           "ramp",
           "stop",
           "target"
         ],
         "commands": [
-          "_factory_reset",
+          "_test_cmd",
           "stop"
         ],
         "original_name": "massflow_contr2",
         "interface_classes": [
-          "_Calibratable",
           "Drivable"
         ],
         "module_name": "massflow_contr2",
@@ -455,17 +425,7 @@
               "datainfo": {
                 "unit": "mln/min",
                 "min": 0,
-                "max": 1000,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
+                "max": 200,
                 "type": "double"
               },
               "readonly": false
@@ -476,19 +436,20 @@
               "description": "desired ramp speed for gas flow of gas",
               "datainfo": {
                 "unit": "mln/min^2",
+                "min": 0,
+                "max": 200,
                 "type": "double"
               },
-              "readonly": false,
-              "group": "control parameter"
+              "readonly": false
             }
           },
           {
             "setpoint": {
-              "description": "setpoint of massflow controller reported by the hardware",
+              "description": "setpoint of  massflow controller",
               "datainfo": {
                 "unit": "mln/min",
                 "min": 0,
-                "max": 1000,
+                "max": 200,
                 "type": "double"
               },
               "readonly": true
@@ -496,15 +457,7 @@
           },
           {
             "stop": {
-              "description": "Stop ramping the setpoint\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
+              "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
               "datainfo": {
                 "type": "command"
               }
@@ -548,8 +501,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -558,8 +510,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -571,32 +522,13 @@
                   {
                     "unit": "mln/min",
                     "min": 0,
-                    "max": 1000,
+                    "max": 200,
                     "type": "double"
                   },
                   {
                     "unit": "mln/min",
                     "min": 0,
-                    "max": 1000,
-                    "type": "double"
-                  }
-                ]
-              },
-              "readonly": true
-            }
-          },
-          {
-            "ramp_limits": {
-              "description": "Limits for ramp speed of gas flow",
-              "datainfo": {
-                "type": "tuple",
-                "members": [
-                  {
-                    "unit": "mln/min^2",
-                    "type": "double"
-                  },
-                  {
-                    "unit": "mln/min^2",
+                    "max": 200,
                     "type": "double"
                   }
                 ]
@@ -623,8 +555,7 @@
                 "max": 100,
                 "type": "double"
               },
-              "readonly": false,
-              "group": "control parameter"
+              "readonly": false
             }
           },
           {
@@ -665,12 +596,16 @@
           },
           {
             "_gastype_select": {
-              "description": "gaslist of MFC",
+              "description": "enum of gastype",
               "datainfo": {
                 "type": "enum",
                 "members": {
-                  "Ar": 0,
-                  "N2": 1
+                  "H2": 1,
+                  "CO": 2,
+                  "CO2": 3,
+                  "O2": 4,
+                  "He": 5,
+                  "N2": 6
                 }
               },
               "readonly": false
@@ -685,46 +620,52 @@
                 "max": 100,
                 "type": "double"
               },
-              "readonly": true,
-              "group": "control parameter"
-            }
-          },
-          {
-            "_node_address": {
-              "description": "node address for FLOW-BUS communication",
-              "datainfo": {
-                "min": 0,
-                "max": 128,
-                "type": "int"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_capacity": {
-              "description": "Capacity of the massflow controller in mln/min",
-              "datainfo": {
-                "unit": "mln/min",
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": true,
+              "readonly": false,
               "group": "control parameter"
             }
           },
           {
             "_control_mode": {
-              "description": "control mode of massflow controller",
+              "description": "control mode of  massflow controller",
               "datainfo": {
                 "type": "enum",
                 "members": {
                   "RS232": 0,
-                  "fully_closed": 3,
-                  "controller_idle": 4,
-                  "fully_open": 8
+                  "fully_open": 3,
+                  "fully_closed": 8
                 }
               },
               "readonly": false
+            }
+          },
+          {
+            "_test_cmd": {
+              "description": "testing with ophyd secop integration",
+              "datainfo": {
+                "type": "command",
+                "argument": {
+                  "type": "struct",
+                  "members": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "min": 0,
+                      "max": 1000,
+                      "type": "int"
+                    },
+                    "sort": {
+                      "type": "bool"
+                    }
+                  },
+                  "optional": []
+                },
+                "result": {
+                  "min": -16777216,
+                  "max": 16777216,
+                  "type": "int"
+                }
+              }
             }
           }
         ]
@@ -736,10 +677,10 @@
       "device": "massflow_contr3",
       "deviceKey": "gas_dosing_massflow_contr3",
       "logicalName": "gas_dosing_massflow_contr3",
-      "left": "23px",
-      "top": "297px",
-      "width": "248px",
-      "height": "123px",
+      "left": "76px",
+      "top": "311px",
+      "width": "376px",
+      "height": "112px",
       "info": {
         "params": [
           "_D_value",
@@ -750,7 +691,7 @@
           "_gastype_select",
           "_inverse_calibration_coefficients",
           "_tolerance",
-          "pollinterval",
+          "_valveposition",
           "ramp",
           "target"
         ],
@@ -759,23 +700,22 @@
           "_I_value",
           "_P_value",
           "_control_mode",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_gastype_select",
           "_inverse_calibration_coefficients",
+          "_test_cmd",
           "_tolerance",
-          "pollinterval",
+          "_valveposition",
           "ramp",
           "stop",
           "target"
         ],
         "commands": [
-          "_factory_reset",
+          "_test_cmd",
           "stop"
         ],
         "original_name": "massflow_contr3",
         "interface_classes": [
-          "_Calibratable",
           "Drivable"
         ],
         "module_name": "massflow_contr3",
@@ -821,17 +761,7 @@
               "datainfo": {
                 "unit": "mln/min",
                 "min": 0,
-                "max": 1000,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
+                "max": 200,
                 "type": "double"
               },
               "readonly": false
@@ -842,19 +772,20 @@
               "description": "desired ramp speed for gas flow of gas",
               "datainfo": {
                 "unit": "mln/min^2",
+                "min": 0,
+                "max": 200,
                 "type": "double"
               },
-              "readonly": false,
-              "group": "control parameter"
+              "readonly": false
             }
           },
           {
             "setpoint": {
-              "description": "setpoint of massflow controller reported by the hardware",
+              "description": "setpoint of  massflow controller",
               "datainfo": {
                 "unit": "mln/min",
                 "min": 0,
-                "max": 1000,
+                "max": 200,
                 "type": "double"
               },
               "readonly": true
@@ -862,15 +793,7 @@
           },
           {
             "stop": {
-              "description": "Stop ramping the setpoint\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
+              "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
               "datainfo": {
                 "type": "command"
               }
@@ -914,8 +837,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -924,8 +846,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -937,32 +858,13 @@
                   {
                     "unit": "mln/min",
                     "min": 0,
-                    "max": 1000,
+                    "max": 200,
                     "type": "double"
                   },
                   {
                     "unit": "mln/min",
                     "min": 0,
-                    "max": 1000,
-                    "type": "double"
-                  }
-                ]
-              },
-              "readonly": true
-            }
-          },
-          {
-            "ramp_limits": {
-              "description": "Limits for ramp speed of gas flow",
-              "datainfo": {
-                "type": "tuple",
-                "members": [
-                  {
-                    "unit": "mln/min^2",
-                    "type": "double"
-                  },
-                  {
-                    "unit": "mln/min^2",
+                    "max": 200,
                     "type": "double"
                   }
                 ]
@@ -989,8 +891,7 @@
                 "max": 100,
                 "type": "double"
               },
-              "readonly": false,
-              "group": "control parameter"
+              "readonly": false
             }
           },
           {
@@ -1031,11 +932,16 @@
           },
           {
             "_gastype_select": {
-              "description": "gaslist of MFC",
+              "description": "enum of gastype",
               "datainfo": {
                 "type": "enum",
                 "members": {
-                  "AiR": 0
+                  "H2": 1,
+                  "CO": 2,
+                  "CO2": 3,
+                  "O2": 4,
+                  "He": 5,
+                  "N2": 6
                 }
               },
               "readonly": false
@@ -1050,46 +956,52 @@
                 "max": 100,
                 "type": "double"
               },
-              "readonly": true,
-              "group": "control parameter"
-            }
-          },
-          {
-            "_node_address": {
-              "description": "node address for FLOW-BUS communication",
-              "datainfo": {
-                "min": 0,
-                "max": 128,
-                "type": "int"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_capacity": {
-              "description": "Capacity of the massflow controller in mln/min",
-              "datainfo": {
-                "unit": "mln/min",
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": true,
+              "readonly": false,
               "group": "control parameter"
             }
           },
           {
             "_control_mode": {
-              "description": "control mode of massflow controller",
+              "description": "control mode of  massflow controller",
               "datainfo": {
                 "type": "enum",
                 "members": {
                   "RS232": 0,
-                  "fully_closed": 3,
-                  "controller_idle": 4,
-                  "fully_open": 8
+                  "fully_open": 3,
+                  "fully_closed": 8
                 }
               },
               "readonly": false
+            }
+          },
+          {
+            "_test_cmd": {
+              "description": "testing with ophyd secop integration",
+              "datainfo": {
+                "type": "command",
+                "argument": {
+                  "type": "struct",
+                  "members": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "min": 0,
+                      "max": 1000,
+                      "type": "int"
+                    },
+                    "sort": {
+                      "type": "bool"
+                    }
+                  },
+                  "optional": []
+                },
+                "result": {
+                  "min": -16777216,
+                  "max": 16777216,
+                  "type": "int"
+                }
+              }
             }
           }
         ]
@@ -1101,9 +1013,9 @@
       "device": "massflow_contr4",
       "deviceKey": "gas_dosing_massflow_contr4",
       "logicalName": "gas_dosing_massflow_contr4",
-      "left": "20px",
+      "left": "76px",
       "top": "445px",
-      "width": "246px",
+      "width": "388px",
       "height": "123px",
       "info": {
         "params": [
@@ -1115,7 +1027,7 @@
           "_gastype_select",
           "_inverse_calibration_coefficients",
           "_tolerance",
-          "pollinterval",
+          "_valveposition",
           "ramp",
           "target"
         ],
@@ -1124,23 +1036,22 @@
           "_I_value",
           "_P_value",
           "_control_mode",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_gastype_select",
           "_inverse_calibration_coefficients",
+          "_test_cmd",
           "_tolerance",
-          "pollinterval",
+          "_valveposition",
           "ramp",
           "stop",
           "target"
         ],
         "commands": [
-          "_factory_reset",
+          "_test_cmd",
           "stop"
         ],
         "original_name": "massflow_contr4",
         "interface_classes": [
-          "_Calibratable",
           "Drivable"
         ],
         "module_name": "massflow_contr4",
@@ -1186,17 +1097,7 @@
               "datainfo": {
                 "unit": "mln/min",
                 "min": 0,
-                "max": 1000,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
+                "max": 200,
                 "type": "double"
               },
               "readonly": false
@@ -1207,19 +1108,20 @@
               "description": "desired ramp speed for gas flow of gas",
               "datainfo": {
                 "unit": "mln/min^2",
+                "min": 0,
+                "max": 200,
                 "type": "double"
               },
-              "readonly": false,
-              "group": "control parameter"
+              "readonly": false
             }
           },
           {
             "setpoint": {
-              "description": "setpoint of massflow controller reported by the hardware",
+              "description": "setpoint of  massflow controller",
               "datainfo": {
                 "unit": "mln/min",
                 "min": 0,
-                "max": 1000,
+                "max": 200,
                 "type": "double"
               },
               "readonly": true
@@ -1227,15 +1129,7 @@
           },
           {
             "stop": {
-              "description": "Stop ramping the setpoint\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
+              "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
               "datainfo": {
                 "type": "command"
               }
@@ -1279,8 +1173,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -1289,8 +1182,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -1302,32 +1194,13 @@
                   {
                     "unit": "mln/min",
                     "min": 0,
-                    "max": 1000,
+                    "max": 200,
                     "type": "double"
                   },
                   {
                     "unit": "mln/min",
                     "min": 0,
-                    "max": 1000,
-                    "type": "double"
-                  }
-                ]
-              },
-              "readonly": true
-            }
-          },
-          {
-            "ramp_limits": {
-              "description": "Limits for ramp speed of gas flow",
-              "datainfo": {
-                "type": "tuple",
-                "members": [
-                  {
-                    "unit": "mln/min^2",
-                    "type": "double"
-                  },
-                  {
-                    "unit": "mln/min^2",
+                    "max": 200,
                     "type": "double"
                   }
                 ]
@@ -1354,8 +1227,7 @@
                 "max": 100,
                 "type": "double"
               },
-              "readonly": false,
-              "group": "control parameter"
+              "readonly": false
             }
           },
           {
@@ -1396,11 +1268,16 @@
           },
           {
             "_gastype_select": {
-              "description": "gaslist of MFC",
+              "description": "enum of gastype",
               "datainfo": {
                 "type": "enum",
                 "members": {
-                  "CO2": 0
+                  "H2": 1,
+                  "CO": 2,
+                  "CO2": 3,
+                  "O2": 4,
+                  "He": 5,
+                  "N2": 6
                 }
               },
               "readonly": false
@@ -1415,46 +1292,52 @@
                 "max": 100,
                 "type": "double"
               },
-              "readonly": true,
-              "group": "control parameter"
-            }
-          },
-          {
-            "_node_address": {
-              "description": "node address for FLOW-BUS communication",
-              "datainfo": {
-                "min": 0,
-                "max": 128,
-                "type": "int"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_capacity": {
-              "description": "Capacity of the massflow controller in mln/min",
-              "datainfo": {
-                "unit": "mln/min",
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": true,
+              "readonly": false,
               "group": "control parameter"
             }
           },
           {
             "_control_mode": {
-              "description": "control mode of massflow controller",
+              "description": "control mode of  massflow controller",
               "datainfo": {
                 "type": "enum",
                 "members": {
                   "RS232": 0,
-                  "fully_closed": 3,
-                  "controller_idle": 4,
-                  "fully_open": 8
+                  "fully_open": 3,
+                  "fully_closed": 8
                 }
               },
               "readonly": false
+            }
+          },
+          {
+            "_test_cmd": {
+              "description": "testing with ophyd secop integration",
+              "datainfo": {
+                "type": "command",
+                "argument": {
+                  "type": "struct",
+                  "members": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "min": 0,
+                      "max": 1000,
+                      "type": "int"
+                    },
+                    "sort": {
+                      "type": "bool"
+                    }
+                  },
+                  "optional": []
+                },
+                "result": {
+                  "min": -16777216,
+                  "max": 16777216,
+                  "type": "int"
+                }
+              }
             }
           }
         ]
@@ -1466,10 +1349,10 @@
       "device": "massflow_contr5",
       "deviceKey": "gas_dosing_massflow_contr5",
       "logicalName": "gas_dosing_massflow_contr5",
-      "left": "16px",
-      "top": "598px",
-      "width": "248px",
-      "height": "auto",
+      "left": "188px",
+      "top": "605px",
+      "width": "396px",
+      "height": "120px",
       "info": {
         "params": [
           "_D_value",
@@ -1480,7 +1363,7 @@
           "_gastype_select",
           "_inverse_calibration_coefficients",
           "_tolerance",
-          "pollinterval",
+          "_valveposition",
           "ramp",
           "target"
         ],
@@ -1489,23 +1372,22 @@
           "_I_value",
           "_P_value",
           "_control_mode",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_gastype_select",
           "_inverse_calibration_coefficients",
+          "_test_cmd",
           "_tolerance",
-          "pollinterval",
+          "_valveposition",
           "ramp",
           "stop",
           "target"
         ],
         "commands": [
-          "_factory_reset",
+          "_test_cmd",
           "stop"
         ],
         "original_name": "massflow_contr5",
         "interface_classes": [
-          "_Calibratable",
           "Drivable"
         ],
         "module_name": "massflow_contr5",
@@ -1551,17 +1433,7 @@
               "datainfo": {
                 "unit": "mln/min",
                 "min": 0,
-                "max": 1000,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
+                "max": 200,
                 "type": "double"
               },
               "readonly": false
@@ -1572,19 +1444,20 @@
               "description": "desired ramp speed for gas flow of gas",
               "datainfo": {
                 "unit": "mln/min^2",
+                "min": 0,
+                "max": 200,
                 "type": "double"
               },
-              "readonly": false,
-              "group": "control parameter"
+              "readonly": false
             }
           },
           {
             "setpoint": {
-              "description": "setpoint of massflow controller reported by the hardware",
+              "description": "setpoint of  massflow controller",
               "datainfo": {
                 "unit": "mln/min",
                 "min": 0,
-                "max": 1000,
+                "max": 200,
                 "type": "double"
               },
               "readonly": true
@@ -1592,15 +1465,7 @@
           },
           {
             "stop": {
-              "description": "Stop ramping the setpoint\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
+              "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
               "datainfo": {
                 "type": "command"
               }
@@ -1644,8 +1509,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -1654,8 +1518,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -1667,32 +1530,13 @@
                   {
                     "unit": "mln/min",
                     "min": 0,
-                    "max": 1000,
+                    "max": 200,
                     "type": "double"
                   },
                   {
                     "unit": "mln/min",
                     "min": 0,
-                    "max": 1000,
-                    "type": "double"
-                  }
-                ]
-              },
-              "readonly": true
-            }
-          },
-          {
-            "ramp_limits": {
-              "description": "Limits for ramp speed of gas flow",
-              "datainfo": {
-                "type": "tuple",
-                "members": [
-                  {
-                    "unit": "mln/min^2",
-                    "type": "double"
-                  },
-                  {
-                    "unit": "mln/min^2",
+                    "max": 200,
                     "type": "double"
                   }
                 ]
@@ -1719,8 +1563,7 @@
                 "max": 100,
                 "type": "double"
               },
-              "readonly": false,
-              "group": "control parameter"
+              "readonly": false
             }
           },
           {
@@ -1761,11 +1604,16 @@
           },
           {
             "_gastype_select": {
-              "description": "gaslist of MFC",
+              "description": "enum of gastype",
               "datainfo": {
                 "type": "enum",
                 "members": {
-                  "H2": 0
+                  "H2": 1,
+                  "CO": 2,
+                  "CO2": 3,
+                  "O2": 4,
+                  "He": 5,
+                  "N2": 6
                 }
               },
               "readonly": false
@@ -1780,48 +1628,138 @@
                 "max": 100,
                 "type": "double"
               },
-              "readonly": true,
-              "group": "control parameter"
-            }
-          },
-          {
-            "_node_address": {
-              "description": "node address for FLOW-BUS communication",
-              "datainfo": {
-                "min": 0,
-                "max": 128,
-                "type": "int"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_capacity": {
-              "description": "Capacity of the massflow controller in mln/min",
-              "datainfo": {
-                "unit": "mln/min",
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": true,
+              "readonly": false,
               "group": "control parameter"
             }
           },
           {
             "_control_mode": {
-              "description": "control mode of massflow controller",
+              "description": "control mode of  massflow controller",
               "datainfo": {
                 "type": "enum",
                 "members": {
                   "RS232": 0,
-                  "fully_closed": 3,
-                  "controller_idle": 4,
-                  "fully_open": 8
+                  "fully_open": 3,
+                  "fully_closed": 8
                 }
               },
               "readonly": false
             }
+          },
+          {
+            "_test_cmd": {
+              "description": "testing with ophyd secop integration",
+              "datainfo": {
+                "type": "command",
+                "argument": {
+                  "type": "struct",
+                  "members": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "min": 0,
+                      "max": 1000,
+                      "type": "int"
+                    },
+                    "sort": {
+                      "type": "bool"
+                    }
+                  },
+                  "optional": []
+                },
+                "result": {
+                  "min": -16777216,
+                  "max": 16777216,
+                  "type": "int"
+                }
+              }
+            }
           }
+        ]
+      },
+      "image": null
+    },
+    {
+      "id": "box-reactor_cell_pressure_outlet",
+      "device": "pressure_outlet",
+      "deviceKey": "reactor_cell_pressure_outlet",
+      "logicalName": "reactor_cell_pressure_outlet",
+      "left": "777px",
+      "top": "504px",
+      "width": "222px",
+      "height": "120px",
+      "info": {
+        "all_params": [
+          "_pre_flux",
+          "pollinterval"
+        ],
+        "commands": [],
+        "interface_classes": [
+          "Readable"
+        ],
+        "module_name": "pressure_outlet",
+        "original_name": "pressure_outlet",
+        "param_info": [
+          {
+            "value": {
+              "datainfo": {
+                "max": 5000,
+                "min": 0,
+                "type": "double",
+                "unit": "bar"
+              },
+              "description": "Pressure inlet/outlet at reactor cell",
+              "readonly": true
+            }
+          },
+          {
+            "status": {
+              "datainfo": {
+                "members": [
+                  {
+                    "members": {
+                      "ERROR": 400,
+                      "IDLE": 100,
+                      "WARN": 200
+                    },
+                    "type": "enum"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "type": "tuple"
+              },
+              "description": "current status of the module",
+              "readonly": true
+            }
+          },
+          {
+            "pollinterval": {
+              "datainfo": {
+                "min": 0,
+                "type": "double"
+              },
+              "description": "polling interval",
+              "readonly": false
+            }
+          },
+          {
+            "_pre_flux": {
+              "datainfo": {
+                "max": 20,
+                "min": 0,
+                "type": "double"
+              },
+              "description": "Constant for simulation of pressure flux",
+              "readonly": false
+            }
+          }
+        ],
+        "params": [
+          "_pre_flux",
+          "pollinterval"
         ]
       },
       "image": null
@@ -1836,16 +1774,6 @@
       "width": "222px",
       "height": "120px",
       "info": {
-        "params": [
-          "_D_value",
-          "_I_value",
-          "_P_value",
-          "_forward_calibration_coefficients",
-          "_inverse_calibration_coefficients",
-          "_tolerance",
-          "ramp",
-          "target"
-        ],
         "all_params": [
           "_D_value",
           "_I_value",
@@ -1854,6 +1782,7 @@
           "_forward_calibration_coefficients",
           "_inverse_calibration_coefficients",
           "_tolerance",
+          "pollinterval",
           "ramp",
           "stop",
           "target"
@@ -1862,20 +1791,397 @@
           "_factory_reset",
           "stop"
         ],
-        "original_name": "temperature_reg",
         "interface_classes": [
           "_Calibratable",
           "Drivable"
         ],
         "module_name": "temperature_reg",
+        "original_name": "temperature_reg",
         "param_info": [
           {
             "value": {
-              "description": "Heater temperature at reactor cell",
               "datainfo": {
-                "unit": "\u00b0C",
+                "max": 1023,
+                "min": -100,
+                "type": "double",
+                "unit": "\u00b0C"
+              },
+              "description": "Current temperature",
+              "readonly": true
+            }
+          },
+          {
+            "status": {
+              "datainfo": {
+                "members": [
+                  {
+                    "members": {
+                      "BUSY": 300,
+                      "ERROR": 400,
+                      "IDLE": 100,
+                      "WARN": 200
+                    },
+                    "type": "enum"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "type": "tuple"
+              },
+              "description": "current status of the module",
+              "readonly": true
+            }
+          },
+          {
+            "target": {
+              "datainfo": {
+                "max": 1023,
+                "min": -100,
+                "type": "double",
+                "unit": "\u00b0C"
+              },
+              "description": "Target temperature",
+              "readonly": false
+            }
+          },
+          {
+            "pollinterval": {
+              "datainfo": {
+                "max": 120,
+                "min": 0.1,
+                "type": "double",
+                "unit": "s"
+              },
+              "description": "default poll interval",
+              "readonly": false
+            }
+          },
+          {
+            "ramp": {
+              "datainfo": {
+                "max": 100,
                 "min": 0,
-                "max": 5000,
+                "type": "double",
+                "unit": "\u00b0C/min"
+              },
+              "description": "Ramp rate",
+              "readonly": false
+            }
+          },
+          {
+            "setpoint": {
+              "_signal_format": "HINTED_SIGNAL",
+              "datainfo": {
+                "max": 1023,
+                "min": -100,
+                "type": "double",
+                "unit": "\u00b0C"
+              },
+              "description": "setpoint of temperature controller",
+              "readonly": true
+            }
+          },
+          {
+            "stop": {
+              "datainfo": {
+                "type": "command"
+              },
+              "description": "Stop temperature control (example: set target to current temperature)"
+            }
+          },
+          {
+            "_factory_reset": {
+              "datainfo": {
+                "type": "command"
+              },
+              "description": "reset to values from config / default values"
+            }
+          },
+          {
+            "_inverse_calibration_coefficients": {
+              "datainfo": {
+                "maxlen": 5,
+                "members": {
+                  "max": 100000,
+                  "min": -1000000,
+                  "type": "double"
+                },
+                "minlen": 2,
+                "type": "array"
+              },
+              "description": "Inverse calibration polynomial coefficients for value Parameter",
+              "readonly": false
+            }
+          },
+          {
+            "_forward_calibration_coefficients": {
+              "datainfo": {
+                "maxlen": 5,
+                "members": {
+                  "max": 100000,
+                  "min": -1000000,
+                  "type": "double"
+                },
+                "minlen": 2,
+                "type": "array"
+              },
+              "description": "Forward calibration polynomial coefficients for target Parameter",
+              "readonly": false
+            }
+          },
+          {
+            "_value_uncalibrated": {
+              "_signal_format": "HINTED_SIGNAL",
+              "datainfo": {
+                "type": "double"
+              },
+              "description": "uncalibrated readback directly from the hardware",
+              "readonly": true
+            }
+          },
+          {
+            "_target_calibrated": {
+              "_signal_format": "HINTED_SIGNAL",
+              "datainfo": {
+                "type": "double"
+              },
+              "description": "calibrated target that is written to the hardware",
+              "readonly": true
+            }
+          },
+          {
+            "target_limits": {
+              "datainfo": {
+                "members": [
+                  {
+                    "max": 1023,
+                    "min": -100,
+                    "type": "double",
+                    "unit": "\u00b0C"
+                  },
+                  {
+                    "max": 1023,
+                    "min": -100,
+                    "type": "double",
+                    "unit": "\u00b0C"
+                  }
+                ],
+                "type": "tuple"
+              },
+              "description": "Limits for target temperature",
+              "readonly": true
+            }
+          },
+          {
+            "_slave_address": {
+              "datainfo": {
+                "max": 247,
+                "min": 1,
+                "type": "int"
+              },
+              "description": "Modbus slave address",
+              "readonly": true
+            }
+          },
+          {
+            "_P_value": {
+              "datainfo": {
+                "max": 20000,
+                "min": 0,
+                "type": "double"
+              },
+              "description": "Proportional const for controller",
+              "group": "control parameter",
+              "readonly": false
+            }
+          },
+          {
+            "_I_value": {
+              "datainfo": {
+                "max": 20000,
+                "min": 0,
+                "type": "double"
+              },
+              "description": "Integral const for controller",
+              "group": "control parameter",
+              "readonly": false
+            }
+          },
+          {
+            "_D_value": {
+              "datainfo": {
+                "max": 20000,
+                "min": 0,
+                "type": "double"
+              },
+              "description": "Deviative const for controller",
+              "group": "control parameter",
+              "readonly": false
+            }
+          },
+          {
+            "_tolerance": {
+              "datainfo": {
+                "max": 20000,
+                "min": 0,
+                "type": "double"
+              },
+              "description": "tolerance for temperature controller",
+              "group": "control parameter",
+              "readonly": false
+            }
+          }
+        ],
+        "params": [
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_forward_calibration_coefficients",
+          "_inverse_calibration_coefficients",
+          "_tolerance",
+          "pollinterval",
+          "ramp",
+          "target"
+        ]
+      },
+      "image": null
+    },
+    {
+      "id": "box-reactor_cell_temperature_sam",
+      "device": "temperature_sam",
+      "deviceKey": "reactor_cell_temperature_sam",
+      "logicalName": "reactor_cell_temperature_sam",
+      "left": "772px",
+      "top": "362px",
+      "width": "227px",
+      "height": "121px",
+      "info": {
+        "all_params": [
+          "pollinterval"
+        ],
+        "commands": [],
+        "interface_classes": [
+          "Readable"
+        ],
+        "module_name": "temperature_sam",
+        "original_name": "temperature_sam",
+        "param_info": [
+          {
+            "value": {
+              "datainfo": {
+                "max": 500,
+                "min": -100,
+                "type": "double",
+                "unit": "\u00b0C"
+              },
+              "description": "Current temperature",
+              "readonly": true
+            }
+          },
+          {
+            "status": {
+              "datainfo": {
+                "members": [
+                  {
+                    "members": {
+                      "ERROR": 400,
+                      "IDLE": 100,
+                      "WARN": 200
+                    },
+                    "type": "enum"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "type": "tuple"
+              },
+              "description": "current status of the module",
+              "readonly": true
+            }
+          },
+          {
+            "pollinterval": {
+              "datainfo": {
+                "max": 120,
+                "min": 0.1,
+                "type": "double",
+                "unit": "s"
+              },
+              "description": "default poll interval",
+              "readonly": false
+            }
+          },
+          {
+            "_slave_address": {
+              "datainfo": {
+                "max": 247,
+                "min": 1,
+                "type": "int"
+              },
+              "description": "Modbus slave address",
+              "readonly": true
+            }
+          }
+        ],
+        "params": [
+          "pollinterval"
+        ]
+      },
+      "image": null
+    },
+    {
+      "id": "box-gas_dosing_backpress_contr1",
+      "device": "backpress_contr1",
+      "deviceKey": "gas_dosing_backpress_contr1",
+      "logicalName": "gas_dosing_backpress_contr1",
+      "left": "917px",
+      "top": "661px",
+      "width": "309px",
+      "height": "117px",
+      "info": {
+        "params": [
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_forward_calibration_coefficients",
+          "_inverse_calibration_coefficients",
+          "_looptime",
+          "_tolerance",
+          "pollinterval",
+          "ramp",
+          "target"
+        ],
+        "all_params": [
+          "_D_value",
+          "_I_value",
+          "_P_value",
+          "_forward_calibration_coefficients",
+          "_inverse_calibration_coefficients",
+          "_looptime",
+          "_tolerance",
+          "pollinterval",
+          "ramp",
+          "stop",
+          "target"
+        ],
+        "commands": [
+          "stop"
+        ],
+        "original_name": "backpress_contr1",
+        "interface_classes": [
+          "Drivable"
+        ],
+        "module_name": "backpress_contr1",
+        "param_info": [
+          {
+            "value": {
+              "description": "back pressure reactor section",
+              "datainfo": {
+                "unit": "bar",
+                "min": 0,
+                "max": 80,
                 "type": "double"
               },
               "readonly": true
@@ -1906,11 +2212,21 @@
           },
           {
             "target": {
-              "description": "desired heater temperature at reactor cell",
+              "description": "Desired back pressure",
               "datainfo": {
-                "unit": "\u00b0C",
+                "unit": "bar",
                 "min": 0,
-                "max": 5000,
+                "max": 70,
+                "type": "double"
+              },
+              "readonly": false
+            }
+          },
+          {
+            "pollinterval": {
+              "description": "polling interval",
+              "datainfo": {
+                "min": 0,
                 "type": "double"
               },
               "readonly": false
@@ -1918,11 +2234,11 @@
           },
           {
             "ramp": {
-              "description": "desired ramp speed for the heater temperature",
+              "description": "desired ramp ",
               "datainfo": {
-                "unit": "\u00b0C/min",
+                "unit": "bar/min",
                 "min": 0,
-                "max": 1000,
+                "max": 20,
                 "type": "double"
               },
               "readonly": false
@@ -1930,11 +2246,11 @@
           },
           {
             "setpoint": {
-              "description": "setpoint of temperature controller at reactor cell",
+              "description": "internal setpoint of  pressure controller",
               "datainfo": {
-                "unit": "\u00b0C",
+                "unit": "bar",
                 "min": 0,
-                "max": 5000,
+                "max": 200,
                 "type": "double"
               },
               "readonly": true
@@ -1949,14 +2265,6 @@
             }
           },
           {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
             "_inverse_calibration_coefficients": {
               "description": "Inverse calibration polynomial coefficients for value Parameter",
               "datainfo": {
@@ -1994,8 +2302,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -2004,278 +2311,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
-            }
-          },
-          {
-            "target_limits": {
-              "description": "Limits for desired massflow of gas",
-              "datainfo": {
-                "type": "tuple",
-                "members": [
-                  {
-                    "unit": "\u00b0C",
-                    "min": 0,
-                    "max": 5000,
-                    "type": "double"
-                  },
-                  {
-                    "unit": "\u00b0C",
-                    "min": 0,
-                    "max": 5000,
-                    "type": "double"
-                  }
-                ]
-              },
               "readonly": true
-            }
-          },
-          {
-            "_tolerance": {
-              "description": "Temperature range for stability checking",
-              "datainfo": {
-                "unit": "\u00b0C",
-                "min": 0,
-                "max": 100,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
-            "_P_value": {
-              "description": "Proportional const for controller",
-              "datainfo": {
-                "min": 0,
-                "max": 20000,
-                "type": "double"
-              },
-              "readonly": false,
-              "group": "control parameter"
-            }
-          },
-          {
-            "_I_value": {
-              "description": "Integral const for controller",
-              "datainfo": {
-                "min": 0,
-                "max": 20000,
-                "type": "double"
-              },
-              "readonly": false,
-              "group": "control parameter"
-            }
-          },
-          {
-            "_D_value": {
-              "description": "Deviative const for controller",
-              "datainfo": {
-                "min": 0,
-                "max": 20000,
-                "type": "double"
-              },
-              "readonly": false,
-              "group": "control parameter"
-            }
-          }
-        ]
-      },
-      "image": null
-    },
-    {
-      "id": "box-gas_dosing_backpress_contr1",
-      "device": "backpress_contr1",
-      "deviceKey": "gas_dosing_backpress_contr1",
-      "logicalName": "gas_dosing_backpress_contr1",
-      "left": "1132px",
-      "top": "543px",
-      "width": "309px",
-      "height": "117px",
-      "info": {
-        "params": [
-          "_D_value",
-          "_I_value",
-          "_P_value",
-          "_control_mode",
-          "_forward_calibration_coefficients",
-          "_inverse_calibration_coefficients",
-          "_tolerance",
-          "pollinterval",
-          "ramp",
-          "target"
-        ],
-        "all_params": [
-          "_D_value",
-          "_I_value",
-          "_P_value",
-          "_control_mode",
-          "_factory_reset",
-          "_forward_calibration_coefficients",
-          "_inverse_calibration_coefficients",
-          "_tolerance",
-          "pollinterval",
-          "ramp",
-          "stop",
-          "target"
-        ],
-        "commands": [
-          "_factory_reset",
-          "stop"
-        ],
-        "original_name": "backpress_contr1",
-        "interface_classes": [
-          "_Calibratable",
-          "Drivable"
-        ],
-        "module_name": "backpress_contr1",
-        "param_info": [
-          {
-            "value": {
-              "description": "pressure reading",
-              "datainfo": {
-                "unit": "bar(a) ",
-                "min": 0,
-                "max": 1000,
-                "type": "double"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "status": {
-              "description": "current status of the module",
-              "datainfo": {
-                "type": "tuple",
-                "members": [
-                  {
-                    "type": "enum",
-                    "members": {
-                      "IDLE": 100,
-                      "WARN": 200,
-                      "BUSY": 300,
-                      "ERROR": 400
-                    }
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              },
-              "readonly": true
-            }
-          },
-          {
-            "target": {
-              "description": "Desired pressure",
-              "datainfo": {
-                "unit": "bar(a) ",
-                "min": 0,
-                "max": 1000,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
-            "ramp": {
-              "description": "desired ramp speed for pressure regulation",
-              "datainfo": {
-                "unit": "bar(a) ^2",
-                "type": "double"
-              },
-              "readonly": false,
-              "group": "control parameter"
-            }
-          },
-          {
-            "setpoint": {
-              "description": "setpoint of pressure controller reported by the hardware",
-              "datainfo": {
-                "unit": "bar(a) ",
-                "min": 0,
-                "max": 2000,
-                "type": "double"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "stop": {
-              "description": "Stop ramping the setpoint\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_inverse_calibration_coefficients": {
-              "description": "Inverse calibration polynomial coefficients for value Parameter",
-              "datainfo": {
-                "type": "array",
-                "minlen": 2,
-                "maxlen": 5,
-                "members": {
-                  "min": -1000000,
-                  "max": 100000,
-                  "type": "double"
-                }
-              },
-              "readonly": false
-            }
-          },
-          {
-            "_forward_calibration_coefficients": {
-              "description": "Forward calibration polynomial coefficients for target Parameter",
-              "datainfo": {
-                "type": "array",
-                "minlen": 2,
-                "maxlen": 5,
-                "members": {
-                  "min": -1000000,
-                  "max": 100000,
-                  "type": "double"
-                }
-              },
-              "readonly": false
-            }
-          },
-          {
-            "_value_uncalibrated": {
-              "description": "uncalibrated readback directly from the hardware",
-              "datainfo": {
-                "type": "double"
-              },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
-            }
-          },
-          {
-            "_target_calibrated": {
-              "description": "calibrated target that is written to the hardware",
-              "datainfo": {
-                "type": "double"
-              },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
             }
           },
           {
@@ -2285,34 +2321,15 @@
                 "type": "tuple",
                 "members": [
                   {
-                    "unit": "bar(a) ",
+                    "unit": "bar",
                     "min": 0,
-                    "max": 1000,
+                    "max": 70,
                     "type": "double"
                   },
                   {
-                    "unit": "bar(a) ",
+                    "unit": "bar",
                     "min": 0,
-                    "max": 1000,
-                    "type": "double"
-                  }
-                ]
-              },
-              "readonly": true
-            }
-          },
-          {
-            "ramp_limits": {
-              "description": "Limits for ramp speed of pressure",
-              "datainfo": {
-                "type": "tuple",
-                "members": [
-                  {
-                    "unit": "bar(a) ^2",
-                    "type": "double"
-                  },
-                  {
-                    "unit": "bar(a) ^2",
+                    "max": 70,
                     "type": "double"
                   }
                 ]
@@ -2322,15 +2339,14 @@
           },
           {
             "_tolerance": {
-              "description": "flow range for stability checking",
+              "description": "pressure range for stability checking",
               "datainfo": {
-                "unit": "bar(a) ",
+                "unit": "bar",
                 "min": 0,
-                "max": 100,
+                "max": 1,
                 "type": "double"
               },
-              "readonly": false,
-              "group": "control parameter"
+              "readonly": false
             }
           },
           {
@@ -2370,51 +2386,13 @@
             }
           },
           {
-            "_valveposition": {
-              "description": "valveposition",
+            "_looptime": {
+              "description": "timestep for simulation",
               "datainfo": {
-                "unit": "%",
-                "min": 0,
-                "max": 100,
+                "unit": "s",
+                "min": 0.01,
+                "max": 10,
                 "type": "double"
-              },
-              "readonly": true,
-              "group": "control parameter"
-            }
-          },
-          {
-            "_node_address": {
-              "description": "node address for FLOW-BUS communication",
-              "datainfo": {
-                "min": 0,
-                "max": 128,
-                "type": "int"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_capacity": {
-              "description": "Capacity of the massflow controller in bar(a) ",
-              "datainfo": {
-                "unit": "bar(a) ",
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": true,
-              "group": "control parameter"
-            }
-          },
-          {
-            "_control_mode": {
-              "description": "control mode of massflow controller",
-              "datainfo": {
-                "type": "enum",
-                "members": {
-                  "RS232": 0,
-                  "fully_closed": 3,
-                  "fully_open": 8
-                }
               },
               "readonly": false
             }
@@ -2428,8 +2406,8 @@
       "device": "backpress_contr2",
       "deviceKey": "gas_dosing_backpress_contr2",
       "logicalName": "gas_dosing_backpress_contr2",
-      "left": "1169px",
-      "top": "735px",
+      "left": "1270px",
+      "top": "753px",
       "width": "296px",
       "height": "117px",
       "info": {
@@ -2437,9 +2415,9 @@
           "_D_value",
           "_I_value",
           "_P_value",
-          "_control_mode",
           "_forward_calibration_coefficients",
           "_inverse_calibration_coefficients",
+          "_looptime",
           "_tolerance",
           "pollinterval",
           "ramp",
@@ -2449,10 +2427,9 @@
           "_D_value",
           "_I_value",
           "_P_value",
-          "_control_mode",
-          "_factory_reset",
           "_forward_calibration_coefficients",
           "_inverse_calibration_coefficients",
+          "_looptime",
           "_tolerance",
           "pollinterval",
           "ramp",
@@ -2460,23 +2437,21 @@
           "target"
         ],
         "commands": [
-          "_factory_reset",
           "stop"
         ],
         "original_name": "backpress_contr2",
         "interface_classes": [
-          "_Calibratable",
           "Drivable"
         ],
         "module_name": "backpress_contr2",
         "param_info": [
           {
             "value": {
-              "description": "pressure reading",
+              "description": "back pressure reactor section",
               "datainfo": {
-                "unit": "bar(a) ",
+                "unit": "bar",
                 "min": 0,
-                "max": 1000,
+                "max": 80,
                 "type": "double"
               },
               "readonly": true
@@ -2507,11 +2482,11 @@
           },
           {
             "target": {
-              "description": "Desired pressure",
+              "description": "Desired back pressure",
               "datainfo": {
-                "unit": "bar(a) ",
+                "unit": "bar",
                 "min": 0,
-                "max": 1000,
+                "max": 70,
                 "type": "double"
               },
               "readonly": false
@@ -2529,22 +2504,23 @@
           },
           {
             "ramp": {
-              "description": "desired ramp speed for pressure regulation",
+              "description": "desired ramp ",
               "datainfo": {
-                "unit": "bar(a) ^2",
+                "unit": "bar/min",
+                "min": 0,
+                "max": 20,
                 "type": "double"
               },
-              "readonly": false,
-              "group": "control parameter"
+              "readonly": false
             }
           },
           {
             "setpoint": {
-              "description": "setpoint of pressure controller reported by the hardware",
+              "description": "internal setpoint of  pressure controller",
               "datainfo": {
-                "unit": "bar(a) ",
+                "unit": "bar",
                 "min": 0,
-                "max": 2000,
+                "max": 200,
                 "type": "double"
               },
               "readonly": true
@@ -2552,15 +2528,7 @@
           },
           {
             "stop": {
-              "description": "Stop ramping the setpoint\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
+              "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
               "datainfo": {
                 "type": "command"
               }
@@ -2604,8 +2572,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -2614,8 +2581,7 @@
               "datainfo": {
                 "type": "double"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "readonly": true
             }
           },
           {
@@ -2625,34 +2591,15 @@
                 "type": "tuple",
                 "members": [
                   {
-                    "unit": "bar(a) ",
+                    "unit": "bar",
                     "min": 0,
-                    "max": 1000,
+                    "max": 70,
                     "type": "double"
                   },
                   {
-                    "unit": "bar(a) ",
+                    "unit": "bar",
                     "min": 0,
-                    "max": 1000,
-                    "type": "double"
-                  }
-                ]
-              },
-              "readonly": true
-            }
-          },
-          {
-            "ramp_limits": {
-              "description": "Limits for ramp speed of pressure",
-              "datainfo": {
-                "type": "tuple",
-                "members": [
-                  {
-                    "unit": "bar(a) ^2",
-                    "type": "double"
-                  },
-                  {
-                    "unit": "bar(a) ^2",
+                    "max": 70,
                     "type": "double"
                   }
                 ]
@@ -2662,15 +2609,14 @@
           },
           {
             "_tolerance": {
-              "description": "flow range for stability checking",
+              "description": "pressure range for stability checking",
               "datainfo": {
-                "unit": "bar(a) ",
+                "unit": "bar",
                 "min": 0,
-                "max": 100,
+                "max": 1,
                 "type": "double"
               },
-              "readonly": false,
-              "group": "control parameter"
+              "readonly": false
             }
           },
           {
@@ -2710,51 +2656,13 @@
             }
           },
           {
-            "_valveposition": {
-              "description": "valveposition",
+            "_looptime": {
+              "description": "timestep for simulation",
               "datainfo": {
-                "unit": "%",
-                "min": 0,
-                "max": 100,
+                "unit": "s",
+                "min": 0.01,
+                "max": 10,
                 "type": "double"
-              },
-              "readonly": true,
-              "group": "control parameter"
-            }
-          },
-          {
-            "_node_address": {
-              "description": "node address for FLOW-BUS communication",
-              "datainfo": {
-                "min": 0,
-                "max": 128,
-                "type": "int"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_capacity": {
-              "description": "Capacity of the massflow controller in bar(a) ",
-              "datainfo": {
-                "unit": "bar(a) ",
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": true,
-              "group": "control parameter"
-            }
-          },
-          {
-            "_control_mode": {
-              "description": "control mode of massflow controller",
-              "datainfo": {
-                "type": "enum",
-                "members": {
-                  "RS232": 0,
-                  "fully_closed": 3,
-                  "fully_open": 8
-                }
               },
               "readonly": false
             }
@@ -2764,393 +2672,480 @@
       "image": null
     },
     {
-      "id": "box-gas_analysis_myspot_sim_mass_spec",
+      "id": "box-Hiden_MS_mass_spec",
       "device": "mass_spec",
-      "deviceKey": "gas_analysis_myspot_sim_mass_spec",
-      "logicalName": "gas_analysis_myspot_sim_mass_spec",
-      "left": "916px",
-      "top": "670px",
-      "width": "220px",
-      "height": "auto",
+      "deviceKey": "Hiden_MS_mass_spec",
+      "logicalName": "Hiden_MS_mass_spec",
+      "left": "1275px",
+      "top": "513px",
+      "width": "532px",
+      "height": "128px",
       "info": {
-        "params": [
-          "_aquire_time",
-          "_end_mass",
-          "_mass_increment",
-          "_mid_descriptor",
-          "_scan_cycle",
-          "_signal_measurement_device",
-          "_start_mass",
-          "mode"
-        ],
         "all_params": [
-          "_aquire_time",
           "_end_mass",
-          "_mass_increment",
+          "_increment",
+          "_measure_device",
           "_mid_descriptor",
           "_scan_cycle",
-          "_signal_measurement_device",
           "_start_mass",
           "go",
-          "mode"
+          "mode",
+          "status",
+          "stop"
         ],
         "commands": [
-          "go"
+          "go",
+          "stop"
         ],
-        "original_name": "mass_spec",
         "interface_classes": [
+          "Readable",
           "Triggerable"
         ],
         "module_name": "mass_spec",
+        "original_name": "mass_spec",
         "param_info": [
           {
             "value": {
-              "description": "partial pressure spectrum",
               "datainfo": {
-                "type": "array",
-                "minlen": 0,
-                "maxlen": 100,
+                "maxlen": 600,
                 "members": {
-                  "min": 0,
-                  "max": 1000,
                   "type": "double"
-                }
+                },
+                "type": "array"
               },
+              "description": "Full or partial spectrum of the currently running/last complete scan",
+              "pollinterval": 3,
               "readonly": true
             }
           },
           {
             "status": {
-              "description": "current status of the module",
               "datainfo": {
-                "type": "tuple",
                 "members": [
                   {
-                    "type": "enum",
                     "members": {
-                      "IDLE": 100,
-                      "WARN": 200,
                       "BUSY": 300,
-                      "ERROR": 400
-                    }
+                      "IDLE": 100,
+                      "PREPARING": 340
+                    },
+                    "type": "enum"
                   },
                   {
+                    "isUTF8": true,
                     "type": "string"
                   }
-                ]
+                ],
+                "type": "tuple"
               },
-              "readonly": true
-            }
-          },
-          {
-            "mode": {
-              "description": "indicates the current scan mode",
-              "datainfo": {
-                "type": "enum",
-                "members": {
-                  "MID_SCAN": 0,
-                  "BAR_SCAN": 1
-                }
-              },
-              "readonly": false
-            }
-          },
-          {
-            "go": {
-              "description": "generate new spectrum",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_mass": {
-              "description": "massnumber to corresponding partialpressures",
-              "datainfo": {
-                "type": "array",
-                "minlen": 0,
-                "maxlen": 100,
-                "members": {
-                  "min": 0,
-                  "max": 1000,
-                  "type": "double"
-                }
-              },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
-            }
-          },
-          {
-            "_aquire_time": {
-              "description": "time duration for aquisition of spectrum",
-              "datainfo": {
-                "unit": "s",
-                "min": 0,
-                "max": 60,
-                "type": "double"
-              },
+              "description": "current status of the module ",
+              "pollinterval": 3,
               "readonly": false
             }
           },
           {
             "_vacuum_pressure": {
-              "description": "Pressure inside the measurement chamber",
+              "_signal_format": "HINTED_SIGNAL",
               "datainfo": {
-                "unit": "mbar",
-                "min": 0,
                 "max": 2000,
-                "type": "double"
+                "min": 0,
+                "type": "double",
+                "unit": "mbar"
               },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
+              "description": "Pressure inside the measurement chamber",
+              "pollinterval": 3,
+              "readonly": true
+            }
+          },
+          {
+            "mode": {
+              "datainfo": {
+                "members": {
+                  "BAR_SCAN": 1,
+                  "MID_SCAN": 0
+                },
+                "type": "enum"
+              },
+              "description": "indicates the current scan mode",
+              "pollinterval": 24,
+              "readonly": false
             }
           },
           {
             "_mid_descriptor": {
-              "description": "Datastructure that describes an MID Scan. (massnumber and measurement device for each massnumber)",
               "datainfo": {
-                "type": "struct",
                 "members": {
-                  "mass": {
-                    "type": "array",
-                    "minlen": 1,
-                    "maxlen": 200,
-                    "members": {
-                      "min": 0.4,
-                      "max": 200,
-                      "type": "double"
-                    }
-                  },
                   "device": {
-                    "type": "array",
-                    "minlen": 1,
-                    "maxlen": 200,
+                    "maxlen": 50,
                     "members": {
-                      "type": "enum",
-                      "members": {
-                        "FARADAY": 0,
-                        "SEM": 1
-                      }
-                    }
+                      "type": "double"
+                    },
+                    "type": "array"
+                  },
+                  "mass": {
+                    "maxlen": 50,
+                    "members": {
+                      "type": "double"
+                    },
+                    "type": "array",
+                    "unit": "amu"
                   }
-                }
+                },
+                "type": "struct"
               },
-              "readonly": false,
-              "group": "MID_SCAN"
+              "description": " Data structure that describes an MID Scan. (massnumber and measurement device for each massnumber) \n          Example:\n            {\n              mass:    [12,15,28,75],\n              device:  [FARADAY,SEM,SEM,SEM]\n            }",
+              "pollinterval": 24,
+              "readonly": false
             }
           },
           {
-            "_signal_measurement_device": {
-              "description": "Selects the detector for a bar scan",
+            "_measure_device": {
               "datainfo": {
-                "type": "enum",
                 "members": {
                   "FARADAY": 0,
-                  "SEM": 1
-                }
+                  "SEM": 1,
+                  "VACCUM": 6
+                },
+                "type": "enum"
               },
-              "readonly": false,
-              "group": "BAR_SCAN"
+              "description": "Selects the detector for a bar scan",
+              "group": "BAR_SCAN",
+              "pollinterval": 24,
+              "readonly": false
             }
           },
           {
             "_start_mass": {
-              "description": "Start mass number for a bar scan",
               "datainfo": {
-                "unit": "amu",
-                "min": 0.4,
                 "max": 200,
-                "type": "double"
+                "min": 0.4,
+                "type": "double",
+                "unit": "amu"
               },
-              "readonly": false,
-              "group": "BAR_SCAN"
+              "description": "Start mass number for a bar scan",
+              "group": "BAR_SCAN",
+              "pollinterval": 24,
+              "readonly": false
             }
           },
           {
             "_end_mass": {
-              "description": "End mass number for a bar scan",
               "datainfo": {
-                "unit": "amu",
+                "max": 200,
                 "min": 0.4,
-                "max": 200,
-                "type": "double"
+                "type": "double",
+                "unit": "amu"
               },
-              "readonly": false,
-              "group": "BAR_SCAN"
-            }
-          },
-          {
-            "_mass_increment": {
-              "description": "Mass increment between scans in a bar scan",
-              "datainfo": {
-                "unit": "amu",
-                "min": 0,
-                "max": 200,
-                "type": "double"
-              },
-              "readonly": false,
-              "group": "BAR_SCAN"
+              "description": "End mass number for a bar scan",
+              "group": "BAR_SCAN",
+              "pollinterval": 24,
+              "readonly": false
             }
           },
           {
             "_scan_cycle": {
-              "description": "indicates if in single or continuous cycle mode",
               "datainfo": {
-                "type": "enum",
                 "members": {
-                  "SINGLE": 0,
-                  "CONTINUOUS": 1
-                }
+                  "CONTINUOUS": 0,
+                  "SINGLE": 1
+                },
+                "type": "enum"
               },
+              "description": "indicates if in single or continuous cycle mode",
+              "pollinterval": 24,
               "readonly": false
             }
           },
           {
             "_electron_energy": {
-              "description": "The Electron energy is used to define the filament potential in the Ion Source. This is used to change the Appearance Potential of gasses with similar mass footprints so they can be looked at individually.",
               "datainfo": {
-                "unit": "V",
-                "min": 0,
                 "max": 200,
-                "type": "double"
+                "min": 0,
+                "type": "double",
+                "unit": "V"
               },
-              "readonly": true,
-              "group": "global_residual_gas_analysis_parameters"
+              "description": "The Electron energy is used to define the filament potential in the Ion Source. This is used to change the Appearance Potential of gasses with similar mass footprints so they can be looked at individually.",
+              "group": "global_rga_parameters",
+              "pollinterval": 27,
+              "readonly": true
             }
           },
           {
             "_emission": {
-              "description": "The Emission current is the current which flows from the active filament to the Ion Source Cage. An increase in Emission Current causes an increase in peak intensity, can be used to increase/reduce the peak intensities.",
               "datainfo": {
-                "unit": "A",
-                "min": 0,
-                "type": "double"
+                "type": "double",
+                "unit": "uA"
               },
-              "readonly": true,
-              "group": "global_residual_gas_analysis_parameters"
+              "description": "The Emission current is the current which flows from the active filament to the Ion Source Cage. An increase in Emission Current causes an increase in peak intensity, can be used to increase/reduce the peak intensities.",
+              "group": "global_rga_parameters",
+              "pollinterval": 27,
+              "readonly": true
             }
           },
           {
             "_focus": {
-              "description": "This is the voltage applied to the Focus plate. This is used to extract the positive Ions from the source and into the Mass Filter, and also to block the transmission of electrons.",
               "datainfo": {
-                "unit": "V",
-                "min": -1000,
-                "max": 1000,
-                "type": "double"
+                "type": "double",
+                "unit": "V"
               },
-              "readonly": true,
-              "group": "global_residual_gas_analysis_parameters"
-            }
-          },
-          {
-            "_multiplier": {
-              "description": "The voltage applied to the SEM detector; with a PIC this should be set so the SEM operates in the Plateau Region. With an Analogue system this should be set to 1000 gain, i.e. a scan in Faraday should be equal height using the SEM detector.",
-              "datainfo": {
-                "unit": "V",
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": true,
-              "group": "global_residual_gas_analysis_parameters"
+              "description": " This is the voltage applied to the Focus plate. This is used to extract the positive Ions from the source and into the Mass Filter, and also to block the transmission of electrons.",
+              "group": "global_rga_parameters",
+              "pollinterval": 27,
+              "readonly": true
             }
           },
           {
             "_cage": {
-              "description": "This is the Ion Source Cage voltage which controls the Ion Energy. The higher the Ion Energy the faster the Ions travel through the Mass Filter to the Detector, this reduces the oscillation effect caused by the RF which is applied to the filter.",
               "datainfo": {
-                "unit": "V",
-                "min": 0,
-                "type": "double"
+                "type": "double",
+                "unit": "V"
               },
-              "readonly": true,
-              "group": "global_residual_gas_analysis_parameters"
+              "description": " This is the Ion Source Cage voltage which controls the Ion Energy. The higher the Ion Energy the faster the Ions travel through the Mass Filter to the Detector, this reduces the oscillation effect caused by the RF which is applied to the filter.\n",
+              "group": "global_rga_parameters",
+              "pollinterval": 27,
+              "readonly": true
             }
           },
           {
             "_resolution": {
-              "description": "The high mass peak width/valley adjustment used during set up and maintenance. Can also affect the low masses and should be adjusted in conjunction with the Delta-M.",
               "datainfo": {
-                "unit": "%",
-                "min": 0,
-                "type": "double"
+                "type": "double",
+                "unit": "%"
               },
-              "readonly": true,
-              "group": "global_residual_gas_analysis_parameters"
+              "description": " The high mass peak width/valley adjustment used during set up and maintenance. Can also affect the low masses and should be adjusted in conjunction with the Delta-M.\n ",
+              "group": "global_rga_parameters",
+              "pollinterval": 27,
+              "readonly": true
             }
           },
           {
             "_delta_m": {
-              "description": "The low mass peak width/valley adjustment used during set up and maintenance.Can also affect the high masses and should be adjusted in conjunction withthe Resolution",
               "datainfo": {
-                "unit": "%",
-                "min": 0,
-                "type": "double"
+                "type": "double",
+                "unit": "%"
               },
-              "readonly": true,
-              "group": "global_residual_gas_analysis_parameters"
+              "description": "The low mass peak width/valley adjustment used during set up and maintenance. Can also affect the high masses and should be adjusted in conjunction with the Resolution\n  ",
+              "group": "global_rga_parameters",
+              "pollinterval": 27,
+              "readonly": true
             }
           },
           {
             "_start_range": {
-              "description": "Contains the range used at the start of a scan.",
               "datainfo": {
-                "unit": "mbar",
-                "min": 0,
-                "type": "double"
+                "type": "double",
+                "unit": "mbar"
               },
-              "readonly": true,
-              "group": "acquisition_range"
+              "description": "Contains the range used at the start of a scan.",
+              "group": "acquisition_range",
+              "pollinterval": 27,
+              "readonly": true
             }
           },
           {
             "_autorange_high": {
-              "description": "The highest range to which the input device may autorange",
               "datainfo": {
-                "unit": "mbar",
-                "min": 0,
-                "type": "double"
+                "type": "double",
+                "unit": "mbar"
               },
-              "readonly": true,
-              "group": "acquisition_range"
+              "description": "This the highest range to which the input device may autorange; ",
+              "group": "acquisition_range",
+              "pollinterval": 27,
+              "readonly": true
             }
           },
           {
             "_autorange_low": {
-              "description": "The lowest range to which the input device may autorange",
               "datainfo": {
-                "unit": "mbar",
-                "min": 0,
-                "type": "double"
+                "type": "double",
+                "unit": "mbar"
               },
-              "readonly": true,
-              "group": "acquisition_range"
+              "description": "The lowest range to which the input device may autorange",
+              "group": "acquisition_range",
+              "pollinterval": 27,
+              "readonly": true
             }
           },
           {
             "_settle": {
-              "description": "Defines the time to allow the electronics to settle before the scan isstarted. Given as a percentage of the default settle time for the currentrange.",
               "datainfo": {
-                "unit": "%",
-                "min": 0,
-                "type": "double"
+                "type": "double",
+                "unit": "%"
               },
-              "readonly": true,
-              "group": "acquisition_range"
+              "description": "Defines the time to allow the electronics to settle before the scan is started. Given as a percentage of the default settle time for the current range.",
+              "group": "acquisition_range",
+              "pollinterval": 27,
+              "readonly": true
             }
           },
           {
             "_dwell": {
-              "description": "Defines the time used to acquire a single point in the scan. Given as apercentage of the default settle time for the current range.",
               "datainfo": {
-                "unit": "%",
-                "min": 0,
-                "type": "double"
+                "type": "double",
+                "unit": "%"
               },
-              "readonly": true,
-              "group": "acquisition_range"
+              "description": "Defines the time used to acquire a single point in the scan. Given as a percentage of the default settle time for the current range.",
+              "group": "acquisition_range",
+              "pollinterval": 27,
+              "readonly": true
+            }
+          },
+          {
+            "go": {
+              "datainfo": {
+                "argument": null,
+                "result": null,
+                "type": "command"
+              },
+              "description": "starts new scan, or initiates the continuous scan",
+              "pollinterval": 27
+            }
+          },
+          {
+            "stop": {
+              "datainfo": {
+                "argument": null,
+                "result": null,
+                "type": "command"
+              },
+              "description": "stops running scan module goes back to IDLE",
+              "pollinterval": 27
+            }
+          },
+          {
+            "_multiplier": {
+              "datainfo": {
+                "type": "double",
+                "unit": "V"
+              },
+              "description": "The voltage applied to the SEM detector; with a PIC this should be set so the SEM operates in the Plateau Region. With an Analogue system this should be set to 1000 gain, i.e. a scan in Faraday should be equal height using the SEM detector.\n  ",
+              "group": "global_rga_parameters",
+              "pollinterval": 27,
+              "readonly": true
+            }
+          },
+          {
+            "_increment": {
+              "datainfo": {
+                "max": 20,
+                "min": 0,
+                "type": "double",
+                "unit": "amu"
+              },
+              "description": "Incremental mass  for Bar scan ",
+              "group": "BAR_SCAN",
+              "pollinterval": 27,
+              "readonly": false
+            }
+          },
+          {
+            "_mass": {
+              "_signal_format": "HINTED_SIGNAL",
+              "datainfo": {
+                "maxlen": 600,
+                "members": {
+                  "type": "double"
+                },
+                "type": "array"
+              },
+              "description": "mass number configuration",
+              "pollinterval": 3,
+              "readonly": true
             }
           }
+        ],
+        "params": [
+          "_end_mass",
+          "_increment",
+          "_measure_device",
+          "_mid_descriptor",
+          "_scan_cycle",
+          "_start_mass",
+          "mode",
+          "status"
+        ]
+      },
+      "image": null
+    },
+    {
+      "id": "box-reactor_cell_pressure_in",
+      "device": "pressure_in",
+      "deviceKey": "reactor_cell_pressure_in",
+      "logicalName": "reactor_cell_pressure_in",
+      "left": "758px",
+      "top": "96px",
+      "width": "217px",
+      "height": "119px",
+      "info": {
+        "all_params": [
+          "pollinterval"
+        ],
+        "commands": [],
+        "interface_classes": [
+          "Readable"
+        ],
+        "module_name": "pressure_in",
+        "original_name": "pressure_in",
+        "param_info": [
+          {
+            "value": {
+              "datainfo": {
+                "max": 500,
+                "min": -100,
+                "type": "double",
+                "unit": "bar"
+              },
+              "description": "Current pressure reading",
+              "readonly": true
+            }
+          },
+          {
+            "status": {
+              "datainfo": {
+                "members": [
+                  {
+                    "members": {
+                      "ERROR": 400,
+                      "IDLE": 100,
+                      "WARN": 200
+                    },
+                    "type": "enum"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "type": "tuple"
+              },
+              "description": "current status of the module",
+              "readonly": true
+            }
+          },
+          {
+            "pollinterval": {
+              "datainfo": {
+                "max": 120,
+                "min": 0.1,
+                "type": "double",
+                "unit": "s"
+              },
+              "description": "default poll interval",
+              "readonly": false
+            }
+          },
+          {
+            "_slave_address": {
+              "datainfo": {
+                "max": 247,
+                "min": 1,
+                "type": "int"
+              },
+              "description": "Modbus slave address",
+              "readonly": true
+            }
+          }
+        ],
+        "params": [
+          "pollinterval"
         ]
       },
       "image": null
@@ -3161,8 +3156,8 @@
       "id": "icon-gas_dosing_valve_controller_CO",
       "device": "gas_dosing_valve_controller",
       "field": "CO",
-      "left": "428px",
-      "top": "42px",
+      "left": "66px",
+      "top": "30px",
       "width": "80px",
       "height": "100px",
       "rotationDegrees": "0",
@@ -3176,8 +3171,8 @@
       "id": "icon-gas_dosing_valve_controller_H2",
       "device": "gas_dosing_valve_controller",
       "field": "H2",
-      "left": "425px",
-      "top": "622px",
+      "left": "82px",
+      "top": "610px",
       "width": "80px",
       "height": "100px",
       "rotationDegrees": "0",
@@ -3192,9 +3187,9 @@
     {
       "id": "deco-1777023997142",
       "type": "line",
-      "left": "292px",
-      "top": "74px",
-      "width": "120px",
+      "left": "145px",
+      "top": "75px",
+      "width": "38px",
       "height": "12px",
       "color": "transparent",
       "text": "",
@@ -3208,9 +3203,9 @@
     {
       "id": "deco-1777024086479",
       "type": "line",
-      "left": "289px",
-      "top": "654px",
-      "width": "120px",
+      "left": "147px",
+      "top": "655px",
+      "width": "38px",
       "height": "12px",
       "color": "transparent",
       "text": "",
@@ -3224,10 +3219,10 @@
     {
       "id": "deco-1777024606490",
       "type": "line",
-      "left": "295px",
-      "top": "366px",
-      "width": "275px",
-      "height": "12px",
+      "left": "434px",
+      "top": "365px",
+      "width": "135px",
+      "height": "15px",
       "color": "transparent",
       "text": "",
       "fontFamily": "",
@@ -3240,10 +3235,10 @@
     {
       "id": "deco-1777024741166",
       "type": "line",
-      "left": "293px",
-      "top": "236px",
-      "width": "277px",
-      "height": "13px",
+      "left": "429px",
+      "top": "223px",
+      "width": "139px",
+      "height": "12px",
       "color": "transparent",
       "text": "",
       "fontFamily": "",
@@ -3272,9 +3267,9 @@
     {
       "id": "deco-1777024847886",
       "type": "line",
-      "left": "519px",
+      "left": "532px",
       "top": "657px",
-      "width": "51px",
+      "width": "38px",
       "height": "12px",
       "color": "transparent",
       "text": "",
@@ -3288,9 +3283,9 @@
     {
       "id": "deco-1777024852194",
       "type": "line",
-      "left": "523px",
-      "top": "74px",
-      "width": "46px",
+      "left": "533px",
+      "top": "72px",
+      "width": "38px",
       "height": "12px",
       "color": "transparent",
       "text": "",
@@ -3352,10 +3347,10 @@
     {
       "id": "deco-1777026105178",
       "type": "line",
-      "left": "294px",
-      "top": "501px",
-      "width": "275px",
-      "height": "13px",
+      "left": "429px",
+      "top": "509px",
+      "width": "142px",
+      "height": "12px",
       "color": "transparent",
       "text": "",
       "fontFamily": "",
@@ -3368,10 +3363,10 @@
     {
       "id": "deco-1777026561916",
       "type": "line",
-      "left": "1205px",
-      "top": "694px",
-      "width": "53px",
-      "height": "12px",
+      "left": "1372px",
+      "top": "684px",
+      "width": "77px",
+      "height": "24px",
       "color": "transparent",
       "text": "",
       "fontFamily": "",
@@ -3416,8 +3411,8 @@
     {
       "id": "deco-1777028703822",
       "type": "line",
-      "left": "537px",
-      "top": "459px",
+      "left": "535px",
+      "top": "458px",
       "width": "303px",
       "height": "200px",
       "color": "transparent",
@@ -3448,10 +3443,10 @@
     {
       "id": "deco-1777029147351",
       "type": "line",
-      "left": "763px",
-      "top": "47px",
-      "width": "171px",
-      "height": "175px",
+      "left": "828px",
+      "top": "63px",
+      "width": "40px",
+      "height": "12px",
       "color": "transparent",
       "text": "",
       "fontFamily": "",
@@ -3480,7 +3475,7 @@
     {
       "id": "deco-1777029211333",
       "type": "line",
-      "left": "605px",
+      "left": "606px",
       "top": "452px",
       "width": "303px",
       "height": "141px",
@@ -3496,9 +3491,9 @@
     {
       "id": "deco-1777029417137",
       "type": "line",
-      "left": "728px",
-      "top": "519px",
-      "width": "298px",
+      "left": "855px",
+      "top": "648px",
+      "width": "40px",
       "height": "12px",
       "color": "transparent",
       "text": "",
@@ -3528,9 +3523,9 @@
     {
       "id": "deco-1777031550351",
       "type": "line",
-      "left": "1143px",
-      "top": "699px",
-      "width": "88px",
+      "left": "1240px",
+      "top": "698px",
+      "width": "169px",
       "height": "13px",
       "color": "transparent",
       "text": "",
@@ -3565,7 +3560,7 @@
       "width": "",
       "height": "",
       "color": "rgb(0, 0, 0)",
-      "text": "gas handling& analysis system at OAESE beamline",
+      "text": "gas handling& analysis system at KMC2 beamline",
       "fontFamily": "\"Times New Roman\", serif",
       "fontSize": "24px",
       "lineColor": "",
@@ -3581,14 +3576,14 @@
       "configName": "pressure_plot",
       "xAxisTitle": "",
       "yAxisTitle": "",
-      "left": "799px",
-      "top": "31px",
-      "width": "723.833px",
+      "left": "804px",
+      "top": "47px",
+      "width": "700px",
       "height": "451px",
-      "transform": "translate(199.698px, -16.7097px)",
+      "transform": "translate(204.281px, -10.293px)",
       "zIndex": "5",
-      "dataX": "199.697998046875",
-      "dataY": "-16.70965576171875",
+      "dataX": "204.28125",
+      "dataY": "-10.29296875",
       "traces": [
         "sim_gas_dosing_backpress_contr1.value",
         "sim_gas_dosing_backpress_contr1.target",

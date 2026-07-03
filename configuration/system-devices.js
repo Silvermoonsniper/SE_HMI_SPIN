@@ -653,10 +653,10 @@ function createDeviceDisplay(isConfigurelayout, options = {})
     newBox.classList.remove('configure-layout');
   }
   
-  // Position it intelligently
+  // Position it intelligently unless a caller provides an explicit placement.
   const count = document.querySelectorAll('.device-box').length;
-  newBox.style.top = (20 + count * 110) + 'px'; // Stack vertically
-  newBox.style.left = '20px';
+  newBox.style.top = options.top || ((20 + count * 110) + 'px');
+  newBox.style.left = options.left || '20px';
   
   newBox.style.zIndex = '10';
   document.getElementById('device-grid').appendChild(newBox);
