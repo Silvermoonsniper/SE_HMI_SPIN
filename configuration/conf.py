@@ -328,7 +328,7 @@ class SpinConfigManager:
    
             config.server = '0.0.0.0:8000'
    
-            config.control_url = 'http://0.0.0.0:8000/'
+            config.control_url = None
    
             config.plugins = [os.path.abspath(os.path.join(self.base_dir, 'node_manager.py'))]
    
