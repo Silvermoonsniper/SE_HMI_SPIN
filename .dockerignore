@@ -23,6 +23,10 @@ Thumbs.db
 # Log files
 *.log
 
+# Frontend build artifacts (built inside the Docker image)
+frontend/node_modules/
+frontend/dist/
+
 # Don't ignore configuration files (we want to keep them)
 !configuration/nodes.json
 !configuration/device_params.json

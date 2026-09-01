@@ -1,0 +1,241 @@
+/* History Browser styles — ported verbatim (scoped under .history-page)
+   from the inline <style> block of content/history.html. */
+
+.history-page {
+  --page-bg: #f4f7fb;
+  --panel-bg: #ffffff;
+  --panel-border: #d7e0ea;
+  --text-main: #16202a;
+  --text-muted: #5f6f82;
+  --accent: #1d4ed8;
+  --accent-soft: #dbeafe;
+  --ok: #166534;
+  --warn: #9a3412;
+  --table-header: #eff6ff;
+
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 24px;
+  color: var(--text-main);
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+
+body:has(.history-page) {
+  margin: 0;
+  background: linear-gradient(180deg, #f8fbff 0%, #f4f7fb 100%);
+  /* The legacy system.css locks body scroll; the history page must scroll. */
+  overflow: auto !important;
+  height: auto !important;
+}
+
+.history-page .hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.history-page .hero h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+
+.history-page .hero p {
+  margin: 0;
+  color: var(--text-muted);
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+.history-page .hero-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.history-page .panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.history-page .controls {
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.history-page .control-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.history-page .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-page .field label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.history-page .field input,
+.history-page .field select,
+.history-page .field button,
+.history-page .hero-actions button {
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid #c6d3e1;
+  padding: 0 12px;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.history-page .field input,
+.history-page .field select {
+  background: #fff;
+  color: var(--text-main);
+}
+
+.history-page .button-primary,
+.history-page .hero-actions button {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.history-page .button-secondary {
+  background: #fff;
+  color: var(--text-main);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.history-page .button-primary:disabled,
+.history-page .button-secondary:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.history-page .stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.history-page .stat-card {
+  padding: 16px;
+}
+
+.history-page .stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.history-page .stat-value {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.history-page .meta {
+  padding: 16px 18px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  background: var(--accent-soft);
+  border: 1px solid #bfdbfe;
+}
+
+.history-page .meta strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.history-page .table-panel {
+  overflow: hidden;
+}
+
+.history-page .table-wrap {
+  overflow: auto;
+  max-height: 70vh;
+}
+
+.history-page table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 860px;
+}
+
+.history-page thead th {
+  position: sticky;
+  top: 0;
+  background: var(--table-header);
+  z-index: 1;
+}
+
+.history-page th,
+.history-page td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5ebf2;
+  text-align: left;
+  vertical-align: top;
+  font-size: 13px;
+}
+
+.history-page tbody tr:nth-child(even) {
+  background: #fbfdff;
+}
+
+.history-page .mono {
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 12px;
+}
+
+.history-page .status {
+  padding: 0 2px;
+  color: var(--text-muted);
+}
+
+.history-page .status.error {
+  color: #b91c1c;
+}
+
+.history-page .status.ok {
+  color: var(--ok);
+}
+
+.history-page .status.warn {
+  color: var(--warn);
+}
+
+.history-page .empty {
+  padding: 32px 18px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+@media (max-width: 780px) {
+  .history-page {
+    padding: 14px;
+  }
+
+  .history-page .hero {
+    flex-direction: column;
+  }
+}
