@@ -19,6 +19,9 @@ dependencies = [
   "flask",
   "flask_cors",
   "waitress",
+  "fastapi",
+  "uvicorn",
+  "websockets",
   "h5py",
   "psycopg[binary]",
 ]

@@ -28,6 +28,7 @@ from werkzeug.serving import make_server
 from functools import wraps
 
 from configuration.nexus_export import NexusRunExporter, inspect_export_object, list_export_files, resolve_export_file
+from configuration.ws_hub import update_hub
 
 
 DATA_EXPORT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data_exports'))
@@ -721,17 +722,22 @@ class ExtendedBackend(Backend):
     latest_values = {}
 
     def stop_api_server(self):
-        """Stop the background Flask API server thread if it is running."""
+        """Stop the background API server (uvicorn or legacy Flask) if running."""
         server = getattr(self, '_api_server', None)
         thread = getattr(self, '_api_server_thread', None)
 
         if server is not None:
             try:
-                server.shutdown()
+                if hasattr(server, 'should_exit'):
+                    # uvicorn.Server: request a graceful shutdown.
+                    server.should_exit = True
+                else:
+                    server.shutdown()
             except Exception:
                 pass
             try:
-                server.server_close()
+                if hasattr(server, 'server_close'):
+                    server.server_close()
             except Exception:
                 pass
 
@@ -743,6 +749,27 @@ class ExtendedBackend(Backend):
 
         self._api_server = None
         self._api_server_thread = None
+
+    async def send_update(self, update: Update):
+        """Extend Spin's websocket broadcast with a fan-out to API WebSocket clients."""
+        try:
+            data = update.serialize()
+        except Exception:
+            data = None
+        changed = data is None or self._last_updates.get(update.key) != data
+        await super().send_update(update)
+        if not changed:
+            return
+        try:
+            update_hub.publish({
+                'key': update.key,
+                'unit': update.unit,
+                'state': getattr(update.state, 'value', str(update.state)),
+                'state_str': update.state_str,
+                'value': _json_safe_value(update.value),
+            })
+        except Exception:
+            pass
 
     def _ensure_runtime_storage(self):
         """Lazily initialize runtime caches, exporters, and history writer state."""
@@ -1175,7 +1202,10 @@ class ExtendedBackend(Backend):
         dev = devcls(name, device_conf, parsed, self, log)
         self._devices[name] = dev
         dev.init()
-        if self.is_initialized:
+        # spin-hmi's Backend has no is_initialized attribute (only SECNode
+        # does); treat a missing attribute as initialized so runtime hot-add
+        # works instead of raising AttributeError.
+        if getattr(self, 'is_initialized', True):
             dev.run_task(self._activate_device(dev))
         return dev
 
@@ -1436,15 +1466,26 @@ class ExtendedBackend(Backend):
             self.log.warning(f'Failed to recover runtime nodes during startup: {exc}')
 
         self.run_task(self.poll_all_parameters())
-        # Start Flask API server for latest values in a thread, pass self so
-        # the API can inspect device->connection mappings.
+        # Start the FastAPI API server for latest values in a thread, pass self
+        # so the API can inspect device->connection mappings.
         start_api_server(self)
 
 
 
 
 def start_api_server(backend=None):
-    """Start the Flask API server that exposes backend state to the frontend."""
+    """Start the FastAPI API server that exposes backend state to the frontend."""
+    from configuration.fastapi_app import run_api_server
+
+    server, thread = run_api_server(backend)
+    if backend is not None:
+        backend._api_server = server
+        backend._api_server_thread = thread
+    return server, thread
+
+
+def _start_flask_api_server_legacy(backend=None):
+    """Legacy Flask API server kept for reference; superseded by FastAPI."""
    
     app = Flask(__name__)
    

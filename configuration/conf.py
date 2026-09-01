@@ -68,12 +68,16 @@ class SpinConfigManager:
    
 
     def resolve_host(self, host):
-        """Return the host string to use for direct node access."""
+        """Return the host string to use for direct node access.
 
-        if host not in ('localhost', '127.0.0.1'):
-            return host
+        Bug fix: delegate to the module-level resolve_host() so that
+        'localhost' is translated to 'host.docker.internal' when running in
+        Docker. Previously this returned 'localhost' unchanged, so nodes added
+        with a localhost address became unreachable after every container
+        restart and device_params.json was overwritten with an empty object.
+        """
 
-        return host
+        return resolve_host(host)
 
     def extract_modules_and_parameters(self, data, prefix=""):
         """Extract module names and parameter metadata from SECoP descriptive data."""
@@ -332,10 +336,11 @@ class SpinConfigManager:
    
             config.plugins = [os.path.abspath(os.path.join(self.base_dir, 'node_manager.py'))]
    
+            # The React + FastAPI frontend (port 8001) is now the single UI.
+            # Spin's page-serving on :8000 is retired; point all pages at a
+            # minimal stub so the spin backend keeps starting cleanly.
             config.pages = {
-                'default': Page('../content/system.html', readonly=False),
-                'plots': Page('../content/plots.html', readonly=False),
-                'history': Page('../content/history.html', readonly=False),
+                'default': Page('../content/index.html', readonly=False),
             }
             dev_config['nodemanager'] = Device('nodemanager://localhost', pollinterval=1.0)
    

@@ -19,9 +19,19 @@ FROM baseimage AS deps
 RUN uv venv --python 3.11 && \
     uv sync --all-groups
 
+# Build the React + TypeScript frontend (served by the FastAPI server as a SPA)
+FROM node:22-alpine AS frontend_build
+WORKDIR /app/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
 FROM deps AS all_deps
 # Copy application files
 COPY . /app
+# Overlay the built frontend (dist is gitignored and excluded from the context copy)
+COPY --from=frontend_build /app/frontend/dist /app/frontend/dist
 
 # Create necessary directories and files if they don't exist
 RUN mkdir -p /app/configuration && \
