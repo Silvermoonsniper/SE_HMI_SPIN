@@ -52,7 +52,7 @@ export default function StartPage() {
         <div className="conn-box-inner">
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 20 }}>
             <h1 style={{ margin: 0, color: '#333', fontSize: 28 }}>GSE-UI</h1>
-            <span style={{ color: '#64748b', fontSize: 12, fontWeight: 600 }}>V 1.0.12</span>
+            <span style={{ color: '#64748b', fontSize: 12, fontWeight: 600 }}>V 1.0.13</span>
           </div>
 
           <div style={{ marginBottom: 16 }}>
