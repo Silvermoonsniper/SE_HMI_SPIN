@@ -9,7 +9,7 @@ An HMI front-end for SECoP devices built on top of the Spin framework. This repo
 This README explains how to run the project, the recommended development workflow (where to edit files), and troubleshooting steps for layout persistence and asset serving.
 
 ### Highlights / Features
-- Spin-based HMI page under `content/system.html` (served at runtime via `configuration/`)
+- Spin-based HMI page under
 - Backend plugin `configuration/node_manager.py`:
 	- Discovers SECoP nodes
 	- Exposes device parameters to the frontend (`device_params.json`, the json will be automatically generated once you start the application)
@@ -24,15 +24,16 @@ Prerequisites:
 - Python 3.10+ 
 - Docker and docker-compose 
 
+Create your own configuration file .env, refer to .env.example 
 Run locally via Docker Compose (recommended):
 
 ```bash
-docker compose up -d --build
+docker compose up
 # or to tail logs
 docker compose logs -f
 ```
 
-Open the browser at http://localhost:8080.
+Open the browser at http://localhost:8001.
 
 
 
