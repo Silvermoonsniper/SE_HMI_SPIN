@@ -24,8 +24,7 @@ Prerequisites:
 - Python 3.10+ 
 - Docker and docker-compose 
 
-Create your own configuration file .env, refer to .env.example 
-Run locally via Docker Compose (recommended):
+Create your own configuration file ´.env´, refer to ´.env.example´, then run locally via Docker Compose (recommended):
 
 ```bash
 docker compose up
