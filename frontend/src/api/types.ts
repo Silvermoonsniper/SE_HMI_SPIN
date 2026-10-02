@@ -105,7 +105,7 @@ export interface LayoutValveIconEntry {
 
 export interface LayoutDecorationEntry {
   id: string
-  type: 'line' | 'switch' | 'label' | string
+  type: 'line' | 'switch' | 'label' | 'image' | string
   left: string
   top: string
   width: string
@@ -118,6 +118,9 @@ export interface LayoutDecorationEntry {
   lineWidth?: string
   lineType?: string
   rotationDegrees?: string
+  /** Embedded image data so saved layouts remain portable. */
+  imageSrc?: string
+  imageName?: string
 }
 
 export interface LayoutPlotEntry {

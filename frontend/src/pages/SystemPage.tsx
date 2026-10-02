@@ -24,11 +24,13 @@ import { useEditorStore } from '../store/editorStore'
 import { ConnectionLayer } from '../components/editor/ConnectionLayer'
 import { DecorationBox } from '../components/editor/DecorationBox'
 import { CanvasCreateMenu, type CanvasCreateRequest } from '../components/editor/CanvasCreateMenu'
+import { readLayoutImage } from '../components/editor/imageUpload'
 import { fetchLayoutByName, hydrateDeviceMetadataFromLayout, loadLayoutFromFile, saveLayout } from '../components/editor/layoutPersistence'
 import { useCanvasClipboard } from '../components/editor/useCanvasClipboard'
 import { ValveIconMenus } from '../components/editor/ValveIconMenus'
 import { PlotPanel, layoutPlotGeometry } from '../components/plots/PlotPanel'
 import { PlotConfigWindow } from '../components/plots/PlotConfigWindow'
+import { openPlotWindow } from '../components/plots/openPlotWindow'
 import { usePlotStore, layoutPlotToConfig, refreshSavedPlotNames } from '../store/plotStore'
 import type { PlotConfig } from '../api/types'
 import { getStoredLayouts, saveStoredLayout } from '../utils/storage'
@@ -97,14 +99,14 @@ export default function SystemPage() {
   const [createMenu, setCreateMenu] = useState<CanvasCreateRequest | null>(null)
   const [iconsVersion, setIconsVersion] = useState(0)
   const [plotConfigOpen, setPlotConfigOpen] = useState(false)
-  const [plotConfigPosition, setPlotConfigPosition] = useState<{ left: number; top: number } | null>(null)
   const plotPanels = usePlotStore((s) => s.plots)
-  const createPlotInStore = usePlotStore((s) => s.createPlot)
   const removePlotFromStore = usePlotStore((s) => s.removePlot)
 
   const gridRef = useRef<HTMLDivElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const lastPointerRef = useRef({ left: 200, top: 80 })
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const imagePositionRef = useRef({ left: 100, top: 100 })
 
   // Sync configuration mode into the store (gates live editing elsewhere).
   useEffect(() => {
@@ -517,19 +519,18 @@ export default function SystemPage() {
 
   // ---- Plots (create / remove / canvas menu) ----------------------------------
 
-  const handleNewPlot = (pos: { left: number; top: number }) => {
-    setPlotConfigPosition(pos)
+  const handleNewPlot = () => {
     setPlotConfigOpen(true)
   }
 
-  const handleCreateSavedPlot = async (name: string, pos: { left: number; top: number }) => {
-    const config = await import('../store/plotStore').then((m) => m.loadPlotConfig(name))
-    if (!config) return
-    createPlotInStore(config, pos)
+  const handleCreateSavedPlot = (name: string): boolean => {
+    if (openPlotWindow(name)) return true
+    void appAlert('Your browser blocked the plot window. Allow pop-ups for this site and try again.', 'Open Plot')
+    return false
   }
 
-  const handleCreatePlotFromConfig = (config: PlotConfig, pos: { left: number; top: number } | null) => {
-    createPlotInStore(config, pos ?? undefined)
+  const handleCreatePlotFromConfig = (config: PlotConfig) => {
+    return handleCreateSavedPlot(config.name)
   }
 
   const handleRemovePlot = (id: string) => {
@@ -561,6 +562,38 @@ export default function SystemPage() {
   const handleSaveLayout = async () => {
     const layoutData = buildCurrentLayout()
     await saveLayout(layoutData)
+  }
+
+  const handleUploadImage = (pos: { left: number; top: number }) => {
+    if (!isConfigure) return
+    imagePositionRef.current = pos
+    imageInputRef.current?.click()
+  }
+
+  const handleImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.currentTarget.files?.[0]
+    // Allow choosing the same file again, including after an invalid selection.
+    e.currentTarget.value = ''
+    if (!file || !isConfigure) return
+    const pos = { ...imagePositionRef.current }
+    try {
+      const image = await readLayoutImage(file)
+      if (!useAppStore.getState().configurationMode) return
+      const id = `deco-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      addDecoration({
+        id,
+        type: 'image',
+        left: `${pos.left}px`,
+        top: `${pos.top}px`,
+        width: `${image.width}px`,
+        height: `${image.height}px`,
+        imageSrc: image.src,
+        imageName: file.name,
+      })
+      setEditorSelected(id)
+    } catch (err) {
+      await appAlert(err instanceof Error ? err.message : 'The image could not be uploaded.', 'Upload Image')
+    }
   }
 
   const handleLoadLayout = async () => {
@@ -871,8 +904,9 @@ export default function SystemPage() {
         onClose={() => setCreateMenu(null)}
         onAddDevice={handleAddDevice}
         onAddDecoration={handleAddDecoration}
+        onUploadImage={handleUploadImage}
         onNewPlot={handleNewPlot}
-        onCreateSavedPlot={(name, pos) => void handleCreateSavedPlot(name, pos)}
+        onCreateSavedPlot={(name) => { handleCreateSavedPlot(name) }}
         onZoom={(delta) => useEditorStore.getState().zoomBy(delta)}
         onResetView={() => {
           useEditorStore.getState().resetZoom()
@@ -886,9 +920,17 @@ export default function SystemPage() {
         onNewLayout={handleNewLayout}
       />
 
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        aria-label="Upload image from your computer"
+        hidden
+        onChange={(e) => void handleImageSelected(e)}
+      />
+
       <PlotConfigWindow
         open={plotConfigOpen}
-        position={plotConfigPosition}
         onClose={() => setPlotConfigOpen(false)}
         onCreatePlot={handleCreatePlotFromConfig}
       />

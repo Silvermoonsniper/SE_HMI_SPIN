@@ -5,7 +5,8 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.35);
-  z-index: 6000;
+  /* Above the device parameter overlay (2147483000), including command prompts. */
+  z-index: 2147483100;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -13,10 +13,9 @@ import type { PlotConfig, PlotLineConfig, PlotLineStyle } from '../../api/types'
 
 interface PlotConfigWindowProps {
   open: boolean
-  position: { left: number; top: number } | null
   onClose: () => void
-  /** Called with the created config + target canvas position. */
-  onCreatePlot: (config: PlotConfig, position: { left: number; top: number } | null) => void
+  /** Returns whether the standalone plot window opened successfully. */
+  onCreatePlot: (config: PlotConfig) => boolean
 }
 
 interface StagedLine extends PlotLineConfig {
@@ -24,7 +23,7 @@ interface StagedLine extends PlotLineConfig {
   style: PlotLineStyle
 }
 
-export function PlotConfigWindow({ open, position, onClose, onCreatePlot }: PlotConfigWindowProps) {
+export function PlotConfigWindow({ open, onClose, onCreatePlot }: PlotConfigWindowProps) {
   const deviceParams = useAppStore((s) => s.deviceParams)
   const savedPlotNames = usePlotStore((s) => s.savedPlotNames)
 
@@ -136,8 +135,7 @@ export function PlotConfigWindow({ open, position, onClose, onCreatePlot }: Plot
     if (!enteredName || !enteredName.trim()) return
     const config = buildConfig(enteredName.trim())
     savePlotConfig(config)
-    onCreatePlot(config, position)
-    onClose()
+    if (onCreatePlot(config)) onClose()
   }
 
   const loadSaved = async (name: string) => {

@@ -1,0 +1,65 @@
+{
+  "name": "test",
+  "plotType": "line",
+  "xAxisTitle": "",
+  "yAxisTitle": "",
+  "lines": [
+    {
+      "key": "sim_gas_dosing_gasflow_calibrator.value",
+      "suffix": "sim_gas_dosing_gasflow_calibrator.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#007bff"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_massflow_contr1._D_value",
+      "suffix": "sim_gas_dosing_massflow_contr1._D_value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#007bff"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_massflow_contr1._I_value",
+      "suffix": "sim_gas_dosing_massflow_contr1._I_value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#007bff"
+      }
+    },
+    {
+      "key": "sim_gas_dosing_massflow_contr1.target_limits",
+      "suffix": "sim_gas_dosing_massflow_contr1.target_limits",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#007bff"
+      }
+    }
+  ],
+  "savedAt": "2026-10-02T13:46:27.109Z"
+}

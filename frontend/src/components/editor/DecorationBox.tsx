@@ -46,6 +46,7 @@ export function DecorationBox({ decoration, isConfigure, onGeometryChange }: Dec
   const isLine = type === 'line'
   const isSwitch = type === 'switch'
   const isLabel = type === 'label'
+  const isImage = type === 'image'
 
   const geo = {
     left: parsePx(decoration.left, 100),
@@ -118,7 +119,7 @@ export function DecorationBox({ decoration, isConfigure, onGeometryChange }: Dec
     <>
       <div
         ref={ref}
-        className={`deco-box${isConfigure ? ' configure-layout' : ''}${isLine ? ' deco-type-line' : ''}${isSwitch ? ' deco-type-switch' : ''}${isLabel ? ' deco-label' : ''}${selected ? ' selected' : ''}`}
+        className={`deco-box${isConfigure ? ' configure-layout' : ''}${isLine ? ' deco-type-line' : ''}${isSwitch ? ' deco-type-switch' : ''}${isImage ? ' deco-type-image' : ''}${isLabel ? ' deco-label' : ''}${selected ? ' selected' : ''}`}
         id={decoration.id}
         data-type={type}
         data-rotation-degrees={String(rotation)}
@@ -166,6 +167,14 @@ export function DecorationBox({ decoration, isConfigure, onGeometryChange }: Dec
           </div>
         )}
         {isLabel && (decoration.text ?? 'Label')}
+        {isImage && (
+          <img
+            className="deco-image"
+            src={decoration.imageSrc}
+            alt={decoration.imageName || 'Uploaded image'}
+            draggable={false}
+          />
+        )}
         {isLabel && isConfigure && (
           <div
             className="deco-drag-handle"
@@ -196,7 +205,7 @@ export function DecorationBox({ decoration, isConfigure, onGeometryChange }: Dec
             &times;
           </div>
         )}
-        {isConfigure && !isLabel && <div className="resize-handle" />}
+        {isConfigure && !isLabel && <div className="resize-handle" title="Drag to resize" />}
         <ContactPoints boxId={decoration.id} geometry={geo} visible={isConfigure} />
       </div>
 

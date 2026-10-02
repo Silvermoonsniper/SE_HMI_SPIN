@@ -7403,7 +7403,7 @@
   ],
   "plots": [
     {
-      "id": "plot_3_panel",
+      "id": "plot_1_panel",
       "title": "temperature_plot",
       "configName": "temperature_plot",
       "xAxisTitle": "",

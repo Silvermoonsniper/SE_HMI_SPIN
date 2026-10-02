@@ -4,7 +4,7 @@
  * plots.js (createPlotPanelFromConfig + flushBufferedPoints + refreshPlot).
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import Plotly from 'plotly.js-dist-min'
 import { usePlotStore, sampleTracePoints, MAX_RENDERED_PLOT_POINTS, type PlotPanelState, type LineTraceMeta, type XYTraceMeta, type ArrayTraceMeta, refreshSavedPlotNames, loadPlotConfig } from '../../store/plotStore'
 import { useAppStore } from '../../store/appStore'
@@ -43,17 +43,18 @@ function applyTraceStyle(trace: Record<string, unknown>, style: { lineType?: str
 interface PlotPanelProps {
   panel: PlotPanelState
   isConfigure: boolean
+  /** Fill a standalone browser window instead of using canvas geometry. */
+  standalone?: boolean
   onRemove: (id: string) => void
 }
 
-export function PlotPanel({ panel, isConfigure, onRemove }: PlotPanelProps) {
+export function PlotPanel({ panel, isConfigure, standalone = false, onRemove }: PlotPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const plotDivRef = useRef<HTMLDivElement>(null)
   const plots = usePlotStore((s) => s.plots)
   const savedPlotNames = usePlotStore((s) => s.savedPlotNames)
   const createPlot = usePlotStore((s) => s.createPlot)
   const setSelected = useEditorStore((s) => s.setSelected)
-  const [title, setTitle] = useState(panel.title)
   const readyRef = useRef(false)
 
   // Read the freshest panel state from the store each render.
@@ -61,7 +62,7 @@ export function PlotPanel({ panel, isConfigure, onRemove }: PlotPanelProps) {
 
   // Canvas drag/resize (configure mode) — legacy makeDraggable/makeResizable.
   useCanvasDrag(containerRef, {
-    enabled: isConfigure,
+    enabled: isConfigure && !standalone,
     minWidth: 200,
     minHeight: 120,
     onDragEnd: (r) => usePlotStore.getState().updateGeometry(panel.id, r),
@@ -111,25 +112,47 @@ export function PlotPanel({ panel, isConfigure, onRemove }: PlotPanelProps) {
 
   // Initial Plotly render.
   useEffect(() => {
-    if (!plotDivRef.current) return
+    const plotDiv = plotDivRef.current
+    if (!plotDiv) return
+    let cancelled = false
     readyRef.current = false
     const config = { responsive: true, scrollZoom: false, doubleClick: false as const, displayModeBar: isConfigure }
-    Plotly.react(plotDivRef.current, [], layoutForType as never, config)
+    Plotly.react(plotDiv, [], layoutForType as never, config)
       .then(() => {
+        if (cancelled) return
         readyRef.current = true
+        flush.current()
       })
       .catch(() => undefined)
     return () => {
-      if (plotDivRef.current) {
-        try {
-          Plotly.purge(plotDivRef.current)
-        } catch {
-          /* noop */
-        }
+      cancelled = true
+      readyRef.current = false
+      try {
+        Plotly.purge(plotDiv)
+      } catch {
+        /* noop */
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panel.id, isConfigure])
+
+  // A detached plot follows the browser window size rather than canvas handles.
+  useEffect(() => {
+    const container = containerRef.current
+    const plotDiv = plotDivRef.current
+    if (!standalone || !container || !plotDiv) return
+    const resize = () => {
+      if (!readyRef.current) return
+      try {
+        void Promise.resolve(Plotly.Plots.resize(plotDiv)).catch(() => undefined)
+      } catch {
+        /* The window may have closed while a resize was scheduled. */
+      }
+    }
+    const observer = new ResizeObserver(resize)
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [standalone, panel.id])
 
   // Flush buffered data into the plot on a 2 s cadence (legacy flushBufferedPoints).
   // The flush reads the latest panel state from the store at call time. We also
@@ -217,20 +240,20 @@ export function PlotPanel({ panel, isConfigure, onRemove }: PlotPanelProps) {
   return (
     <div
       ref={containerRef}
-      className={`plot-panel device-box${isConfigure ? ' configure-layout' : ''}`}
+      className={`plot-panel device-box${standalone ? ' standalone-plot-panel' : ''}${isConfigure ? ' configure-layout' : ''}`}
       id={`${panel.id}_panel`}
       data-plot-name={live.configName}
       style={{
-        position: 'absolute',
-        left: live.left,
-        top: live.top,
-        width: live.width,
-        height: live.height,
+        position: standalone ? 'relative' : 'absolute',
+        left: standalone ? 0 : live.left,
+        top: standalone ? 0 : live.top,
+        width: standalone ? '100%' : live.width,
+        height: standalone ? '100%' : live.height,
         maxWidth: 'none',
         zIndex: 5,
       }}
       onMouseDown={() => {
-        if (isConfigure) setSelected(`${panel.id}_panel`)
+        if (isConfigure && !standalone) setSelected(`${panel.id}_panel`)
       }}
     >
       <div
@@ -239,7 +262,7 @@ export function PlotPanel({ panel, isConfigure, onRemove }: PlotPanelProps) {
         suppressContentEditableWarning
         title="Click to edit plot title"
         style={{ fontWeight: 'bold', fontSize: 18, textAlign: 'center', margin: '8px 0 4px 0', outline: 'none' }}
-        onBlur={(e) => setTitle(e.currentTarget.textContent || live.title)}
+        onBlur={(e) => usePlotStore.getState().setTitle(panel.id, e.currentTarget.textContent || live.title)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault()
@@ -249,7 +272,7 @@ export function PlotPanel({ panel, isConfigure, onRemove }: PlotPanelProps) {
       >
         {live.title}
       </div>
-      <div ref={plotDivRef} id={`${panel.id}_plot`} style={{ width: '100%', height: `calc(100% - 40px)` }} />
+      <div ref={plotDivRef} id={`${panel.id}_plot`} style={{ width: '100%', height: standalone ? undefined : 'calc(100% - 40px)', flex: standalone ? 1 : undefined, minHeight: standalone ? 0 : undefined }} />
       <div className="plot-saved-control" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
         <select
           className="plot-saved-select"
@@ -263,7 +286,7 @@ export function PlotPanel({ panel, isConfigure, onRemove }: PlotPanelProps) {
           ))}
         </select>
       </div>
-      {isConfigure && (
+      {isConfigure && !standalone && (
         <>
           <div className="resize-handle" />
           <button

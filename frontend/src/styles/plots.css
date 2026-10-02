@@ -101,6 +101,22 @@ body {
   width: 100%;
 }
 
+.standalone-plot-page {
+  width: 100%;
+  height: 100vh;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.plot-panel.standalone-plot-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
 /* Controls and dropdowns: make font small and buttons readable */
 .ctrl { font-size: 11px; color: #000 }
 .ctrl select, .ctrl input, .ctrl button { font-size: 11px; color: #000 }

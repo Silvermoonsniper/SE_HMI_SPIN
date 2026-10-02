@@ -6,7 +6,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useAppStore } from '../../store/appStore'
-import { useEditorStore } from '../../store/editorStore'
 import { getStoredPlotConfigs } from '../../utils/storage'
 import { api } from '../../api/client'
 
@@ -22,6 +21,7 @@ interface CanvasCreateMenuProps {
   onClose: () => void
   onAddDevice: (device: string, pos: { left: number; top: number }) => void
   onAddDecoration: (type: string, pos: { left: number; top: number }) => void
+  onUploadImage: (pos: { left: number; top: number }) => void
   onNewPlot: (pos: { left: number; top: number }) => void
   onCreateSavedPlot: (name: string, pos: { left: number; top: number }) => void
   onZoom: (delta: number) => void
@@ -42,6 +42,7 @@ export function CanvasCreateMenu({
   onClose,
   onAddDevice,
   onAddDecoration,
+  onUploadImage,
   onNewPlot,
   onCreateSavedPlot,
   onZoom,
@@ -127,6 +128,16 @@ export function CanvasCreateMenu({
         className={`canvas-create-menu${alignLeft ? ' canvas-create-menu-align-left' : ''}`}
         style={{ display: 'block', position: 'fixed', left: Math.max(12, Math.min(request.x, window.innerWidth - 240)), top: Math.max(12, Math.min(request.y, window.innerHeight - 200)), zIndex: 4991 }}
       >
+        <button
+          type="button"
+          className="canvas-create-submenu-item"
+          onClick={() => {
+            onUploadImage(pos)
+            onClose()
+          }}
+        >
+          Upload image...
+        </button>
         {entries.map((entry) => (
           <div
             key={entry.key}

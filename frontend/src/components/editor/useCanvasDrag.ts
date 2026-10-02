@@ -47,6 +47,14 @@ export function useCanvasDrag(ref: RefObject<HTMLElement | null>, options: UseCa
     let initialTop = 0
     let initialWidth = 0
     let initialHeight = 0
+    let scaleX = 1
+    let scaleY = 1
+
+    const captureScale = () => {
+      const rect = el.getBoundingClientRect()
+      scaleX = el.offsetWidth ? rect.width / el.offsetWidth || 1 : 1
+      scaleY = el.offsetHeight ? rect.height / el.offsetHeight || 1 : 1
+    }
 
     const onMouseDown = (e: MouseEvent) => {
       if (e.button !== 0) return
@@ -61,6 +69,7 @@ export function useCanvasDrag(ref: RefObject<HTMLElement | null>, options: UseCa
       if (target.isContentEditable && !target.classList?.contains('deco-drag-handle')) return
 
       const style = window.getComputedStyle(el)
+      captureScale()
       initialLeft = parseInt(style.left, 10) || el.offsetLeft || 0
       initialTop = parseInt(style.top, 10) || el.offsetTop || 0
       startX = e.clientX
@@ -74,6 +83,7 @@ export function useCanvasDrag(ref: RefObject<HTMLElement | null>, options: UseCa
       e.stopPropagation()
       if (e.button !== 0) return
       isResizing = true
+      captureScale()
       startX = e.clientX
       startY = e.clientY
       const style = window.getComputedStyle(el)
@@ -89,14 +99,14 @@ export function useCanvasDrag(ref: RefObject<HTMLElement | null>, options: UseCa
     const onMouseMove = (e: MouseEvent) => {
       if (isDragging) {
         e.preventDefault()
-        const dx = e.clientX - startX
-        const dy = e.clientY - startY
+        const dx = (e.clientX - startX) / scaleX
+        const dy = (e.clientY - startY) / scaleY
         el.style.left = `${initialLeft + dx}px`
         el.style.top = `${initialTop + dy}px`
       } else if (isResizing) {
         e.preventDefault()
-        const dx = e.clientX - startX
-        const dy = e.clientY - startY
+        const dx = (e.clientX - startX) / scaleX
+        const dy = (e.clientY - startY) / scaleY
         el.style.width = `${Math.max(minWidth, initialWidth + dx)}px`
         if (!lineOnly) {
           el.style.height = `${Math.max(minHeight, initialHeight + dy)}px`

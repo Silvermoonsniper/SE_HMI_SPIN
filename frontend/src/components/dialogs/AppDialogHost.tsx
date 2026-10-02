@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useDialogStore } from '../../store/dialogStore'
 
 export function AppDialogHost() {
@@ -37,7 +38,8 @@ export function AppDialogHost() {
 
   if (!current) return null
 
-  return (
+  // Share the parameter modal's portal root so nested commands can appear above it.
+  return createPortal(
     <div className="app-dialog-backdrop" role="presentation">
       <div className="app-dialog" role="dialog" aria-modal="true">
         {current.title ? <h3 className="app-dialog-title">{current.title}</h3> : null}
@@ -85,6 +87,7 @@ export function AppDialogHost() {
           ) : null}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

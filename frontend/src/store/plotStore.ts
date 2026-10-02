@@ -369,6 +369,8 @@ export function startPlotPolling(): void {
   const pollOnce = async () => {
     if (pollInFlight) return
     if (useAppStore.getState().configurationMode) return
+    // Keep the initial history cursor until a plot is ready to receive it.
+    if (!Object.keys(usePlotStore.getState().plots).length) return
     pollInFlight = true
     try {
       const payload = await api.plotUpdates(pollCursorMs > 0 ? pollCursorMs : undefined)
