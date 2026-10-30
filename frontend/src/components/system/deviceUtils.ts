@@ -99,10 +99,8 @@ export function parseSecopReply(responseText: string | null | undefined): unknow
   }
 }
 
-/** Resolve the node addr for a device: localStorage cache -> /api/node_for_device. */
+/** Resolve the current backend node address before using the browser fallback. */
 export async function resolveDeviceAddr(device: string): Promise<string | null> {
-  const cached = getRuntimeNodeAddrs()[device]
-  if (cached) return cached
   try {
     const payload = await api.nodeForDevice(device)
     if (payload?.addr) {
@@ -112,7 +110,7 @@ export async function resolveDeviceAddr(device: string): Promise<string | null> 
   } catch {
     /* unresolved */
   }
-  return null
+  return getRuntimeNodeAddrs()[device] || null
 }
 
 /** Resolve the SECoP module name for a device (legacy getModuleName). */

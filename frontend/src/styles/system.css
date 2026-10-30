@@ -442,6 +442,31 @@ body[data-start-page-mode="night"] .viewport {
   font-size: 13px;
 }
 
+.device-box.automator-table {
+  max-width: none;
+  min-width: 480px;
+  min-height: 240px;
+  gap: 8px;
+}
+.automator-state { color: #475569; text-transform: capitalize; margin-left: auto; }
+.automator-controls { display: flex; flex-direction: column; gap: 8px; }
+.automator-file { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.automator-file input { flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; }
+.automator-toolbar { display: flex; flex-wrap: wrap; gap: 6px; }
+.automator-toolbar button { padding: 5px 9px; border: 1px solid #cbd5e1; border-radius: 5px; background: #f8fafc; color: #0f172a; cursor: pointer; }
+.automator-toolbar button:disabled { opacity: .45; cursor: default; }
+.automator-toolbar button span { font-size: 16px; }
+.automator-scroll { flex: 1; min-height: 60px; overflow: auto; }
+.automator-scroll table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.automator-scroll th { position: sticky; top: 0; background: #e2e8f0; text-align: left; z-index: 1; }
+.automator-scroll th, .automator-scroll td { padding: 7px 8px; border: 1px solid #cbd5e1; vertical-align: top; }
+.automator-details { white-space: pre-wrap; overflow-wrap: anywhere; font-family: monospace; }
+.automator-scroll .queue-step-completed > td { background: #bbf7d0; color: #14532d; }
+.automator-scroll .queue-step-executing > td, .automator-scroll .queue-step-dwelling > td { background: #dbeafe; }
+.automator-scroll .queue-step-error > td { background: #fee2e2; color: #991b1b; }
+.automator-empty, .automator-summary { color: #475569; font-size: 12px; }
+.automator-error { color: #991b1b; background: #fee2e2; padding: 6px; overflow-wrap: anywhere; }
+
 .expand-btn {
   width: 100%;
   text-align: center;

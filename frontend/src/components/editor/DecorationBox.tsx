@@ -8,7 +8,6 @@ import { useRef, useState } from 'react'
 import { useEditorStore } from '../../store/editorStore'
 import { appAlert, appPrompt } from '../../store/dialogStore'
 import { useCanvasDrag } from './useCanvasDrag'
-import { ContactPoints } from './ContactPoints'
 import type { LayoutDecorationEntry } from '../../api/types'
 
 export const DECORATION_LINE_MIN_LENGTH_PX = 38
@@ -206,7 +205,6 @@ export function DecorationBox({ decoration, isConfigure, onGeometryChange }: Dec
           </div>
         )}
         {isConfigure && !isLabel && <div className="resize-handle" title="Drag to resize" />}
-        <ContactPoints boxId={decoration.id} geometry={geo} visible={isConfigure} />
       </div>
 
       {/* Text context menu (legacy #text-context-menu) */}

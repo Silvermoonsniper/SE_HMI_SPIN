@@ -51,7 +51,7 @@ export default function StartPage() {
       <div className="conn-box">
         <div className="conn-box-inner">
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 20 }}>
-            <h1 style={{ margin: 0, color: '#333', fontSize: 28 }}>GSE-UI</h1>
+            <h1 style={{ margin: 0, color: '#333', fontSize: 28 }}>SE-HMI-SPIN</h1>
             <span style={{ color: '#64748b', fontSize: 12, fontWeight: 600 }}>V 1.0.13</span>
           </div>
 
@@ -77,7 +77,7 @@ export default function StartPage() {
             }}
           >
             <div style={{ fontSize: 13, color: '#0c5460', lineHeight: 1.6 }}>
-              <strong>General Sample Environment User Interface Framework (GSE-UI)</strong>
+              <strong>SE-HMI-SPIN</strong>
               <br />
               This interface provides user the ability to design specific system layout for different experiment
               control system using SECoP devices, Tango device (in development), NICOS devcice (in devleopment) etc,

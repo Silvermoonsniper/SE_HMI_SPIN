@@ -3569,30 +3569,6 @@
       "rotationDegrees": ""
     }
   ],
-  "plots": [
-    {
-      "id": "plot_10_panel",
-      "title": "pressure_plot",
-      "configName": "pressure_plot",
-      "xAxisTitle": "",
-      "yAxisTitle": "",
-      "left": "804px",
-      "top": "47px",
-      "width": "700px",
-      "height": "451px",
-      "transform": "translate(204.281px, -10.293px)",
-      "zIndex": "5",
-      "dataX": "204.28125",
-      "dataY": "-10.29296875",
-      "traces": [
-        "sim_gas_dosing_backpress_contr1.value",
-        "sim_gas_dosing_backpress_contr1.target",
-        "sim_gas_dosing_backpress_contr2.value",
-        "sim_gas_dosing_backpress_contr2.target",
-        "sim_reactor_cell_pressure_inlet.value",
-        "sim_reactor_cell_pressure_outlet.value"
-      ]
-    }
-  ],
+  "plots": [],
   "connections": []
 }

@@ -10,7 +10,6 @@
 import { useAppStore, getParamValue } from '../../store/appStore'
 import { appPrompt } from '../../store/dialogStore'
 import { useEditorStore } from '../../store/editorStore'
-import { ContactPoints } from '../editor/ContactPoints'
 import { useRef } from 'react'
 import { useCanvasDrag } from '../editor/useCanvasDrag'
 
@@ -137,7 +136,6 @@ export function SampleSlot({ device, index, label, isConfigure, left, top, onRem
         />
       </div>
       {isConfigure && <div className="resize-handle" />}
-      <ContactPoints boxId={slotId} geometry={{ left: left ?? 200 + index * 130, top: top ?? 50, width: 120, height: 120 }} visible={isConfigure} />
     </div>
   )
 }
@@ -250,7 +248,6 @@ export function SamplePresence({ device, isConfigure, left, top, onRemove, onGeo
         />
       </div>
       {isConfigure && <div className="resize-handle" />}
-      <ContactPoints boxId="sample_presence" geometry={{ left: left ?? 200, top: top ?? 50, width: 120, height: 120 }} visible={isConfigure} />
     </div>
   )
 }

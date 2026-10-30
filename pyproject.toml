@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spin-gui-SE"
-version = "0.1.0"                # <-- set a static version
-description = "Web GUI for Sample Environment at HZB with spin-hmi framework"
+version = "1.0.13"                # <-- set a static version
+description = "Web GUI for Sample Environment with spin-hmi framework"
 authors = [
   { name = "Zhengyu Chen", email = "zhengyu.chen@helmholtz-berlin.de" }
 ]

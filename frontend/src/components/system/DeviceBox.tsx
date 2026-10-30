@@ -14,8 +14,8 @@ import { createPortal } from 'react-dom'
 import { useAppStore, getParamValue } from '../../store/appStore'
 import type { DeviceInfo } from '../../api/types'
 import { useCanvasDrag } from '../editor/useCanvasDrag'
-import { ContactPoints } from '../editor/ContactPoints'
 import { useEditorStore } from '../../store/editorStore'
+import { AutomatorTable } from './AutomatorTable'
 import {
   formatLiveValue,
   getParamInfoMap,
@@ -27,7 +27,7 @@ import {
 
 export type DeviceTemplateKind = 'device' | 'drivable' | 'valve'
 
-interface DeviceBoxProps {
+export interface DeviceBoxProps {
   device: string
   domId: string
   isConfigure: boolean
@@ -46,7 +46,16 @@ function statusBadgeClass(state: string | undefined): string {
   return `status-badge state-${normalized}`
 }
 
-export function DeviceBox({ device, domId, isConfigure, left, top, width, height, onRemove, onGeometryChange }: DeviceBoxProps) {
+export function DeviceBox(props: DeviceBoxProps) {
+  const info = useAppStore((s) => s.deviceParams?.[props.device])
+  const names = [props.device, info?.original_name, info?.module_name]
+  const isAutomator = names.some((name) => name?.toLowerCase().includes('automator'))
+    || (info?.all_params?.some((p) => p.replace(/^_/, '') === 'queue_json')
+      && info?.all_params?.some((p) => p.replace(/^_/, '') === 'current_step'))
+  return isAutomator ? <AutomatorTable {...props} /> : <StandardDeviceBox {...props} />
+}
+
+function StandardDeviceBox({ device, domId, isConfigure, left, top, width, height, onRemove, onGeometryChange }: DeviceBoxProps) {
   const deviceParams = useAppStore((s) => s.deviceParams)
   const latestValues = useAppStore((s) => s.latestValues)
   const boxRef = useRef<HTMLDivElement>(null)
@@ -239,11 +248,6 @@ export function DeviceBox({ device, domId, isConfigure, left, top, width, height
         onSendCommand={(cmd) => void sendCommand(device, cmd)}
       />
       {isConfigure && <div className="resize-handle" />}
-      <ContactPoints
-        boxId={`box-${domId}`}
-        geometry={{ left: left ?? 20, top: top ?? 20, width: width ?? 240, height: height ?? 120 }}
-        visible={isConfigure}
-      />
     </div>
   )
 }

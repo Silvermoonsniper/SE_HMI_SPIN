@@ -565,7 +565,6 @@ export default function SystemPage() {
   }
 
   const handleUploadImage = (pos: { left: number; top: number }) => {
-    if (!isConfigure) return
     imagePositionRef.current = pos
     imageInputRef.current?.click()
   }
@@ -574,11 +573,10 @@ export default function SystemPage() {
     const file = e.currentTarget.files?.[0]
     // Allow choosing the same file again, including after an invalid selection.
     e.currentTarget.value = ''
-    if (!file || !isConfigure) return
+    if (!file) return
     const pos = { ...imagePositionRef.current }
     try {
       const image = await readLayoutImage(file)
-      if (!useAppStore.getState().configurationMode) return
       const id = `deco-${Date.now()}-${Math.random().toString(36).slice(2)}`
       addDecoration({
         id,
@@ -685,7 +683,6 @@ export default function SystemPage() {
 
   // Canvas right-click: open create menu only on empty canvas targets.
   const handleGridContextMenu = (e: React.MouseEvent) => {
-    if (!isConfigure) return
     const target = e.target as HTMLElement
     const inCanvas = !!target.closest?.('#device-grid, #viewport')
     const blocked = !!target.closest?.(
@@ -829,7 +826,7 @@ export default function SystemPage() {
               height: 2000,
               position: 'relative',
               background: '#fdfdfd',
-              transform: `scale(${isConfigure ? editorZoom : 1})`,
+              transform: `scale(${editorZoom})`,
               transformOrigin: '0 0',
             }}
           >
