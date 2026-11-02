@@ -247,381 +247,12 @@
       "image": null
     },
     {
-      "id": "box-sim_cell_gas_dosing_massflow_contr0",
-      "device": "massflow_contr0",
-      "deviceKey": "sim_cell_gas_dosing_massflow_contr0",
-      "logicalName": "sim_cell_gas_dosing_massflow_contr0",
-      "left": "387px",
-      "top": "80px",
-      "width": "340px",
-      "height": "120px",
-      "info": {
-        "params": [
-          "target",
-          "pollinterval",
-          "ramp",
-          "_inverse_calib_coeff",
-          "_forward_calib_coeff",
-          "_tolerance",
-          "_P_value",
-          "_I_value",
-          "_D_value",
-          "_gastype_select",
-          "_valveposition",
-          "_control_mode"
-        ],
-        "all_params": [
-          "value",
-          "status",
-          "target",
-          "pollinterval",
-          "ramp",
-          "setpoint",
-          "stop",
-          "_factory_reset",
-          "_inverse_calib_coeff",
-          "_forward_calib_coeff",
-          "_value_uncalibrated",
-          "_target_calibrated",
-          "target_limits",
-          "_gastype",
-          "_tolerance",
-          "_P_value",
-          "_I_value",
-          "_D_value",
-          "_gastype_select",
-          "_valveposition",
-          "_control_mode",
-          "_test_cmd"
-        ],
-        "commands": [
-          "stop",
-          "_factory_reset",
-          "_test_cmd"
-        ],
-        "original_name": "massflow_contr0",
-        "interface_classes": [
-          "_Calibratable",
-          "Drivable"
-        ],
-        "module_name": "massflow_contr0",
-        "param_info": [
-          {
-            "value": {
-              "description": "Mass flow of gas",
-              "datainfo": {
-                "unit": "mln/min",
-                "min": 0,
-                "max": 1000,
-                "type": "double"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "status": {
-              "description": "current status of the module",
-              "datainfo": {
-                "type": "tuple",
-                "members": [
-                  {
-                    "type": "enum",
-                    "members": {
-                      "IDLE": 100,
-                      "WARN": 200,
-                      "BUSY": 300,
-                      "ERROR": 400
-                    }
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              },
-              "readonly": true
-            }
-          },
-          {
-            "target": {
-              "description": "Desired mass flow of gas",
-              "datainfo": {
-                "unit": "mln/min",
-                "min": 0,
-                "max": 200,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
-            "pollinterval": {
-              "description": "polling interval",
-              "datainfo": {
-                "min": 0,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
-            "ramp": {
-              "description": "desired ramp speed for gas flow of gas",
-              "datainfo": {
-                "unit": "mln/min^2",
-                "min": 0,
-                "max": 200,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
-            "setpoint": {
-              "description": "setpoint of  massflow controller",
-              "datainfo": {
-                "unit": "mln/min",
-                "min": 0,
-                "max": 200,
-                "type": "double"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "stop": {
-              "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_factory_reset": {
-              "description": "reset to values from config / default values",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_inverse_calib_coeff": {
-              "description": "Inverse calibration polynomial coefficients for value Parameter",
-              "datainfo": {
-                "type": "array",
-                "minlen": 2,
-                "maxlen": 5,
-                "members": {
-                  "min": -1000000,
-                  "max": 100000,
-                  "type": "double"
-                }
-              },
-              "readonly": false
-            }
-          },
-          {
-            "_forward_calib_coeff": {
-              "description": "Forward calibration polynomial coefficients for target Parameter",
-              "datainfo": {
-                "type": "array",
-                "minlen": 2,
-                "maxlen": 5,
-                "members": {
-                  "min": -1000000,
-                  "max": 100000,
-                  "type": "double"
-                }
-              },
-              "readonly": false
-            }
-          },
-          {
-            "_value_uncalibrated": {
-              "description": "uncalibrated readback directly from the hardware",
-              "datainfo": {
-                "type": "double"
-              },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
-            }
-          },
-          {
-            "_target_calibrated": {
-              "description": "calibrated target that is written to the hardware",
-              "datainfo": {
-                "type": "double"
-              },
-              "readonly": true,
-              "_signal_format": "HINTED_SIGNAL"
-            }
-          },
-          {
-            "target_limits": {
-              "description": "Limits for desired massflow of gas",
-              "datainfo": {
-                "type": "tuple",
-                "members": [
-                  {
-                    "unit": "mln/min",
-                    "min": 0,
-                    "max": 200,
-                    "type": "double"
-                  },
-                  {
-                    "unit": "mln/min",
-                    "min": 0,
-                    "max": 200,
-                    "type": "double"
-                  }
-                ]
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_gastype": {
-              "description": "chemical formula of gas type handled by flow controller",
-              "datainfo": {
-                "maxchars": 50,
-                "type": "string"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_tolerance": {
-              "description": "flow range for stability checking",
-              "datainfo": {
-                "unit": "mln/min",
-                "min": 0,
-                "max": 100,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
-            "_P_value": {
-              "description": "Proportional const for controller",
-              "datainfo": {
-                "min": 0,
-                "max": 20000,
-                "type": "double"
-              },
-              "readonly": false,
-              "group": "control parameter"
-            }
-          },
-          {
-            "_I_value": {
-              "description": "Integral const for controller",
-              "datainfo": {
-                "min": 0,
-                "max": 20000,
-                "type": "double"
-              },
-              "readonly": false,
-              "group": "control parameter"
-            }
-          },
-          {
-            "_D_value": {
-              "description": "Deviative const for controller",
-              "datainfo": {
-                "min": 0,
-                "max": 20000,
-                "type": "double"
-              },
-              "readonly": false,
-              "group": "control parameter"
-            }
-          },
-          {
-            "_gastype_select": {
-              "description": "enum of gastype",
-              "datainfo": {
-                "type": "enum",
-                "members": {
-                  "H2": 1,
-                  "CO": 2,
-                  "CO2": 3,
-                  "O2": 4,
-                  "He": 5,
-                  "N2": 6,
-                  "Ar": 7
-                }
-              },
-              "readonly": false
-            }
-          },
-          {
-            "_valveposition": {
-              "description": "valveposition",
-              "datainfo": {
-                "unit": "%",
-                "min": 0,
-                "max": 100,
-                "type": "double"
-              },
-              "readonly": false,
-              "group": "control parameter"
-            }
-          },
-          {
-            "_control_mode": {
-              "description": "control mode of  massflow controller",
-              "datainfo": {
-                "type": "enum",
-                "members": {
-                  "RS232": 0,
-                  "fully_open": 3,
-                  "fully_closed": 8
-                }
-              },
-              "readonly": false
-            }
-          },
-          {
-            "_test_cmd": {
-              "description": "testing with ophyd secop integration",
-              "datainfo": {
-                "type": "command",
-                "argument": {
-                  "type": "struct",
-                  "members": {
-                    "name": {
-                      "type": "string"
-                    },
-                    "id": {
-                      "min": 0,
-                      "max": 1000,
-                      "type": "int"
-                    },
-                    "sort": {
-                      "type": "bool"
-                    }
-                  },
-                  "optional": []
-                },
-                "result": {
-                  "min": -16777216,
-                  "max": 16777216,
-                  "type": "int"
-                }
-              }
-            }
-          }
-        ]
-      },
-      "image": null
-    },
-    {
       "id": "box-sim_cell_gas_dosing_massflow_contr1",
       "device": "massflow_contr1",
       "deviceKey": "sim_cell_gas_dosing_massflow_contr1",
       "logicalName": "sim_cell_gas_dosing_massflow_contr1",
-      "left": "389px",
-      "top": "260px",
+      "left": "387px",
+      "top": "266px",
       "width": "340px",
       "height": "126px",
       "info": {
@@ -989,8 +620,8 @@
       "device": "biologic_SP200",
       "deviceKey": "sim_potentiostat_biologic_SP200",
       "logicalName": "sim_potentiostat_biologic_SP200",
-      "left": "1474px",
-      "top": "245px",
+      "left": "1469px",
+      "top": "263px",
       "width": "340px",
       "height": "135px",
       "info": {
@@ -999,11 +630,20 @@
           "_technique_config"
         ],
         "all_params": [
-          "_prepare",
-          "_technique_config",
-          "go",
+          "status",
           "pollinterval",
-          "stop"
+          "stop",
+          "go",
+          "_prepare",
+          "_vendor_name",
+          "_channel",
+          "_connected",
+          "_connection_error",
+          "_technique_config",
+          "_technique_count",
+          "_technique_index",
+          "_active_technique",
+          "_hardware_state"
         ],
         "commands": [
           "stop",
@@ -1178,235 +818,12 @@
       "image": null
     },
     {
-      "id": "box-sim_cell_abstraction_layer_sample_change",
-      "device": "sample_change",
-      "deviceKey": "sim_cell_abstraction_layer_sample_change",
-      "logicalName": "sim_cell_abstraction_layer_sample_change",
-      "left": "1471px",
-      "top": "78px",
-      "width": "340px",
-      "height": "128px",
-      "info": {
-        "params": [
-          "target",
-          "pollinterval"
-        ],
-        "all_params": [
-          "pollinterval",
-          "stop",
-          "target"
-        ],
-        "commands": [
-          "stop"
-        ],
-        "original_name": "sample_change",
-        "interface_classes": [
-          "Drivable"
-        ],
-        "module_name": "sample_change",
-        "param_info": [
-          {
-            "value": {
-              "description": "last completed position or action",
-              "datainfo": {
-                "type": "enum",
-                "members": {
-                  "release": 0,
-                  "contact_sample": 1,
-                  "sample_ID_measurement_point_1": 2,
-                  "sample_ID_measurement_point_2": 3,
-                  "sample_ID_measurement_point_3": 4
-                }
-              },
-              "readonly": true
-            }
-          },
-          {
-            "status": {
-              "description": "current status of the module",
-              "datainfo": {
-                "type": "tuple",
-                "members": [
-                  {
-                    "type": "enum",
-                    "members": {
-                      "IDLE": 100,
-                      "WARN": 200,
-                      "BUSY": 300,
-                      "ERROR": 400
-                    }
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              },
-              "readonly": true
-            }
-          },
-          {
-            "target": {
-              "description": "measurement point or action",
-              "datainfo": {
-                "type": "enum",
-                "members": {
-                  "release": 0,
-                  "contact_sample": 1,
-                  "sample_ID_measurement_point_1": 2,
-                  "sample_ID_measurement_point_2": 3,
-                  "sample_ID_measurement_point_3": 4
-                }
-              },
-              "readonly": false
-            }
-          },
-          {
-            "pollinterval": {
-              "description": "motion monitoring interval",
-              "datainfo": {
-                "unit": "s",
-                "min": 0.05,
-                "max": 10,
-                "type": "double"
-              },
-              "readonly": false
-            }
-          },
-          {
-            "stop": {
-              "description": "Stop all axes and invalidate the selected point.",
-              "datainfo": {
-                "type": "command"
-              }
-            }
-          },
-          {
-            "_child_motion_uri": {
-              "description": "motor SEC node URI",
-              "datainfo": {
-                "type": "string"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_x_axis": {
-              "description": "X motor module",
-              "datainfo": {
-                "type": "string"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_y_axis": {
-              "description": "Y motor module",
-              "datainfo": {
-                "type": "string"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_z_axis": {
-              "description": "Z motor module",
-              "datainfo": {
-                "type": "string"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_home_position": {
-              "description": "reference home coordinates in mm; Z defines the raised clearance height",
-              "datainfo": {
-                "type": "struct",
-                "members": {
-                  "x": {
-                    "type": "double"
-                  },
-                  "y": {
-                    "type": "double"
-                  },
-                  "z": {
-                    "type": "double"
-                  }
-                }
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_contact_z": {
-              "description": "Z coordinate for contact; mm",
-              "datainfo": {
-                "type": "double"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_tolerance": {
-              "description": "position tolerance",
-              "datainfo": {
-                "unit": "mm",
-                "min": 0,
-                "max": 10,
-                "type": "double"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_motion_timeout": {
-              "description": "maximum duration of an action",
-              "datainfo": {
-                "unit": "s",
-                "min": 1,
-                "max": 3600,
-                "type": "double"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_move_mode": {
-              "description": "required mode for point movement",
-              "datainfo": {
-                "type": "string"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_contact_mode": {
-              "description": "required mode for contact",
-              "datainfo": {
-                "type": "string"
-              },
-              "readonly": true
-            }
-          },
-          {
-            "_release_mode": {
-              "description": "required mode for release",
-              "datainfo": {
-                "type": "string"
-              },
-              "readonly": true
-            }
-          }
-        ]
-      },
-      "image": null
-    },
-    {
       "id": "box-sim_cell_abstraction_layer_automator",
       "device": "automator",
       "deviceKey": "sim_cell_abstraction_layer_automator",
       "logicalName": "sim_cell_abstraction_layer_automator",
-      "left": "1881px",
-      "top": "48px",
+      "left": "1856px",
+      "top": "53px",
       "width": "724px",
       "height": "941px",
       "info": {
@@ -1415,11 +832,24 @@
           "_queue_file"
         ],
         "all_params": [
-          "_load",
-          "_queue_file",
-          "_start",
+          "value",
+          "status",
           "pollinterval",
-          "stop"
+          "stop",
+          "_queue_file",
+          "_queue_json",
+          "_current_step",
+          "_total_steps",
+          "_current_module",
+          "_current_command",
+          "_dwell_remaining",
+          "_step_timeout",
+          "_sample_change_uri",
+          "_sample_change_module",
+          "_potentiostat_uri",
+          "_potentiostat_module",
+          "_load",
+          "_start"
         ],
         "commands": [
           "stop",
@@ -1533,8 +963,17 @@
             }
           },
           {
-            "_current_operation": {
-              "description": "current operation",
+            "_current_module": {
+              "description": "current SECoP module",
+              "datainfo": {
+                "type": "string"
+              },
+              "readonly": true
+            }
+          },
+          {
+            "_current_command": {
+              "description": "current command or command sequence",
               "datainfo": {
                 "type": "string"
               },
@@ -1565,6 +1004,42 @@
             }
           },
           {
+            "_sample_change_uri": {
+              "description": "ASCEND sample changer SEC node URI",
+              "datainfo": {
+                "type": "string"
+              },
+              "readonly": true
+            }
+          },
+          {
+            "_sample_change_module": {
+              "description": "remote ASCEND measurement-position module",
+              "datainfo": {
+                "type": "string"
+              },
+              "readonly": true
+            }
+          },
+          {
+            "_potentiostat_uri": {
+              "description": "potentiostat SEC node URI; empty disables measurement steps",
+              "datainfo": {
+                "type": "string"
+              },
+              "readonly": true
+            }
+          },
+          {
+            "_potentiostat_module": {
+              "description": "remote potentiostat controller module",
+              "datainfo": {
+                "type": "string"
+              },
+              "readonly": true
+            }
+          },
+          {
             "_load": {
               "description": "Load and validate the queue without executing any actions.",
               "datainfo": {
@@ -1578,6 +1053,496 @@
               "datainfo": {
                 "type": "command"
               }
+            }
+          }
+        ]
+      },
+      "image": null
+    },
+    {
+      "id": "box-sim_cell_gas_dosing_massflow_contr0",
+      "device": "massflow_contr0",
+      "deviceKey": "sim_cell_gas_dosing_massflow_contr0",
+      "logicalName": "sim_cell_gas_dosing_massflow_contr0",
+      "left": "387px",
+      "top": "97px",
+      "width": "340px",
+      "height": "144px",
+      "info": {
+        "params": [
+          "target",
+          "pollinterval",
+          "ramp",
+          "_inverse_calib_coeff",
+          "_forward_calib_coeff",
+          "_tolerance",
+          "_P_value",
+          "_I_value",
+          "_D_value",
+          "_gastype_select",
+          "_valveposition",
+          "_control_mode"
+        ],
+        "all_params": [
+          "value",
+          "status",
+          "target",
+          "pollinterval",
+          "ramp",
+          "setpoint",
+          "stop",
+          "_factory_reset",
+          "_inverse_calib_coeff",
+          "_forward_calib_coeff",
+          "_value_uncalibrated",
+          "_target_calibrated",
+          "target_limits",
+          "_gastype",
+          "_tolerance",
+          "_P_value",
+          "_I_value",
+          "_D_value",
+          "_gastype_select",
+          "_valveposition",
+          "_control_mode",
+          "_test_cmd"
+        ],
+        "commands": [
+          "stop",
+          "_factory_reset",
+          "_test_cmd"
+        ],
+        "original_name": "massflow_contr0",
+        "interface_classes": [
+          "_Calibratable",
+          "Drivable"
+        ],
+        "module_name": "massflow_contr0",
+        "param_info": [
+          {
+            "value": {
+              "description": "Mass flow of gas",
+              "datainfo": {
+                "unit": "mln/min",
+                "min": 0,
+                "max": 1000,
+                "type": "double"
+              },
+              "readonly": true
+            }
+          },
+          {
+            "status": {
+              "description": "current status of the module",
+              "datainfo": {
+                "type": "tuple",
+                "members": [
+                  {
+                    "type": "enum",
+                    "members": {
+                      "IDLE": 100,
+                      "WARN": 200,
+                      "BUSY": 300,
+                      "ERROR": 400
+                    }
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "readonly": true
+            }
+          },
+          {
+            "target": {
+              "description": "Desired mass flow of gas",
+              "datainfo": {
+                "unit": "mln/min",
+                "min": 0,
+                "max": 200,
+                "type": "double"
+              },
+              "readonly": false
+            }
+          },
+          {
+            "pollinterval": {
+              "description": "polling interval",
+              "datainfo": {
+                "min": 0,
+                "type": "double"
+              },
+              "readonly": false
+            }
+          },
+          {
+            "ramp": {
+              "description": "desired ramp speed for gas flow of gas",
+              "datainfo": {
+                "unit": "mln/min^2",
+                "min": 0,
+                "max": 200,
+                "type": "double"
+              },
+              "readonly": false
+            }
+          },
+          {
+            "setpoint": {
+              "description": "setpoint of  massflow controller",
+              "datainfo": {
+                "unit": "mln/min",
+                "min": 0,
+                "max": 200,
+                "type": "double"
+              },
+              "readonly": true
+            }
+          },
+          {
+            "stop": {
+              "description": "Stop ramping the setpoint\n\nby setting the current setpoint as new target",
+              "datainfo": {
+                "type": "command"
+              }
+            }
+          },
+          {
+            "_factory_reset": {
+              "description": "reset to values from config / default values",
+              "datainfo": {
+                "type": "command"
+              }
+            }
+          },
+          {
+            "_inverse_calib_coeff": {
+              "description": "Inverse calibration polynomial coefficients for value Parameter",
+              "datainfo": {
+                "type": "array",
+                "minlen": 2,
+                "maxlen": 5,
+                "members": {
+                  "min": -1000000,
+                  "max": 100000,
+                  "type": "double"
+                }
+              },
+              "readonly": false
+            }
+          },
+          {
+            "_forward_calib_coeff": {
+              "description": "Forward calibration polynomial coefficients for target Parameter",
+              "datainfo": {
+                "type": "array",
+                "minlen": 2,
+                "maxlen": 5,
+                "members": {
+                  "min": -1000000,
+                  "max": 100000,
+                  "type": "double"
+                }
+              },
+              "readonly": false
+            }
+          },
+          {
+            "_value_uncalibrated": {
+              "description": "uncalibrated readback directly from the hardware",
+              "datainfo": {
+                "type": "double"
+              },
+              "readonly": true,
+              "_signal_format": "HINTED_SIGNAL"
+            }
+          },
+          {
+            "_target_calibrated": {
+              "description": "calibrated target that is written to the hardware",
+              "datainfo": {
+                "type": "double"
+              },
+              "readonly": true,
+              "_signal_format": "HINTED_SIGNAL"
+            }
+          },
+          {
+            "target_limits": {
+              "description": "Limits for desired massflow of gas",
+              "datainfo": {
+                "type": "tuple",
+                "members": [
+                  {
+                    "unit": "mln/min",
+                    "min": 0,
+                    "max": 200,
+                    "type": "double"
+                  },
+                  {
+                    "unit": "mln/min",
+                    "min": 0,
+                    "max": 200,
+                    "type": "double"
+                  }
+                ]
+              },
+              "readonly": true
+            }
+          },
+          {
+            "_gastype": {
+              "description": "chemical formula of gas type handled by flow controller",
+              "datainfo": {
+                "maxchars": 50,
+                "type": "string"
+              },
+              "readonly": true
+            }
+          },
+          {
+            "_tolerance": {
+              "description": "flow range for stability checking",
+              "datainfo": {
+                "unit": "mln/min",
+                "min": 0,
+                "max": 100,
+                "type": "double"
+              },
+              "readonly": false
+            }
+          },
+          {
+            "_P_value": {
+              "description": "Proportional const for controller",
+              "datainfo": {
+                "min": 0,
+                "max": 20000,
+                "type": "double"
+              },
+              "readonly": false,
+              "group": "control parameter"
+            }
+          },
+          {
+            "_I_value": {
+              "description": "Integral const for controller",
+              "datainfo": {
+                "min": 0,
+                "max": 20000,
+                "type": "double"
+              },
+              "readonly": false,
+              "group": "control parameter"
+            }
+          },
+          {
+            "_D_value": {
+              "description": "Deviative const for controller",
+              "datainfo": {
+                "min": 0,
+                "max": 20000,
+                "type": "double"
+              },
+              "readonly": false,
+              "group": "control parameter"
+            }
+          },
+          {
+            "_gastype_select": {
+              "description": "enum of gastype",
+              "datainfo": {
+                "type": "enum",
+                "members": {
+                  "H2": 1,
+                  "CO": 2,
+                  "CO2": 3,
+                  "O2": 4,
+                  "He": 5,
+                  "N2": 6,
+                  "Ar": 7
+                }
+              },
+              "readonly": false
+            }
+          },
+          {
+            "_valveposition": {
+              "description": "valveposition",
+              "datainfo": {
+                "unit": "%",
+                "min": 0,
+                "max": 100,
+                "type": "double"
+              },
+              "readonly": false,
+              "group": "control parameter"
+            }
+          },
+          {
+            "_control_mode": {
+              "description": "control mode of  massflow controller",
+              "datainfo": {
+                "type": "enum",
+                "members": {
+                  "RS232": 0,
+                  "fully_open": 3,
+                  "fully_closed": 8
+                }
+              },
+              "readonly": false
+            }
+          },
+          {
+            "_test_cmd": {
+              "description": "testing with ophyd secop integration",
+              "datainfo": {
+                "type": "command",
+                "argument": {
+                  "type": "struct",
+                  "members": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "min": 0,
+                      "max": 1000,
+                      "type": "int"
+                    },
+                    "sort": {
+                      "type": "bool"
+                    }
+                  },
+                  "optional": []
+                },
+                "result": {
+                  "min": -16777216,
+                  "max": 16777216,
+                  "type": "int"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "image": null
+    },
+    {
+      "id": "box-sim_cell_abstraction_layer_sample_change",
+      "device": "sample_change",
+      "deviceKey": "sim_cell_abstraction_layer_sample_change",
+      "logicalName": "sim_cell_abstraction_layer_sample_change",
+      "left": "1470px",
+      "top": "74px",
+      "width": "340px",
+      "height": "164px",
+      "info": {
+        "params": [
+          "target",
+          "pollinterval"
+        ],
+        "all_params": [
+          "value",
+          "status",
+          "target",
+          "pollinterval",
+          "stop",
+          "_positions_file"
+        ],
+        "commands": [
+          "stop"
+        ],
+        "original_name": "sample_change",
+        "interface_classes": [
+          "Drivable"
+        ],
+        "module_name": "sample_change",
+        "param_info": [
+          {
+            "value": {
+              "description": "last fully prepared wafer position",
+              "datainfo": {
+                "type": "enum",
+                "members": {
+                  "unknown": 0,
+                  "wafer_001_measurement_position_1": 1,
+                  "wafer_001_measurement_position_2": 2,
+                  "wafer_001_measurement_position_3": 3,
+                  "wafer_002_measurement_position_1": 4,
+                  "wafer_002_measurement_position_2": 5
+                }
+              },
+              "readonly": true
+            }
+          },
+          {
+            "status": {
+              "description": "current status of the module",
+              "datainfo": {
+                "type": "tuple",
+                "members": [
+                  {
+                    "type": "enum",
+                    "members": {
+                      "IDLE": 100,
+                      "WARN": 200,
+                      "BUSY": 300,
+                      "ERROR": 400
+                    }
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "readonly": true
+            }
+          },
+          {
+            "target": {
+              "description": "wafer_ID_measurement_position_i",
+              "datainfo": {
+                "type": "enum",
+                "members": {
+                  "unknown": 0,
+                  "wafer_001_measurement_position_1": 1,
+                  "wafer_001_measurement_position_2": 2,
+                  "wafer_001_measurement_position_3": 3,
+                  "wafer_002_measurement_position_1": 4,
+                  "wafer_002_measurement_position_2": 5
+                }
+              },
+              "readonly": false
+            }
+          },
+          {
+            "pollinterval": {
+              "description": "preparation monitoring interval",
+              "datainfo": {
+                "unit": "s",
+                "min": 0.05,
+                "max": 10,
+                "type": "double"
+              },
+              "readonly": false
+            }
+          },
+          {
+            "stop": {
+              "description": "Stop the current preparation; the next target starts from home.",
+              "datainfo": {
+                "type": "command"
+              }
+            }
+          },
+          {
+            "_positions_file": {
+              "description": "wafer measurement positions JSON",
+              "datainfo": {
+                "type": "string"
+              },
+              "readonly": true
             }
           }
         ]
