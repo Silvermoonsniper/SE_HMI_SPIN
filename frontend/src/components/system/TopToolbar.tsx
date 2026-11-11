@@ -179,7 +179,7 @@ export function TopToolbar({
       <button type="button" onClick={onBack} className="topbar-action-btn topbar-action-btn-neutral">
         Back
       </button>
-      {isConfigure && (
+      {isConfigure && !guiMode && (
         <button
           id="toggle-config-panels-btn"
           className="topbar-action-btn topbar-action-btn-neutral"

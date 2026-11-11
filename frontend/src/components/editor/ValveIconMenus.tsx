@@ -23,6 +23,7 @@ import {
 } from '../system/valveAssets'
 import { getStoredLayouts } from '../../utils/storage'
 import { useAppStore } from '../../store/appStore'
+import { MAIN_PAGE_ID } from './layoutPages'
 
 export interface ValveMenuTarget {
   iconId: string
@@ -32,15 +33,17 @@ export interface ValveMenuTarget {
 
 interface ValveIconMenusProps {
   isConfigure: boolean
+  pageId?: string
   onRefreshIcons: () => void
 }
 
 /** Write the given rotation/svg fields back into the stored layout's matching valveIcons entry. */
-function syncIconToStoredLayout(iconId: string, patch: Record<string, string>): void {
+function syncIconToStoredLayout(iconId: string, patch: Record<string, string>, pageId: string): void {
   const selected = useAppStore.getState().selectedLayout
   if (!selected) return
   const layouts = getStoredLayouts()
-  const layout = layouts[selected]
+  const document = layouts[selected]
+  const layout = pageId === MAIN_PAGE_ID ? document : document?.pages?.find((page) => page.id === pageId)?.layout
   if (!layout || !Array.isArray(layout.valveIcons)) return
   const entry = layout.valveIcons.find((item) => item && item.id === iconId)
   if (!entry) return
@@ -52,7 +55,7 @@ function syncIconToStoredLayout(iconId: string, patch: Record<string, string>): 
   }
 }
 
-export function ValveIconMenus({ isConfigure, onRefreshIcons }: ValveIconMenusProps) {
+export function ValveIconMenus({ isConfigure, pageId = MAIN_PAGE_ID, onRefreshIcons }: ValveIconMenusProps) {
   const [actionMenu, setActionMenu] = useState<{ target: ValveMenuTarget; x: number; y: number } | null>(null)
   const [picker, setPicker] = useState<{ target: ValveMenuTarget; x: number; y: number } | null>(null)
   const [assets, setAssets] = useState<Array<{ name: string; url: string }>>([])
@@ -118,7 +121,7 @@ export function ValveIconMenus({ isConfigure, onRefreshIcons }: ValveIconMenusPr
       return
     }
     updateValveIcon(target.iconId, { rotationDegrees: String(next) })
-    syncIconToStoredLayout(target.iconId, { rotationDegrees: String(next) })
+    syncIconToStoredLayout(target.iconId, { rotationDegrees: String(next) }, pageId)
     onRefreshIcons()
   }
 
@@ -134,11 +137,11 @@ export function ValveIconMenus({ isConfigure, onRefreshIcons }: ValveIconMenusPr
     const open = openChoice || defaults.open
     if (isSwitch) {
       setSwitchSvgChoices(device, field, closed, open)
-      syncIconToStoredLayout(iconId, { switchClosedSvg: closed, switchOpenSvg: open, switchSvg: open })
+      syncIconToStoredLayout(iconId, { switchClosedSvg: closed, switchOpenSvg: open, switchSvg: open }, pageId)
       updateValveIcon(iconId, { switchClosedSvg: closed, switchOpenSvg: open, switchSvg: open })
     } else {
       setValveSvgChoices(device, field, closed, open)
-      syncIconToStoredLayout(iconId, { closedSvg: closed, openSvg: open })
+      syncIconToStoredLayout(iconId, { closedSvg: closed, openSvg: open }, pageId)
       updateValveIcon(iconId, { closedSvg: closed, openSvg: open })
     }
     setPicker(null)
@@ -150,11 +153,11 @@ export function ValveIconMenus({ isConfigure, onRefreshIcons }: ValveIconMenusPr
     const { device, field, iconId } = picker.target
     if (isSwitch) {
       setSwitchSvgChoices(device, field, defaults.closed, defaults.open)
-      syncIconToStoredLayout(iconId, { switchClosedSvg: '', switchOpenSvg: '', switchSvg: '' })
+      syncIconToStoredLayout(iconId, { switchClosedSvg: '', switchOpenSvg: '', switchSvg: '' }, pageId)
       updateValveIcon(iconId, { switchClosedSvg: '', switchOpenSvg: '', switchSvg: '' })
     } else {
       setValveSvgChoices(device, field, defaults.closed, defaults.open)
-      syncIconToStoredLayout(iconId, { closedSvg: '', openSvg: '' })
+      syncIconToStoredLayout(iconId, { closedSvg: '', openSvg: '' }, pageId)
       updateValveIcon(iconId, { closedSvg: '', openSvg: '' })
     }
     setPicker(null)

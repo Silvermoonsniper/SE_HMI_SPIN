@@ -9,13 +9,14 @@
  * is Phase 4; plots are Phase 5 — their toolbar buttons and dialogs are live.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
-import type { DeviceInfo, LayoutData, LayoutDeviceEntry, LayoutDecorationEntry } from '../api/types'
+import type { DeviceInfo, LayoutData, LayoutDeviceEntry, LayoutDecorationEntry, LayoutSubpage } from '../api/types'
 import { DeviceBox } from '../components/system/DeviceBox'
 import { SamplePresence, SampleSlot } from '../components/system/SampleSlots'
 import { TopToolbar, type DataSavingSnapshot } from '../components/system/TopToolbar'
+import { LayoutPageTabs } from '../components/system/LayoutPageTabs'
 import { ValveIcon, valveFieldsOf } from '../components/system/ValveIcon'
 import { DataSavingDialog, stopDataSavingFlow } from '../components/system/DataSavingDialog'
 import { NexusBrowser } from '../components/system/NexusBrowser'
@@ -26,6 +27,7 @@ import { DecorationBox } from '../components/editor/DecorationBox'
 import { CanvasCreateMenu, type CanvasCreateRequest } from '../components/editor/CanvasCreateMenu'
 import { readLayoutImage } from '../components/editor/imageUpload'
 import { fetchLayoutByName, hydrateDeviceMetadataFromLayout, loadLayoutFromFile, saveLayout } from '../components/editor/layoutPersistence'
+import { layoutCanvas, layoutDocument, MAIN_PAGE_ID } from '../components/editor/layoutPages'
 import { useCanvasClipboard } from '../components/editor/useCanvasClipboard'
 import { ValveIconMenus } from '../components/editor/ValveIconMenus'
 import { PlotPanel, layoutPlotGeometry } from '../components/plots/PlotPanel'
@@ -35,7 +37,7 @@ import { usePlotStore, layoutPlotToConfig, refreshSavedPlotNames } from '../stor
 import type { PlotConfig } from '../api/types'
 import { getStoredLayouts, saveStoredLayout } from '../utils/storage'
 import { hydrateDeviceFromNode, fetchAndMergeLatestValuesOnce } from '../components/system/deviceUtils'
-import { appAlert } from '../store/dialogStore'
+import { appAlert, appConfirm, appPrompt } from '../store/dialogStore'
 
 // ---------------------------------------------------------------------------
 // Device matching (legacy robust matching from connect_to_system)
@@ -69,12 +71,15 @@ export default function SystemPage() {
   const pendingRenderMode = useAppStore((s) => s.pendingRenderMode)
   const deviceParams = useAppStore((s) => s.deviceParams)
   const latestValues = useAppStore((s) => s.latestValues)
-  const setDeviceParams = useAppStore((s) => s.setDeviceParams)
   const setConfigurationMode = useAppStore((s) => s.setConfigurationMode)
 
   const isConfigure = pendingRenderMode === 'configure'
 
-  const [layout, setLayout] = useState<LayoutData | null>(null)
+  const [layout, setLayout] = useState<LayoutData>(() => layoutCanvas())
+  const [pages, setPages] = useState<LayoutSubpage[]>([])
+  const [activePageId, setActivePageId] = useState(MAIN_PAGE_ID)
+  const mainPageRef = useRef(layoutCanvas())
+  const loadedLayoutNameRef = useRef<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [guiMode, setGuiMode] = useState(!isConfigure)
   const [configPanelsHidden, setConfigPanelsHidden] = useState(false)
@@ -108,6 +113,17 @@ export default function SystemPage() {
   const imageInputRef = useRef<HTMLInputElement>(null)
   const imagePositionRef = useRef({ left: 100, top: 100 })
 
+  const openLayoutDocument = useCallback((document: LayoutData) => {
+    hydrateDeviceMetadataFromLayout(document)
+    const main = layoutCanvas(document)
+    mainPageRef.current = main
+    setPages(document.pages ?? [])
+    setActivePageId(MAIN_PAGE_ID)
+    setLayout(main)
+    setLoadError(null)
+    setCreateMenu(null)
+  }, [])
+
   // Sync configuration mode into the store (gates live editing elsewhere).
   useEffect(() => {
     setConfigurationMode(isConfigure)
@@ -127,8 +143,10 @@ export default function SystemPage() {
 
   // Load the selected layout (localStorage first, then server — legacy connectToGUI).
   useEffect(() => {
+    if (selectedLayout === loadedLayoutNameRef.current) return
     if (!selectedLayout) {
-      setLayout(null)
+      loadedLayoutNameRef.current = null
+      openLayoutDocument(layoutCanvas())
       return
     }
     let cancelled = false
@@ -136,9 +154,8 @@ export default function SystemPage() {
       const loaded = await fetchLayoutByName(selectedLayout)
       if (cancelled) return
       if (loaded) {
-        hydrateDeviceMetadataFromLayout(loaded)
-        setLayout(loaded)
-        setLoadError(null)
+        loadedLayoutNameRef.current = selectedLayout
+        openLayoutDocument(loaded)
       } else {
         setLoadError(`Layout "${selectedLayout}" not found.`)
       }
@@ -147,11 +164,10 @@ export default function SystemPage() {
     return () => {
       cancelled = true
     }
-  }, [selectedLayout])
+  }, [selectedLayout, openLayoutDocument])
 
   // Seed editor stores from the loaded layout (positions, decorations, connections, valve icons).
-  useEffect(() => {
-    if (!layout) return
+  useLayoutEffect(() => {
     const deviceGeo: Record<string, { left: number; top: number; width?: number; height?: number }> = {}
     const parsePx = (v: string | undefined): number | undefined => {
       const n = parseFloat(v || '')
@@ -171,6 +187,7 @@ export default function SystemPage() {
     })
     setRemovedIds(new Set())
     setExtraDevices([])
+    lastPointerRef.current = { left: 200, top: 80 }
     // Restore plot panels saved in the layout (legacy create_plot /
     // restorePlotPanelFromLayout). Plots are recreated from their configName
     // when a full saved config exists, else from the embedded trace keys.
@@ -189,20 +206,18 @@ export default function SystemPage() {
   }, [layout, clearEditor])
 
   // Hydrate all devices referenced by the layout once it is known.
-  const hydratedRef = useRef(false)
   useEffect(() => {
-    if (!layout || hydratedRef.current) return
-    hydratedRef.current = true
     fetchAndMergeLatestValuesOnce()
       .then(() => {
+        const params = useAppStore.getState().deviceParams
         const devices = (layout.devices ?? [])
-          .map((d) => matchDevice(d, Object.keys(deviceParams ?? {}), deviceParams))
+          .map((d) => matchDevice(d, Object.keys(params ?? {}), params))
           .filter((d): d is string => !!d)
         const valveDevices = (layout.valveIcons ?? []).map((v) => v.device)
         return Promise.all(Array.from(new Set([...devices, ...valveDevices])).map((d) => hydrateDeviceFromNode(d)))
       })
       .catch(() => undefined)
-  }, [layout, deviceParams])
+  }, [layout])
 
   // Data-saving status polling.
   const refreshDataSavingStatus = useCallback(async () => {
@@ -406,8 +421,9 @@ export default function SystemPage() {
       if (!selected) return
       const layouts = getStoredLayouts()
       const layoutData = layouts[selected]
-      if (!layoutData || !Array.isArray(layoutData.valveIcons)) return
-      const entry = layoutData.valveIcons.find((item) => item && item.id === iconId)
+      const canvas = activePageId === MAIN_PAGE_ID ? layoutData : layoutData?.pages?.find((page) => page.id === activePageId)?.layout
+      if (!canvas || !Array.isArray(canvas.valveIcons)) return
+      const entry = canvas.valveIcons.find((item) => item && item.id === iconId)
       if (!entry) return
       Object.assign(entry, patch)
       try {
@@ -416,7 +432,7 @@ export default function SystemPage() {
         /* storage unavailable */
       }
     },
-    [selectedLayout],
+    [selectedLayout, activePageId],
   )
 
   const removeElement = useCallback(
@@ -429,8 +445,9 @@ export default function SystemPage() {
         if (selected) {
           const layouts = getStoredLayouts()
           const layoutData = layouts[selected]
-          if (layoutData && Array.isArray(layoutData.valveIcons)) {
-            layoutData.valveIcons = layoutData.valveIcons.filter((v) => v && v.id !== id)
+          const canvas = activePageId === MAIN_PAGE_ID ? layoutData : layoutData?.pages?.find((page) => page.id === activePageId)?.layout
+          if (canvas && Array.isArray(canvas.valveIcons)) {
+            canvas.valveIcons = canvas.valveIcons.filter((v) => v && v.id !== id)
             try {
               localStorage.setItem('gas_system_layouts', JSON.stringify(layouts))
             } catch {
@@ -442,7 +459,7 @@ export default function SystemPage() {
         useEditorStore.getState().removeDecoration(id)
       }
     },
-    [selectedLayout],
+    [selectedLayout, activePageId],
   )
 
   // Geometry lookup for the connection layer.
@@ -560,8 +577,11 @@ export default function SystemPage() {
   }
 
   const handleSaveLayout = async () => {
-    const layoutData = buildCurrentLayout()
-    await saveLayout(layoutData)
+    const name = await saveLayout(buildCurrentDocument(), selectedLayout ?? '')
+    if (name) {
+      loadedLayoutNameRef.current = name
+      useAppStore.getState().setSelectedLayout(name)
+    }
   }
 
   const handleUploadImage = (pos: { left: number; top: number }) => {
@@ -597,16 +617,14 @@ export default function SystemPage() {
   const handleLoadLayout = async () => {
     const result = await loadLayoutFromFile()
     if (!result) return
+    loadedLayoutNameRef.current = result.name
     useAppStore.getState().setSelectedLayout(result.name)
-    hydrateDeviceMetadataFromLayout(result.layout)
-    setLayout(result.layout)
+    openLayoutDocument(result.layout)
   }
 
   const handleNewLayout = () => {
-    setLayout(null)
-    setRemovedIds(new Set())
-    setExtraDevices([])
-    clearEditor()
+    loadedLayoutNameRef.current = null
+    openLayoutDocument(layoutCanvas())
     useAppStore.getState().setSelectedLayout(null)
   }
 
@@ -664,6 +682,71 @@ export default function SystemPage() {
     }
   }
 
+  const buildCurrentDocument = (): LayoutData =>
+    layoutDocument(mainPageRef.current, pages, activePageId, buildCurrentLayout())
+
+  // Capture pending edits before replacing the editor stores with another page.
+  const switchPage = (id: string) => {
+    if (id === activePageId) return
+    const document = buildCurrentDocument()
+    const target = id === MAIN_PAGE_ID ? layoutCanvas(document) : document.pages?.find((page) => page.id === id)?.layout
+    if (!target) return
+    mainPageRef.current = layoutCanvas(document)
+    setPages(document.pages ?? [])
+    setActivePageId(id)
+    setLayout(target)
+    setCreateMenu(null)
+    setPlotConfigOpen(false)
+  }
+
+  const pageNameAvailable = (name: string, exceptId?: string) =>
+    name.toLowerCase() !== 'main' && !pages.some((page) => page.id !== exceptId && page.name.toLowerCase() === name.toLowerCase())
+
+  const handleAddPage = async () => {
+    if (!isConfigure || guiMode) return
+    const input = await appPrompt('Enter a name for the new page:', '', 'Add Page')
+    if (input === null) return
+    const name = input.trim()
+    if (!name || !pageNameAvailable(name)) {
+      await appAlert('Enter a unique page name. Main is reserved for the main page.', 'Add Page')
+      return
+    }
+    const document = buildCurrentDocument()
+    const page: LayoutSubpage = { id: `page-${Date.now()}-${Math.random().toString(36).slice(2)}`, name, layout: layoutCanvas() }
+    mainPageRef.current = layoutCanvas(document)
+    setPages([...(document.pages ?? []), page])
+    setActivePageId(page.id)
+    setLayout(page.layout)
+    setCreateMenu(null)
+    setPlotConfigOpen(false)
+  }
+
+  const handleRenamePage = async () => {
+    if (!isConfigure || guiMode) return
+    const page = pages.find((page) => page.id === activePageId)
+    if (!page) return
+    const input = await appPrompt('Enter a new name for this page:', page.name, 'Rename Page')
+    if (input === null) return
+    const name = input.trim()
+    if (!name || !pageNameAvailable(name, page.id)) {
+      await appAlert('Enter a unique page name. Main is reserved for the main page.', 'Rename Page')
+      return
+    }
+    setPages((current) => current.map((entry) => entry.id === page.id ? { ...entry, name } : entry))
+  }
+
+  const handleRemovePage = async () => {
+    if (!isConfigure || guiMode) return
+    const page = pages.find((page) => page.id === activePageId)
+    if (!page) return
+    if (!await appConfirm(`Remove page "${page.name}" and everything on it? The other pages will be kept.`, 'Remove Page')) return
+    setPages((current) => current.filter((entry) => entry.id !== page.id))
+    setActivePageId(MAIN_PAGE_ID)
+    setLayout(mainPageRef.current)
+    setCreateMenu(null)
+    setPlotConfigOpen(false)
+  }
+
   // Silently persist the in-progress editor state back to the selected layout
   // (no prompt) so switching to connect/GUI mode shows the latest edits,
   // including drawn connection lines. Connect mode reloads the saved layout,
@@ -671,7 +754,7 @@ export default function SystemPage() {
   const persistCurrentLayoutSilently = useCallback(async () => {
     const name = selectedLayout
     if (!name) return
-    const layoutData = buildCurrentLayout()
+    const layoutData = buildCurrentDocument()
     try {
       saveStoredLayout(name, layoutData)
       await api.nodemanager('save_layout', { name, layout: layoutData }).catch(() => undefined)
@@ -679,10 +762,11 @@ export default function SystemPage() {
       /* best-effort */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLayout, visibleDevices, visibleValves, editorDecorations, editorConnections, deviceGeometry, deviceParams])
+  }, [selectedLayout, activePageId, pages, visibleDevices, visibleValves, editorDecorations, editorConnections, deviceGeometry, deviceParams])
 
   // Canvas right-click: open create menu only on empty canvas targets.
   const handleGridContextMenu = (e: React.MouseEvent) => {
+    if (!isConfigure || guiMode) return
     const target = e.target as HTMLElement
     const inCanvas = !!target.closest?.('#device-grid, #viewport')
     const blocked = !!target.closest?.(
@@ -728,7 +812,7 @@ export default function SystemPage() {
     return () => cancelAnimationFrame(raf)
   }, [layout])
 
-  // ---- GUI mode (fullscreen, hides editor chrome) ----------------------------
+  // ---- GUI mode (fullscreen canvas with the data-saving toolbar) ------------
 
   const toggleGuiMode = useCallback(() => {
     // Leaving the editor (entering GUI/connect view) commits pending edits.
@@ -758,15 +842,16 @@ export default function SystemPage() {
   }, [])
 
   return (
-    <div id="main-panel" style={{ display: 'block' }} className={isConfigure ? 'config-mode' : ''} data-configuration-mode={isConfigure ? 'true' : 'false'}>
-      {!guiMode && (
-        <div id="main-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <div id="main-panel-title-wrap" style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+    <div id="main-panel" style={{ display: guiMode ? 'flex' : 'block', flexDirection: 'column' }}
+      className={[isConfigure ? 'config-mode' : '', guiMode ? 'gui-fullscreen' : ''].filter(Boolean).join(' ')}
+      data-configuration-mode={isConfigure ? 'true' : 'false'}>
+        <div id="main-panel-header" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          {!guiMode && <div id="main-panel-title-wrap" style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
             <h3 id="main-panel-title" style={{ margin: 0 }}>
               {isConfigure ? 'Configure your system layout' : 'System view'}
               {selectedLayout ? ` — ${selectedLayout}` : ''}
             </h3>
-          </div>
+          </div>}
           <TopToolbar
             isConfigure={isConfigure}
             guiMode={guiMode}
@@ -781,17 +866,6 @@ export default function SystemPage() {
             dataSaving={dataSaving}
           />
         </div>
-      )}
-      {guiMode && (
-        <button
-          type="button"
-          className="topbar-action-btn topbar-action-btn-neutral"
-          style={{ position: 'fixed', top: 8, right: 8, zIndex: 5000 }}
-          onClick={toggleGuiMode}
-        >
-          Configure GUI
-        </button>
-      )}
 
       {loadError && (
         <div style={{ padding: 16, color: '#b91c1c' }}>
@@ -802,21 +876,30 @@ export default function SystemPage() {
         </div>
       )}
 
-      {!selectedLayout && !loadError && (
+      {!selectedLayout && !loadError && !isConfigure && (
         <div style={{ padding: 16, color: '#64748b' }}>
           No layout selected. Go back and pick a saved layout, or configure a new one.
         </div>
       )}
 
-      {/* Full-width workspace: device grid (3000×2000) inside a scrollable viewport */}
-      <div style={{ width: '100%', padding: '8px 12px', boxSizing: 'border-box' }}>
+      {(isConfigure || pages.length > 0) && (
+        <LayoutPageTabs pages={pages} activeId={activePageId} canEdit={isConfigure && !guiMode}
+          onSelect={switchPage} onAdd={() => void handleAddPage()}
+          onRename={() => void handleRenamePage()} onRemove={() => void handleRemovePage()}
+          onSave={() => void handleSaveLayout()} />
+      )}
+
+      {/* Full-width workspace: each page has an independent canvas. */}
+      <div id="layout-page-canvas" role="tabpanel" aria-labelledby={`layout-tab-${activePageId}`}
+        style={{ width: '100%', padding: '8px 12px', boxSizing: 'border-box' }}>
         <div
           className="viewport"
           id="viewport"
           ref={viewportRef}
-          style={{ overflow: 'auto', position: 'relative', height: guiMode ? '100vh' : undefined }}
+          style={{ overflow: 'auto', position: 'relative' }}
         >
           <div
+            key={activePageId}
             id="device-grid"
             ref={gridRef}
             onContextMenu={handleGridContextMenu}
@@ -894,7 +977,7 @@ export default function SystemPage() {
         </div>
       </div>
 
-      <ValveIconMenus isConfigure={isConfigure} onRefreshIcons={() => setIconsVersion((v) => v + 1)} />
+      <ValveIconMenus key={activePageId} pageId={activePageId} isConfigure={isConfigure} onRefreshIcons={() => setIconsVersion((v) => v + 1)} />
 
       <CanvasCreateMenu
         request={createMenu}

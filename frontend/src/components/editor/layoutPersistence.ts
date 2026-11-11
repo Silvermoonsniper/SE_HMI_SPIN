@@ -20,8 +20,8 @@ export interface CanvasSnapshotSource {
 }
 
 /** Save the current canvas as a named layout (localStorage + server). */
-export async function saveLayout(layout: LayoutData): Promise<string | null> {
-  const name = await appPrompt('Enter a name for this layout:', '', 'Save Layout')
+export async function saveLayout(layout: LayoutData, defaultName = ''): Promise<string | null> {
+  const name = await appPrompt('Enter a name for this layout:', defaultName, 'Save Layout')
   if (!name) return null
 
   saveStoredLayout(name, layout)
@@ -71,12 +71,15 @@ export function loadLayoutFromFile(): Promise<{ name: string; layout: LayoutData
 
 /** Merge device metadata embedded in a layout into the app store (legacy hydrateDeviceMetadataFromLayout). */
 export function hydrateDeviceMetadataFromLayout(layout: LayoutData | null): void {
-  if (!layout || !Array.isArray(layout.devices) || layout.devices.length === 0) return
+  if (!layout) return
+  const devices = [layout, ...(layout.pages ?? []).map((page) => page.layout)]
+    .flatMap((canvas) => canvas.devices ?? [])
+  if (!devices.length) return
   const current = useAppStore.getState().deviceParams ?? {}
   const merged = { ...current }
   let added = 0
-  layout.devices.forEach((entry) => {
-    const key = entry.logicalName || entry.device
+  devices.forEach((entry) => {
+    const key = entry.deviceKey || entry.logicalName || entry.device
     if (!key || merged[key]) return
     const info = { ...(entry.info ?? {}) } as Record<string, unknown>
     if (!info.original_name && entry.device) info.original_name = entry.device

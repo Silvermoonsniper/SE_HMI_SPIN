@@ -34,6 +34,37 @@ docker compose logs -f
 
 Open the browser at http://localhost:8001.
 
+### GUI pages
+
+Open **Configure system layout** and use **+ Add page** beside the **Main** tab.
+Enter a name, then add devices, plots or custom elements to the new page as usual.
+Click a page tab to switch pages; pending edits stay with their page.
+
+Select a subpage to **Rename page** or **Remove page**. Removing a page removes
+its contents after confirmation. The Main page is kept.
+
+Use **Save layout** to save the Main page and all subpages together. Page tabs
+also work in the normal GUI view. Existing layouts open as a single Main page.
+
+After changing frontend source, rebuild and recreate the application container:
+
+```bash
+docker compose up -d --build se_hmi_spin
+```
+
+Frontend validation (Node.js 20 or newer):
+
+```bash
+cd frontend
+npm ci
+npm run typecheck
+npm run build
+npx playwright install chromium
+npm run test:pages
+```
+
+The page tests use mocked API responses and do not connect to devices.
+
 
 
 

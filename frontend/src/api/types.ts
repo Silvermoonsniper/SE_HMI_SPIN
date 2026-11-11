@@ -151,12 +151,23 @@ export interface LayoutConnectionEntry {
   rotationDegrees?: string
 }
 
-export interface LayoutData {
+export interface LayoutCanvasData {
   devices: LayoutDeviceEntry[]
   valveIcons: LayoutValveIconEntry[]
   decorations: LayoutDecorationEntry[]
   plots: LayoutPlotEntry[]
   connections: LayoutConnectionEntry[]
+}
+
+export interface LayoutSubpage {
+  id: string
+  name: string
+  layout: LayoutCanvasData
+}
+
+/** The existing top-level canvas is the main page; subpages share its save file. */
+export interface LayoutData extends LayoutCanvasData {
+  pages?: LayoutSubpage[]
 }
 
 // ---------------------------------------------------------------------------
