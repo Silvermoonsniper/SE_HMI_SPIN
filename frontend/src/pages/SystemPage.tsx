@@ -31,7 +31,7 @@ import { layoutCanvas, layoutDocument, MAIN_PAGE_ID } from '../components/editor
 import { useCanvasClipboard } from '../components/editor/useCanvasClipboard'
 import { ValveIconMenus } from '../components/editor/ValveIconMenus'
 import { PlotPanel, layoutPlotGeometry } from '../components/plots/PlotPanel'
-import { PlotConfigWindow } from '../components/plots/PlotConfigWindow'
+import { PlotConfigWindow, type PlotPlacement } from '../components/plots/PlotConfigWindow'
 import { openPlotWindow } from '../components/plots/openPlotWindow'
 import { usePlotStore, layoutPlotToConfig, refreshSavedPlotNames } from '../store/plotStore'
 import type { PlotConfig } from '../api/types'
@@ -104,6 +104,7 @@ export default function SystemPage() {
   const [createMenu, setCreateMenu] = useState<CanvasCreateRequest | null>(null)
   const [iconsVersion, setIconsVersion] = useState(0)
   const [plotConfigOpen, setPlotConfigOpen] = useState(false)
+  const plotPositionRef = useRef({ left: 200, top: 80 })
   const plotPanels = usePlotStore((s) => s.plots)
   const removePlotFromStore = usePlotStore((s) => s.removePlot)
 
@@ -122,6 +123,22 @@ export default function SystemPage() {
     setLayout(main)
     setLoadError(null)
     setCreateMenu(null)
+    // Start every page's plots together so hidden pages also receive live data.
+    const plotStore = usePlotStore.getState()
+    Object.keys(plotStore.plots).forEach((id) => plotStore.removePlot(id))
+    const canvases = [{ id: MAIN_PAGE_ID, layout: main }, ...(document.pages ?? [])]
+    canvases.forEach((page) => {
+      page.layout.plots.forEach((savedPlot) => {
+        const config = layoutPlotToConfig(savedPlot)
+        const geo = layoutPlotGeometry(savedPlot)
+        const id = plotStore.createPlot(config, { left: geo.left, top: geo.top }, page.id)
+        if (id) {
+          plotStore.updateGeometry(id, geo)
+          if (savedPlot.title) plotStore.setTitle(id, savedPlot.title)
+        }
+      })
+    })
+    refreshSavedPlotNames()
   }, [])
 
   // Sync configuration mode into the store (gates live editing elsewhere).
@@ -188,21 +205,6 @@ export default function SystemPage() {
     setRemovedIds(new Set())
     setExtraDevices([])
     lastPointerRef.current = { left: 200, top: 80 }
-    // Restore plot panels saved in the layout (legacy create_plot /
-    // restorePlotPanelFromLayout). Plots are recreated from their configName
-    // when a full saved config exists, else from the embedded trace keys.
-    const plotStore = usePlotStore.getState()
-    Object.keys(plotStore.plots).forEach((id) => plotStore.removePlot(id))
-    ;(layout.plots ?? []).forEach((savedPlot) => {
-      const config = layoutPlotToConfig(savedPlot)
-      const geo = layoutPlotGeometry(savedPlot)
-      const id = plotStore.createPlot(config, { left: geo.left, top: geo.top })
-      if (id) {
-        plotStore.updateGeometry(id, geo)
-        if (savedPlot.title) plotStore.setTitle(id, savedPlot.title)
-      }
-    })
-    refreshSavedPlotNames()
   }, [layout, clearEditor])
 
   // Hydrate all devices referenced by the layout once it is known.
@@ -536,7 +538,8 @@ export default function SystemPage() {
 
   // ---- Plots (create / remove / canvas menu) ----------------------------------
 
-  const handleNewPlot = () => {
+  const handleNewPlot = (position: { left: number; top: number }) => {
+    plotPositionRef.current = position
     setPlotConfigOpen(true)
   }
 
@@ -546,7 +549,10 @@ export default function SystemPage() {
     return false
   }
 
-  const handleCreatePlotFromConfig = (config: PlotConfig) => {
+  const handleCreatePlotFromConfig = (config: PlotConfig, placement: PlotPlacement) => {
+    if (placement === 'layout') {
+      return usePlotStore.getState().createPlot(config, plotPositionRef.current, activePageId) !== null
+    }
     return handleCreateSavedPlot(config.name)
   }
 
@@ -661,7 +667,7 @@ export default function SystemPage() {
       switchOpenSvg: v.layoutChoices?.switchOpenSvg || '',
     }))
     // Plot panels: persist geometry + config reference (legacy getCurrentLayoutData).
-    const plotEntries = Object.values(usePlotStore.getState().plots).map((p) => ({
+    const plotEntries = Object.values(usePlotStore.getState().plots).filter((p) => p.pageId === activePageId).map((p) => ({
       id: `${p.id}_panel`,
       title: p.title,
       configName: p.configName,
@@ -740,6 +746,8 @@ export default function SystemPage() {
     const page = pages.find((page) => page.id === activePageId)
     if (!page) return
     if (!await appConfirm(`Remove page "${page.name}" and everything on it? The other pages will be kept.`, 'Remove Page')) return
+    const plotStore = usePlotStore.getState()
+    Object.values(plotStore.plots).filter((plot) => plot.pageId === page.id).forEach((plot) => plotStore.removePlot(plot.id))
     setPages((current) => current.filter((entry) => entry.id !== page.id))
     setActivePageId(MAIN_PAGE_ID)
     setLayout(mainPageRef.current)
@@ -970,7 +978,7 @@ export default function SystemPage() {
             {editorDecorations.map((deco) => (
               <DecorationBox key={deco.id} decoration={deco} isConfigure={isConfigure} onGeometryChange={(id, geo) => setDeviceGeometry(id, geo)} />
             ))}
-            {Object.values(plotPanels).map((p) => (
+            {Object.values(plotPanels).filter((p) => p.pageId === activePageId).map((p) => (
               <PlotPanel key={p.id} panel={p} isConfigure={isConfigure} onRemove={handleRemovePlot} />
             ))}
           </div>

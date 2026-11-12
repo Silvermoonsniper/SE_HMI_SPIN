@@ -46,10 +46,18 @@ its contents after confirmation. The Main page is kept.
 Use **Save layout** to save the Main page and all subpages together. Page tabs
 also work in the normal GUI view. Existing layouts open as a single Main page.
 
+Live plots collect updates on every layout page and redraw changed, visible
+plots every two seconds. Each trace keeps up to 50,000 recent samples in the
+browser, trimming older samples in batches; the display uses at most 2,000
+points per trace, using stable buckets that retain peaks and troughs. Delayed
+polling samples are merged in time order and exact replay duplicates are ignored.
+Dense traces use lines without individual point markers.
+Use the History browser for the complete history stored in PostgreSQL.
+
 After changing frontend source, rebuild and recreate the application container:
 
 ```bash
-docker compose up -d --build se_hmi_spin
+docker compose up -d --build --force-recreate se_hmi_spin
 ```
 
 Frontend validation (Node.js 20 or newer):
@@ -64,6 +72,8 @@ npm run test:pages
 ```
 
 The page tests use mocked API responses and do not connect to devices.
+To run them in Firefox, install it with `npx playwright install firefox` and
+run `PLAYWRIGHT_BROWSER=firefox npm run test:pages`.
 
 
 

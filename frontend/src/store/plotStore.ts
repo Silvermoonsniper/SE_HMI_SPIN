@@ -4,17 +4,17 @@
  * Holds plot panels (traces with raw time-series buffers), the staging area
  * for the plot-configuration window, saved plot-config names, and the two
  * periodic loops: /api/plot_updates polling (10 s, paused in configure mode)
- * and the 2 s trace flush (handled by PlotPanel components via version ticks).
+ * and the 2 s trace flush (handled by mounted PlotPanel components).
  */
 
 import { create } from 'zustand'
 import { api } from '../api/client'
-import { liveClient } from '../api/ws'
 import { useAppStore } from './appStore'
 import type { PlotConfig, PlotLineConfig, PlotLineStyle } from '../api/types'
 import { getStoredPlotConfigs, saveStoredPlotConfig, deleteStoredPlotConfig } from '../utils/storage'
 
-export const MAX_STORED_PLOT_HISTORY_POINTS = Number.POSITIVE_INFINITY
+// Live browser buffers are bounded; complete history is stored by the backend.
+export const MAX_STORED_PLOT_HISTORY_POINTS = 50000
 export const MAX_RENDERED_PLOT_POINTS = 2000
 export const MAX_FUTURE_PLOT_SKEW_MS = 5 * 60 * 1000
 
@@ -27,7 +27,7 @@ export interface LineTraceMeta {
   suffix: string
   name: string
   style: PlotLineStyle
-  /** Raw unbounded time series. */
+  /** Recent raw samples for the live view. */
   rawX: Date[]
   rawY: unknown[]
   /** Sampled series currently rendered. */
@@ -64,6 +64,8 @@ export type TraceMeta = LineTraceMeta | XYTraceMeta | ArrayTraceMeta
 
 export interface PlotPanelState {
   id: string
+  /** Owning layout page; absent for standalone plots. */
+  pageId?: string
   title: string
   configName: string
   plotType: 'line' | 'xy' | 'array' | string
@@ -80,15 +82,12 @@ interface PlotStore {
   plots: Record<string, PlotPanelState>
   /** Saved plot-config names (merged local + server). */
   savedPlotNames: string[]
-  /** Monotonic tick bumped whenever any plot received new data (drives flush). */
-  dataVersion: number
 
-  createPlot: (config: PlotConfig, position?: { left: number; top: number }) => string | null
+  createPlot: (config: PlotConfig, position?: { left: number; top: number }, pageId?: string) => string | null
   removePlot: (id: string) => void
   updateGeometry: (id: string, geo: { left: number; top: number; width?: number; height?: number }) => void
   setTitle: (id: string, title: string) => void
   setSavedPlotNames: (names: string[]) => void
-  bumpData: () => void
 }
 
 let plotCounter = 0
@@ -96,13 +95,12 @@ let plotCounter = 0
 export const usePlotStore = create<PlotStore>((set, get) => ({
   plots: {},
   savedPlotNames: [],
-  dataVersion: 0,
 
-  createPlot: (config, position) => {
+  createPlot: (config, position, pageId) => {
     if (!config || !Array.isArray(config.lines) || config.lines.length === 0) return null
     const name = config.name && config.name.trim() ? config.name.trim() : `Plot ${plotCounter + 1}`
-    // Replace any existing plot with the same name.
-    const existing = Object.values(get().plots).find((p) => p.configName === name)
+    // A configuration can appear independently on multiple layout pages.
+    const existing = Object.values(get().plots).find((p) => p.configName === name && p.pageId === pageId)
     if (existing) get().removePlot(existing.id)
 
     const id = `plot_${++plotCounter}`
@@ -148,6 +146,7 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
 
     const panel: PlotPanelState = {
       id,
+      pageId,
       title: name,
       configName: name,
       plotType: config.plotType || 'line',
@@ -196,8 +195,6 @@ export const usePlotStore = create<PlotStore>((set, get) => ({
     }),
 
   setSavedPlotNames: (names) => set({ savedPlotNames: Array.from(new Set(names)).sort() }),
-
-  bumpData: () => set((s) => ({ dataVersion: s.dataVersion + 1 })),
 }))
 
 // ---------------------------------------------------------------------------
@@ -241,25 +238,59 @@ export function normalizePlotEventTimestamp(timestampMs: unknown, isLive: boolea
   return numeric
 }
 
+/** Preserve extrema and gaps instead of moving an evenly-spaced sample grid on every update. */
 export function sampleTracePoints(xValues: unknown[], yValues: unknown[], maxPoints = MAX_RENDERED_PLOT_POINTS): { x: unknown[]; y: unknown[] } {
   const xSource = Array.isArray(xValues) ? xValues : []
   const ySource = Array.isArray(yValues) ? yValues : []
   const total = Math.min(xSource.length, ySource.length)
-  const safeMax = Math.max(2, Number(maxPoints) || MAX_RENDERED_PLOT_POINTS)
-  if (total <= safeMax) return { x: xSource.slice(0, total), y: ySource.slice(0, total) }
-  const nextX: unknown[] = []
-  const nextY: unknown[] = []
-  const maxIndex = total - 1
-  for (let i = 0; i < safeMax; i += 1) {
-    const sampleIndex = Math.min(maxIndex, Math.round((i * maxIndex) / (safeMax - 1)))
-    nextX.push(xSource[sampleIndex])
-    nextY.push(ySource[sampleIndex])
+  const limit = Math.max(2, Math.floor(Number(maxPoints) || MAX_RENDERED_PLOT_POINTS))
+  if (total <= limit) return { x: xSource.slice(0, total), y: ySource.slice(0, total) }
+  if (limit < 7) return { x: [xSource[0], xSource[total - 1]], y: [ySource[0], ySource[total - 1]] }
+
+  // Each bucket contributes at most first/min/max/last/gap, plus global endpoints.
+  const capacity = Math.floor((limit - 2) / 5)
+  const firstTime = Number(xSource[0])
+  const duration = Number(xSource[total - 1]) - firstTime
+  const timeSeries = capacity > 1 && xSource[0] instanceof Date && duration > 0 && Number.isFinite(duration)
+  // Power-of-two bucket sizes keep completed buckets stable as the live tail grows.
+  // Time buckets are anchored to the clock, so replayed points don't shift the grid.
+  const width = timeSeries
+    ? 2 ** Math.max(0, Math.ceil(Math.log2(duration / Math.max(1, capacity - 1))))
+    : 2 ** Math.ceil(Math.log2(total / capacity))
+  const indices = new Set<number>([0, total - 1])
+  let bucket: number | undefined
+  let first = 0
+  let last = 0
+  let min = -1
+  let max = -1
+  let gap = -1
+  const flush = () => {
+    indices.add(first)
+    indices.add(last)
+    if (min >= 0) indices.add(min)
+    if (max >= 0) indices.add(max)
+    if (gap >= 0) indices.add(gap)
   }
-  if (nextX[nextX.length - 1] !== xSource[maxIndex]) {
-    nextX.push(xSource[maxIndex])
-    nextY.push(ySource[maxIndex])
+  for (let i = 0; i < total; i += 1) {
+    const key = Math.floor((timeSeries ? Number(xSource[i]) : i) / width)
+    if (key !== bucket) {
+      if (bucket !== undefined) flush()
+      bucket = key
+      first = i
+      min = max = gap = -1
+    }
+    last = i
+    const value = ySource[i]
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      if (gap < 0) gap = i
+    } else {
+      if (min < 0 || value < (ySource[min] as number)) min = i
+      if (max < 0 || value > (ySource[max] as number)) max = i
+    }
   }
-  return { x: nextX, y: nextY }
+  flush()
+  const ordered = [...indices].sort((a, b) => a - b)
+  return { x: ordered.map((i) => xSource[i]), y: ordered.map((i) => ySource[i]) }
 }
 
 // ---------------------------------------------------------------------------
@@ -281,6 +312,39 @@ function normalizeXYSeries(value: unknown): number[] {
   return Number.isFinite(n) ? [n] : []
 }
 
+/** Trim in chunks so a full buffer doesn't shift 50,000 entries on every sample. */
+function trimTraceHistory(x: unknown[], y: unknown[]): void {
+  if (x.length <= MAX_STORED_PLOT_HISTORY_POINTS) return
+  const remove = x.length - Math.floor(MAX_STORED_PLOT_HISTORY_POINTS * 0.9)
+  x.splice(0, remove)
+  y.splice(0, remove)
+}
+
+/** Merge live and delayed poll samples into one chronological trace, ignoring exact replays. */
+function appendTimeSample(x: Date[], y: unknown[], time: Date, value: unknown): boolean {
+  const timestamp = time.getTime()
+  if (!x.length || timestamp > x[x.length - 1].getTime()) {
+    x.push(time)
+    y.push(value)
+  } else {
+    // Upper bound keeps distinct measurements with the same millisecond in arrival order.
+    let low = 0
+    let high = x.length
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2)
+      if (x[mid].getTime() <= timestamp) low = mid + 1
+      else high = mid
+    }
+    for (let i = low - 1; i >= 0 && x[i].getTime() === timestamp; i -= 1) {
+      if (Object.is(y[i], value)) return false
+    }
+    x.splice(low, 0, time)
+    y.splice(low, 0, value)
+  }
+  trimTraceHistory(x, y)
+  return true
+}
+
 /** Route one live update into matching plot traces. */
 export function ingestPlotUpdate(key: string, value: unknown, timestampMs: number, isLive: boolean): void {
   // Live updates are muted in configure mode (legacy isConfigurationModeActive gate).
@@ -288,7 +352,6 @@ export function ingestPlotUpdate(key: string, value: unknown, timestampMs: numbe
 
   const store = usePlotStore.getState()
   const now = new Date(normalizePlotEventTimestamp(timestampMs, isLive))
-  let anyUpdated = false
 
   Object.values(store.plots).forEach((panel) => {
     Object.keys(panel.traces).forEach((traceKey) => {
@@ -302,11 +365,9 @@ export function ingestPlotUpdate(key: string, value: unknown, timestampMs: numbe
             if (!parent.children[childKey]) {
               parent.children[childKey] = { x: [], y: [], name: `${traceKey}[${idx}]`, style: parent.style, dirty: true }
             }
-            parent.children[childKey].x.push(now)
-            parent.children[childKey].y.push(typeof elem === 'number' ? elem : parseFloat(String(elem)) || null)
-            parent.children[childKey].dirty = true
+            const child = parent.children[childKey]
+            if (appendTimeSample(child.x, child.y, now, normalizeScalar(elem))) child.dirty = true
           })
-          anyUpdated = true
         }
         return
       }
@@ -329,11 +390,15 @@ export function ingestPlotUpdate(key: string, value: unknown, timestampMs: numbe
             const batch = { x: xVals.slice(0, pairCount), y: yVals.slice(0, pairCount) }
             const signature = JSON.stringify(batch)
             if (xy.lastPushedSignature !== signature) {
-              xy.x.push(...batch.x)
-              xy.y.push(...batch.y)
+              // Avoid argument-limit failures for large instrument array batches.
+              const start = Math.max(0, pairCount - MAX_STORED_PLOT_HISTORY_POINTS)
+              for (let i = start; i < pairCount; i += 1) {
+                xy.x.push(batch.x[i])
+                xy.y.push(batch.y[i])
+              }
+              trimTraceHistory(xy.x, xy.y)
               xy.lastPushedSignature = signature
               xy.dirty = true
-              anyUpdated = true
             }
           }
         }
@@ -343,15 +408,10 @@ export function ingestPlotUpdate(key: string, value: unknown, timestampMs: numbe
       // Line plot scalar.
       const line = meta as LineTraceMeta
       if (plotKeyMatches(key, traceKey) || plotKeyMatches(key, line.suffix)) {
-        line.rawX.push(now)
-        line.rawY.push(normalizeScalar(value))
-        line.dirty = true
-        anyUpdated = true
+        if (appendTimeSample(line.rawX, line.rawY, now, normalizeScalar(value))) line.dirty = true
       }
     })
   })
-
-  if (anyUpdated) store.bumpData()
 }
 
 // ---------------------------------------------------------------------------

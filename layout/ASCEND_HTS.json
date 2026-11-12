@@ -15,9 +15,15 @@
           "pollinterval"
         ],
         "all_params": [
+          "value",
+          "status",
+          "target",
           "pollinterval",
           "stop",
-          "target"
+          "_domains_to_extract",
+          "_host",
+          "_port",
+          "_terminal_values"
         ],
         "commands": [
           "stop"
@@ -265,21 +271,28 @@
           "_control_mode"
         ],
         "all_params": [
-          "_D_value",
-          "_I_value",
-          "_P_value",
-          "_control_mode",
-          "_factory_reset",
-          "_forward_calib_coeff",
-          "_gastype_select",
-          "_inverse_calib_coeff",
-          "_test_cmd",
-          "_tolerance",
-          "_valveposition",
+          "value",
+          "status",
+          "target",
           "pollinterval",
           "ramp",
+          "setpoint",
           "stop",
-          "target"
+          "_factory_reset",
+          "_inverse_calib_coeff",
+          "_forward_calib_coeff",
+          "_value_uncalibrated",
+          "_target_calibrated",
+          "target_limits",
+          "_gastype",
+          "_tolerance",
+          "_P_value",
+          "_I_value",
+          "_D_value",
+          "_gastype_select",
+          "_valveposition",
+          "_control_mode",
+          "_test_cmd"
         ],
         "commands": [
           "stop",
@@ -627,21 +640,28 @@
           "_control_mode"
         ],
         "all_params": [
-          "_D_value",
-          "_I_value",
-          "_P_value",
-          "_control_mode",
-          "_factory_reset",
-          "_forward_calib_coeff",
-          "_gastype_select",
-          "_inverse_calib_coeff",
-          "_test_cmd",
-          "_tolerance",
-          "_valveposition",
+          "value",
+          "status",
+          "target",
           "pollinterval",
           "ramp",
+          "setpoint",
           "stop",
-          "target"
+          "_factory_reset",
+          "_inverse_calib_coeff",
+          "_forward_calib_coeff",
+          "_value_uncalibrated",
+          "_target_calibrated",
+          "target_limits",
+          "_gastype",
+          "_tolerance",
+          "_P_value",
+          "_I_value",
+          "_D_value",
+          "_gastype_select",
+          "_valveposition",
+          "_control_mode",
+          "_test_cmd"
         ],
         "commands": [
           "stop",
@@ -985,18 +1005,37 @@
           "_exchange_technique_source"
         ],
         "all_params": [
-          "_add_technique_config",
-          "_add_technique_target",
-          "_edit_technique_config",
-          "_edit_technique_target",
-          "_exchange_technique_source",
-          "_exchange_technique_target",
-          "_prepare",
-          "_remove_technique_target",
-          "_update",
-          "go",
+          "status",
           "pollinterval",
-          "stop"
+          "stop",
+          "go",
+          "_prepare",
+          "_vendor_name",
+          "_channel",
+          "_connected",
+          "_connection_error",
+          "_e_range",
+          "_i_range",
+          "_bandwidth",
+          "_add_technique_target",
+          "_add_technique_config",
+          "_edit_technique_target",
+          "_edit_technique_config",
+          "_remove_technique_target",
+          "_exchange_technique_target",
+          "_exchange_technique_source",
+          "_reload_pending",
+          "_cycle_number",
+          "_completed_cycles",
+          "_resume_cycle",
+          "_queue_reload_count",
+          "_queue_update_error",
+          "_technique_config",
+          "_technique_count",
+          "_technique_index",
+          "_active_technique",
+          "_hardware_state",
+          "_update"
         ],
         "commands": [
           "stop",
@@ -2134,7 +2173,41 @@
         "devices": [],
         "valveIcons": [],
         "decorations": [],
-        "plots": [],
+        "plots": [
+          {
+            "id": "plot_1_panel",
+            "title": "Potentiostat_measurement",
+            "configName": "Potentiostat_measurement",
+            "xAxisTitle": "",
+            "yAxisTitle": "",
+            "left": "105px",
+            "top": "29px",
+            "width": "769px",
+            "height": "422px",
+            "traces": [
+              "potentiostat_biologic_SP200_potential.value",
+              "potentiostat_biologic_SP200_current.value",
+              "potentiostat_biologic_SP200_frequency.value"
+            ]
+          },
+          {
+            "id": "plot_2_panel",
+            "title": "Flow plot",
+            "configName": "Flow plot",
+            "xAxisTitle": "",
+            "yAxisTitle": "",
+            "left": "939px",
+            "top": "33px",
+            "width": "700px",
+            "height": "420px",
+            "traces": [
+              "sim_cell_gas_dosing_massflow_contr0.value",
+              "sim_cell_gas_dosing_massflow_contr0.setpoint",
+              "sim_cell_gas_dosing_massflow_contr1.value",
+              "sim_cell_gas_dosing_massflow_contr1.setpoint"
+            ]
+          }
+        ],
         "connections": []
       }
     }

@@ -11,11 +11,13 @@ import { getStoredPlotConfigs } from '../../utils/storage'
 import { appAlert, appConfirm, appPrompt } from '../../store/dialogStore'
 import type { PlotConfig, PlotLineConfig, PlotLineStyle } from '../../api/types'
 
+export type PlotPlacement = 'window' | 'layout'
+
 interface PlotConfigWindowProps {
   open: boolean
   onClose: () => void
-  /** Returns whether the standalone plot window opened successfully. */
-  onCreatePlot: (config: PlotConfig) => boolean
+  /** Returns whether the plot was created in the selected destination. */
+  onCreatePlot: (config: PlotConfig, placement: PlotPlacement) => boolean
 }
 
 interface StagedLine extends PlotLineConfig {
@@ -28,6 +30,7 @@ export function PlotConfigWindow({ open, onClose, onCreatePlot }: PlotConfigWind
   const savedPlotNames = usePlotStore((s) => s.savedPlotNames)
 
   const [plotType, setPlotType] = useState<'line' | 'xy' | 'array'>('line')
+  const [placement, setPlacement] = useState<PlotPlacement>('window')
   const [xyChartType, setXyChartType] = useState<'area' | 'bar'>('area')
   const [lineType, setLineType] = useState('solid')
   const [lineWidth, setLineWidth] = useState('2')
@@ -135,7 +138,7 @@ export function PlotConfigWindow({ open, onClose, onCreatePlot }: PlotConfigWind
     if (!enteredName || !enteredName.trim()) return
     const config = buildConfig(enteredName.trim())
     savePlotConfig(config)
-    if (onCreatePlot(config)) onClose()
+    if (onCreatePlot(config, placement)) onClose()
   }
 
   const loadSaved = async (name: string) => {
@@ -321,6 +324,11 @@ export function PlotConfigWindow({ open, onClose, onCreatePlot }: PlotConfigWind
                   </div>
                   <button id="delete-line" className="ctrl" onClick={() => void deleteLine()}>Delete Line</button>
                 </div>
+                <label htmlFor="plot-placement" style={{ fontWeight: 600 }}>Plot placement</label>
+                <select id="plot-placement" className="ctrl" value={placement} onChange={(e) => setPlacement(e.target.value as PlotPlacement)}>
+                  <option value="window">Separate window</option>
+                  <option value="layout">On the layout</option>
+                </select>
                 <button id="create-plot" className="ctrl" onClick={() => void createPlot()}>Create Plot</button>
               </div>
 

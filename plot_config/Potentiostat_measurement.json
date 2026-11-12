@@ -1,0 +1,51 @@
+{
+  "name": "Potentiostat_measurement",
+  "plotType": "line",
+  "xAxisTitle": "",
+  "yAxisTitle": "",
+  "lines": [
+    {
+      "key": "potentiostat_biologic_SP200_potential.value",
+      "suffix": "potentiostat_biologic_SP200_potential.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dotted",
+        "lineWidth": 4,
+        "lineColor": "#007bff"
+      }
+    },
+    {
+      "key": "potentiostat_biologic_SP200_current.value",
+      "suffix": "potentiostat_biologic_SP200_current.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dotted",
+        "lineWidth": 4,
+        "lineColor": "#ed333b"
+      }
+    },
+    {
+      "key": "potentiostat_biologic_SP200_frequency.value",
+      "suffix": "potentiostat_biologic_SP200_frequency.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dotted",
+        "lineWidth": 4,
+        "lineColor": "#33d17a"
+      }
+    }
+  ],
+  "savedAt": "2026-11-12T09:17:00.139Z"
+}

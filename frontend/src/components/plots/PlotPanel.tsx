@@ -6,8 +6,7 @@
 
 import { useEffect, useMemo, useRef } from 'react'
 import Plotly from 'plotly.js-dist-min'
-import { usePlotStore, sampleTracePoints, MAX_RENDERED_PLOT_POINTS, type PlotPanelState, type LineTraceMeta, type XYTraceMeta, type ArrayTraceMeta, refreshSavedPlotNames, loadPlotConfig } from '../../store/plotStore'
-import { useAppStore } from '../../store/appStore'
+import { usePlotStore, sampleTracePoints, MAX_RENDERED_PLOT_POINTS, type PlotPanelState, type LineTraceMeta, type XYTraceMeta, refreshSavedPlotNames, loadPlotConfig } from '../../store/plotStore'
 import { useCanvasDrag } from '../editor/useCanvasDrag'
 import { ContactPoints } from '../editor/ContactPoints'
 import { useEditorStore } from '../../store/editorStore'
@@ -51,14 +50,14 @@ interface PlotPanelProps {
 export function PlotPanel({ panel, isConfigure, standalone = false, onRemove }: PlotPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const plotDivRef = useRef<HTMLDivElement>(null)
-  const plots = usePlotStore((s) => s.plots)
+  const live = usePlotStore((s) => s.plots[panel.id]) ?? panel
   const savedPlotNames = usePlotStore((s) => s.savedPlotNames)
   const createPlot = usePlotStore((s) => s.createPlot)
   const setSelected = useEditorStore((s) => s.setSelected)
   const readyRef = useRef(false)
 
-  // Read the freshest panel state from the store each render.
-  const live = plots[panel.id] ?? panel
+  // Serialize Plotly work, including teardown during fast page switches.
+  const renderQueue = useRef<Promise<void>>(Promise.resolve())
 
   // Canvas drag/resize (configure mode) — legacy makeDraggable/makeResizable.
   useCanvasDrag(containerRef, {
@@ -68,13 +67,10 @@ export function PlotPanel({ panel, isConfigure, standalone = false, onRemove }: 
     onDragEnd: (r) => usePlotStore.getState().updateGeometry(panel.id, r),
     onResizeEnd: (r) => {
       usePlotStore.getState().updateGeometry(panel.id, r)
-      if (plotDivRef.current) {
-        try {
-          Plotly.Plots.resize(plotDivRef.current)
-        } catch {
-          /* noop */
-        }
-      }
+      const plotDiv = plotDivRef.current
+      renderQueue.current = renderQueue.current.then(async () => {
+        if (plotDiv?.isConnected && readyRef.current) await Plotly.Plots.resize(plotDiv)
+      }).catch(() => undefined)
     },
   })
 
@@ -110,119 +106,107 @@ export function PlotPanel({ panel, isConfigure, standalone = false, onRemove }: 
     return base
   }, [live.plotType, live.xAxisTitle, live.yAxisTitle, live.id, isConfigure])
 
-  // Initial Plotly render.
+  // Buffer every incoming sample, but render only changed plots on a fixed cadence.
+  // Keep one Plotly operation in flight; a polling burst must not queue redraws.
   useEffect(() => {
     const plotDiv = plotDivRef.current
     if (!plotDiv) return
     let cancelled = false
+    let rendering = false
+    let forceRender = true
     readyRef.current = false
-    const config = { responsive: true, scrollZoom: false, doubleClick: false as const, displayModeBar: isConfigure }
-    Plotly.react(plotDiv, [], layoutForType as never, config)
-      .then(() => {
+
+    const render = () => {
+      if (cancelled || rendering || document.hidden || !plotDiv.isConnected) return
+      const current = usePlotStore.getState().plots[panel.id]
+      if (!current) return
+      const changed = Object.values(current.traces).some((meta) =>
+        'isArrayParent' in meta ? Object.values(meta.children).some((child) => child.dirty) : meta.dirty,
+      )
+      if (!forceRender && !changed) return
+      rendering = true
+      renderQueue.current = renderQueue.current.then(async () => {
         if (cancelled) return
-        readyRef.current = true
-        flush.current()
+        const traceList: Array<Record<string, unknown>> = []
+        Object.values(current.traces).forEach((meta) => {
+          if ('isArrayParent' in meta) {
+            Object.values(meta.children).forEach((child) => {
+              const sampled = sampleTracePoints(child.x, child.y, MAX_RENDERED_PLOT_POINTS)
+              const trace = { x: sampled.x, y: sampled.y, mode: child.x.length > 200 ? 'lines' : 'lines+markers', name: child.name, type: 'scatter' }
+              applyTraceStyle(trace, child.style)
+              traceList.push(trace)
+              child.dirty = false
+            })
+            return
+          }
+          if (current.plotType === 'xy') {
+            const xy = meta as XYTraceMeta
+            const sampled = sampleTracePoints(xy.x, xy.y, MAX_RENDERED_PLOT_POINTS)
+            const trace: Record<string, unknown> = { x: sampled.x, y: sampled.y, name: xy.name }
+            applyTraceStyle(trace, xy.style)
+            if (!xy.style?.xyChartType) {
+              trace.type = 'scatter'
+              trace.mode = xy.x.length > 200 ? 'lines' : 'lines+markers'
+            }
+            traceList.push(trace)
+          } else {
+            const line = meta as LineTraceMeta
+            const sampled = sampleTracePoints(line.rawX, line.rawY, MAX_RENDERED_PLOT_POINTS)
+            const trace = { x: sampled.x, y: sampled.y, mode: line.rawX.length > 200 ? 'lines' : 'lines+markers', name: line.name, type: 'scatter' }
+            applyTraceStyle(trace, line.style)
+            traceList.push(trace)
+          }
+          // Clear before rendering: samples arriving during the render mark it dirty again.
+          meta.dirty = false
+        })
+        forceRender = false
+        // A fresh layout lets Plotly autorange in this render, without a second relayout.
+        const layout = {
+          ...layoutForType,
+          xaxis: { ...(layoutForType.xaxis as object) },
+          yaxis: { ...(layoutForType.yaxis as object), autorange: true },
+        }
+        await Plotly.react(plotDiv, traceList as never, layout as never, {
+          responsive: true, scrollZoom: false, doubleClick: false as const, displayModeBar: isConfigure,
+        })
+        if (!cancelled) readyRef.current = true
+      }).catch(() => {
+        forceRender = true
+      }).finally(() => {
+        rendering = false
       })
-      .catch(() => undefined)
+    }
+
+    render()
+    const interval = window.setInterval(render, 2000)
+    document.addEventListener('visibilitychange', render)
     return () => {
       cancelled = true
       readyRef.current = false
-      try {
-        Plotly.purge(plotDiv)
-      } catch {
-        /* noop */
-      }
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', render)
+      // Purging a chart while Plotly is rendering it causes errors and orphaned work.
+      renderQueue.current = renderQueue.current.then(() => { Plotly.purge(plotDiv) }).catch(() => undefined)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panel.id, isConfigure])
+  }, [panel.id, isConfigure, layoutForType])
 
   // A detached plot follows the browser window size rather than canvas handles.
   useEffect(() => {
     const container = containerRef.current
     const plotDiv = plotDivRef.current
     if (!standalone || !container || !plotDiv) return
+    let resizeQueued = false
     const resize = () => {
-      if (!readyRef.current) return
-      try {
-        void Promise.resolve(Plotly.Plots.resize(plotDiv)).catch(() => undefined)
-      } catch {
-        /* The window may have closed while a resize was scheduled. */
-      }
+      if (!readyRef.current || resizeQueued) return
+      resizeQueued = true
+      renderQueue.current = renderQueue.current.then(async () => {
+        if (plotDiv.isConnected && readyRef.current) await Plotly.Plots.resize(plotDiv)
+      }).catch(() => undefined).finally(() => { resizeQueued = false })
     }
     const observer = new ResizeObserver(resize)
     observer.observe(container)
     return () => observer.disconnect()
   }, [standalone, panel.id])
-
-  // Flush buffered data into the plot on a 2 s cadence (legacy flushBufferedPoints).
-  // The flush reads the latest panel state from the store at call time. We also
-  // subscribe to the store so any dataVersion bump triggers an immediate flush
-  // with fresh state (avoids the stale-closure problem where the effect closure
-  // captured an empty traces snapshot).
-  const flush = useRef<() => void>(() => {})
-  flush.current = () => {
-    if (!readyRef.current || !plotDivRef.current) return
-    const current = usePlotStore.getState().plots[panel.id]
-    if (!current) return
-
-    const traceList: Array<Record<string, unknown>> = []
-    Object.values(current.traces).forEach((meta) => {
-      if (current.plotType === 'array') {
-        const parent = meta as ArrayTraceMeta
-        Object.values(parent.children).forEach((child) => {
-          const trace: Record<string, unknown> = { x: child.x, y: child.y, mode: 'lines+markers', name: child.name, type: 'scatter' }
-          applyTraceStyle(trace, child.style)
-          traceList.push(trace)
-        })
-        return
-      }
-      if (current.plotType === 'xy') {
-        const xy = meta as XYTraceMeta
-        const trace: Record<string, unknown> = { x: xy.x, y: xy.y, name: xy.name }
-        applyTraceStyle(trace, xy.style)
-        if (!xy.style?.xyChartType) {
-          trace.type = 'scatter'
-          trace.mode = 'lines+markers'
-        }
-        traceList.push(trace)
-        return
-      }
-      const line = meta as LineTraceMeta
-      const sampled = sampleTracePoints(line.rawX, line.rawY, MAX_RENDERED_PLOT_POINTS)
-      const trace: Record<string, unknown> = { x: sampled.x, y: sampled.y, mode: 'lines+markers', name: line.name, type: 'scatter' }
-      applyTraceStyle(trace, line.style)
-      traceList.push(trace)
-    })
-
-    const plotDiv = plotDivRef.current
-    if (!plotDiv) return
-    Plotly.react(plotDiv, traceList as never, layoutForType as never, { responsive: true, scrollZoom: false, doubleClick: false as const, displayModeBar: isConfigure })
-      .then(() => Plotly.relayout(plotDiv, { 'yaxis.autorange': true }).catch(() => undefined))
-      .catch(() => undefined)
-  }
-
-  // Periodic flush (matches the legacy 2 s loop).
-  useEffect(() => {
-    const interval = window.setInterval(() => flush.current(), 2000)
-    return () => window.clearInterval(interval)
-  }, [])
-
-  // Subscribe to the plot store: flush whenever this panel's data changes.
-  useEffect(() => {
-    const unsubscribe = usePlotStore.subscribe((state, prev) => {
-      if (state.dataVersion !== prev.dataVersion || state.plots[panel.id] !== prev.plots[panel.id]) {
-        flush.current()
-      }
-    })
-    return unsubscribe
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panel.id])
-
-  // Flush immediately when the layout/config inputs change.
-  useEffect(() => {
-    flush.current()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layoutForType])
 
   // Saved-config switcher (top-right).
   const switchConfig = async (name: string) => {
@@ -231,7 +215,7 @@ export function PlotPanel({ panel, isConfigure, standalone = false, onRemove }: 
     if (!config) return
     const geometry = { left: live.left, top: live.top, width: live.width, height: live.height }
     onRemove(panel.id)
-    const newId = createPlot(config, { left: geometry.left, top: geometry.top })
+    const newId = createPlot(config, { left: geometry.left, top: geometry.top }, live.pageId)
     if (newId) {
       usePlotStore.getState().updateGeometry(newId, geometry)
     }

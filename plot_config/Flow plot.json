@@ -1,0 +1,65 @@
+{
+  "name": "Flow plot",
+  "plotType": "line",
+  "xAxisTitle": "",
+  "yAxisTitle": "",
+  "lines": [
+    {
+      "key": "sim_cell_gas_dosing_massflow_contr0.value",
+      "suffix": "sim_cell_gas_dosing_massflow_contr0.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#007bff"
+      }
+    },
+    {
+      "key": "sim_cell_gas_dosing_massflow_contr0.setpoint",
+      "suffix": "sim_cell_gas_dosing_massflow_contr0.setpoint",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#007bff"
+      }
+    },
+    {
+      "key": "sim_cell_gas_dosing_massflow_contr1.value",
+      "suffix": "sim_cell_gas_dosing_massflow_contr1.value",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "solid",
+        "lineWidth": 2,
+        "lineColor": "#ed333b"
+      }
+    },
+    {
+      "key": "sim_cell_gas_dosing_massflow_contr1.setpoint",
+      "suffix": "sim_cell_gas_dosing_massflow_contr1.setpoint",
+      "xKey": "",
+      "yKey": "",
+      "xSuffix": "",
+      "ySuffix": "",
+      "label": "",
+      "style": {
+        "lineType": "dashed",
+        "lineWidth": 2,
+        "lineColor": "#ed333b"
+      }
+    }
+  ],
+  "savedAt": "2026-11-12T09:19:01.198Z"
+}
