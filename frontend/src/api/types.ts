@@ -103,6 +103,17 @@ export interface LayoutValveIconEntry {
   switchOpenSvg?: string
 }
 
+export interface WaferMeasurementSession {
+  capturedAt: string
+  spotLabel: string
+  argonFlow: number
+  nitrogenFlow: number
+  flowUnit: string
+  techniqueConfig: unknown
+  activeTechnique: string
+  sources: { spotDevice: string; gasDevice: string; potentiostatDevice: string }
+}
+
 export interface LayoutDecorationEntry {
   id: string
   type: 'line' | 'switch' | 'label' | 'image' | string
@@ -121,6 +132,13 @@ export interface LayoutDecorationEntry {
   /** Embedded image data so saved layouts remain portable. */
   imageSrc?: string
   imageName?: string
+  waferMeasurement?: {
+    spotDevice?: string
+    gasDevice?: string
+    potentiostatDevice?: string
+    selectedSpot?: string
+    sessions?: Record<string, WaferMeasurementSession>
+  }
 }
 
 export interface LayoutPlotEntry {

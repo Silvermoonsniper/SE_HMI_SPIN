@@ -46,6 +46,18 @@ its contents after confirmation. The Main page is kept.
 Use **Save layout** to save the Main page and all subpages together. Page tabs
 also work in the normal GUI view. Existing layouts open as a single Main page.
 
+To add a wafer measurement block, right-click the canvas in configure mode and
+choose **Add customized element → Wafer measurement tab**. Select a spot from
+the measurement-position enum or click it on the schematic wafer map. The left
+panel previews Ar/N₂ flow rates from the gas group's measured composition and
+total flow, plus the potentiostat's technique configuration. **Save session for
+this spot** captures these settings with a timestamp; each spot keeps its own
+snapshot. **Update saved session** replaces that spot's snapshot with the current
+settings. Sessions save with the named layout and remain available after reload.
+For a new unnamed layout, use **Save layout** to retain captured sessions.
+Expand **Data sources** in configure mode to choose the measurement-position,
+gas-flow group, and potentiostat devices. The block can be moved and resized.
+
 Live plots collect updates on every layout page and redraw changed, visible
 plots every two seconds. Each trace keeps up to 50,000 recent samples in the
 browser, trimming older samples in batches; the display uses at most 2,000

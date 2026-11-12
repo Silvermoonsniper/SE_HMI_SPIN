@@ -35,6 +35,7 @@ const DECORATION_OPTIONS = [
   { value: 'line', label: 'Line' },
   { value: 'switch', label: 'Valve Switch' },
   { value: 'label', label: 'Text Label' },
+  { value: 'wafer_measurement_tab', label: 'Wafer measurement tab' },
 ]
 
 export function CanvasCreateMenu({

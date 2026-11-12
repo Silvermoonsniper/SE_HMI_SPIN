@@ -24,6 +24,7 @@ import { deviceDomId, useAppStore } from '../store/appStore'
 import { useEditorStore } from '../store/editorStore'
 import { ConnectionLayer } from '../components/editor/ConnectionLayer'
 import { DecorationBox } from '../components/editor/DecorationBox'
+import { WaferMeasurementTab } from '../components/system/WaferMeasurementTab'
 import { CanvasCreateMenu, type CanvasCreateRequest } from '../components/editor/CanvasCreateMenu'
 import { readLayoutImage } from '../components/editor/imageUpload'
 import { fetchLayoutByName, hydrateDeviceMetadataFromLayout, loadLayoutFromFile, saveLayout } from '../components/editor/layoutPersistence'
@@ -567,8 +568,8 @@ export default function SystemPage() {
       type,
       left: `${pos.left}px`,
       top: `${pos.top}px`,
-      width: type === 'line' ? '120px' : type === 'switch' ? '80px' : '100px',
-      height: type === 'line' ? '12px' : type === 'switch' ? '80px' : '24px',
+      width: type === 'wafer_measurement_tab' ? '780px' : type === 'line' ? '120px' : type === 'switch' ? '80px' : '100px',
+      height: type === 'wafer_measurement_tab' ? '640px' : type === 'line' ? '12px' : type === 'switch' ? '80px' : '24px',
       color: '#cccccc',
       text: type === 'label' ? 'Label' : '',
       fontFamily: type === 'label' ? 'Arial, sans-serif' : '',
@@ -682,7 +683,7 @@ export default function SystemPage() {
     return {
       devices: deviceEntries,
       valveIcons: valveEntries,
-      decorations: editorDecorations,
+      decorations: useEditorStore.getState().decorations,
       plots: plotEntries,
       connections: editorConnections,
     }
@@ -690,6 +691,18 @@ export default function SystemPage() {
 
   const buildCurrentDocument = (): LayoutData =>
     layoutDocument(mainPageRef.current, pages, activePageId, buildCurrentLayout())
+
+  const persistWaferSession = async (): Promise<string> => {
+    if (!selectedLayout) return 'Session captured. Save this layout to keep the session.'
+    const document = buildCurrentDocument()
+    saveStoredLayout(selectedLayout, document)
+    try {
+      await api.nodemanager('save_layout', { name: selectedLayout, layout: document })
+      return 'Session saved with the layout.'
+    } catch {
+      return 'Session saved in this browser. Server save is unavailable.'
+    }
+  }
 
   // Capture pending edits before replacing the editor stores with another page.
   const switchPage = (id: string) => {
@@ -976,7 +989,9 @@ export default function SystemPage() {
               />
             ))}
             {editorDecorations.map((deco) => (
-              <DecorationBox key={deco.id} decoration={deco} isConfigure={isConfigure} onGeometryChange={(id, geo) => setDeviceGeometry(id, geo)} />
+              deco.type === 'wafer_measurement_tab'
+                ? <WaferMeasurementTab key={deco.id} decoration={deco} isConfigure={isConfigure} onGeometryChange={(id, geo) => setDeviceGeometry(id, geo)} onSaveSession={persistWaferSession} />
+                : <DecorationBox key={deco.id} decoration={deco} isConfigure={isConfigure} onGeometryChange={(id, geo) => setDeviceGeometry(id, geo)} />
             ))}
             {Object.values(plotPanels).filter((p) => p.pageId === activePageId).map((p) => (
               <PlotPanel key={p.id} panel={p} isConfigure={isConfigure} onRemove={handleRemovePlot} />
