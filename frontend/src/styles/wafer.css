@@ -34,30 +34,37 @@ body[data-configuration-mode="false"] .deco-box.wafer-measurement-tab { pointer-
 .wafer-flow-grid > div { padding: 12px; border: 1px solid #d8e3ec; border-radius: 8px; background: #f8fbfd; }
 .wafer-flow-grid span { display: block; color: #647c90; font-size: 11px; }
 .wafer-flow-grid output { display: block; margin-top: 4px; font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
-.wafer-session-info { margin: 0 0 18px; font-size: 11px; }
-.wafer-session-info > div { padding: 7px 0; border-bottom: 1px solid #ecf1f5; }
-.wafer-session-info dt { color: #698094; }
-.wafer-session-info dd { margin: 2px 0 0; overflow-wrap: anywhere; }
-.wafer-technique { margin: 0; padding: 12px; border: 1px solid #dce6ee; border-radius: 7px; background: #f7fafc; max-height: 220px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.5 monospace; }
+.wafer-technique { border: 1px solid #dce6ee; border-radius: 7px; max-height: 250px; overflow: auto; font-size: 11px; }
+.wafer-technique table { width: 100%; border-collapse: collapse; }
+.wafer-technique th, .wafer-technique td { padding: 7px; text-align: left; vertical-align: top; border-bottom: 1px solid #dce6ee; overflow-wrap: anywhere; }
+.wafer-technique th { background: #f7fafc; position: sticky; top: 0; }
+.wafer-details-button { border: 1px solid #b7c8d7; border-radius: 5px; padding: 4px 10px; background: #f7fafc; color: #255eb9; font: inherit; cursor: pointer; }
+.wafer-details-button:hover, .wafer-details-button:focus-visible { background: #eaf2ff; border-color: #2563bd; }
+.wafer-details-popup { position: fixed; inset: auto; margin: 0; z-index: 2147483647; width: 320px; max-width: calc(100vw - 16px); max-height: min(360px, calc(100vh - 16px)); overflow: auto; box-sizing: border-box; padding: 14px; border: 1px solid #555; border-radius: 8px; background: #000; color: #fff; box-shadow: 0 6px 24px #0006; font: 12px/1.5 Arial, sans-serif; overflow-wrap: anywhere; }
+.wafer-details-popup dl { margin: 10px 0 0; }
+.wafer-details-popup dl > div + div { margin-top: 7px; }
+.wafer-details-popup dt { color: #fff; }
+.wafer-details-popup dd { margin: 0; white-space: pre-wrap; }
 .wafer-map { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; padding: 18px; background: #f5f8fb; border-left: 1px solid #e0e8ef; }
 .wafer-map h4 { text-transform: capitalize; margin-bottom: 2px; }
 .wafer-map svg { display: block; width: 100%; max-width: 340px; flex-shrink: 0; }
 .wafer-map small { font-size: 10px; color: #6d8294; margin-top: 10px; }
 .wafer-spot { cursor: pointer; outline: none; }
-.wafer-spot circle { fill: #f8fbfe; stroke: #718fa7; stroke-width: 1.5px; }
-.wafer-spot text { fill: #46617a; font-size: 12px; font-weight: 700; pointer-events: none; }
-.wafer-spot.is-current circle { fill: #d9f2e7; stroke: #27835e; stroke-width: 3px; }
-.wafer-spot.is-selected circle { stroke: #2563eb; stroke-width: 4px; }
-.wafer-spot.is-selected text { fill: #1d4ed8; }
-.wafer-spot:focus-visible circle, .wafer-spot:hover circle { stroke: #1742a5; stroke-width: 4px; }
+.wafer-spot-dot { fill: #46617a; stroke: #46617a; stroke-width: 0.5px; pointer-events: none; }
+.wafer-spot-hit { fill: transparent; stroke: none; pointer-events: all; }
+.wafer-spot.is-current .wafer-spot-dot { fill: #27835e; stroke: #27835e; }
+.wafer-spot.is-selected .wafer-spot-dot { stroke: #2563eb; stroke-width: 1.5px; }
+.wafer-spot:focus-visible .wafer-spot-dot, .wafer-spot:hover .wafer-spot-dot { stroke: #1742a5; stroke-width: 2px; }
+.wafer-coordinates { margin-top: 8px; min-height: 20px; font: 12px/1.5 monospace; color: #20354a; }
+.wafer-dimensions { display: flex; align-items: flex-end; gap: 8px; margin: 8px 0; font-size: 11px; }
+.wafer-dimensions label { display: flex; flex-direction: column; gap: 4px; }
+.wafer-dimensions > span { padding-bottom: 5px; }
+.wafer-dimensions input { width: 85px; padding: 5px 7px; border: 1px solid #b7c8d7; border-radius: 5px; color: #20354a; }
+.wafer-map svg { cursor: crosshair; }
 .wafer-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 4px; font-size: 10px; color: #536e84; }
 .wafer-legend span { display: flex; align-items: center; gap: 5px; }
 .wafer-legend i { width: 9px; height: 9px; border-radius: 50%; }
 .wafer-legend-selected { border: 2px solid #2563eb; }
 .wafer-legend-current { background: #9ed7bd; border: 1px solid #27835e; }
 .wafer-empty { color: #6d8294; font-size: 12px; margin: 8px 0; }
-.wafer-sources { flex-shrink: 0; border-top: 1px solid #dae4ed; padding: 9px 20px; background: #f8fafc; font-size: 11px; max-height: 160px; overflow: auto; }
-.wafer-sources summary { cursor: pointer; font-weight: 600; }
-.wafer-sources > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
-.wafer-sources label { display: flex; flex-direction: column; gap: 4px; }
 .wafer-measurement-tab.configure-layout:hover > .resize-handle { display: block; z-index: 3; }

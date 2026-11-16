@@ -137,6 +137,8 @@ export interface LayoutDecorationEntry {
     gasDevice?: string
     potentiostatDevice?: string
     selectedSpot?: string
+    waferDiametersMm?: Record<string, number>
+    waferDimensionsMm?: Record<string, { length: number; width: number }>
     sessions?: Record<string, WaferMeasurementSession>
   }
 }

@@ -4,7 +4,8 @@ import type { DeviceParamsMap, LayoutDecorationEntry, WaferMeasurementSession } 
 import { useAppStore } from '../../store/appStore'
 import { useEditorStore } from '../../store/editorStore'
 import { useCanvasDrag } from '../editor/useCanvasDrag'
-import { gasFlowReadings, measurementSpots, parseValue, waferSourceOptions } from './waferMeasurement'
+import { gasFlowReadings, measurementSpots, parseValue, techniqueRows, waferSourceOptions } from './waferMeasurement'
+import { TechniqueDetails } from './TechniqueDetails'
 import '../../styles/wafer.css'
 
 interface Props {
@@ -22,6 +23,7 @@ export function WaferMeasurementTab({ decoration, isConfigure, onGeometryChange,
   const graphicId = `wafer-${useId().replace(/:/g, '')}`
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
+  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null)
   const devices = useAppStore((s) => s.deviceParams) ?? EMPTY_DEVICES
   const options = useMemo(() => waferSourceOptions(devices), [devices])
   const settings = decoration.waferMeasurement ?? {}
@@ -42,15 +44,19 @@ export function WaferMeasurementTab({ decoration, isConfigure, onGeometryChange,
   const patchSettings = (patch: Partial<NonNullable<LayoutDecorationEntry['waferMeasurement']>>) =>
     update(decoration.id, { waferMeasurement: { ...settings, ...patch } })
   const current = spots.find((spot) => spot.value === String(readings.currentSpot) || spot.label === readings.currentSpot)
-  const selected = spots.find((spot) => spot.value === settings.selectedSpot) ?? current ?? spots.find((spot) => spot.wafer)
+  const selected = spots.find((spot) => spot.wafer && spot.value === settings.selectedSpot) ?? (current?.wafer ? current : undefined) ?? spots.find((spot) => spot.wafer)
   const wafer = selected?.wafer ?? spots.find((spot) => spot.wafer)?.wafer
+  const dimensions = wafer ? settings.waferDimensionsMm?.[wafer] : undefined
+  const validDimension = (value: number | undefined) => typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 20
+  const lengthMm = validDimension(dimensions?.length)
+  const widthMm = validDimension(dimensions?.width)
   const waferSpots = spots.filter((spot) => spot.wafer && spot.wafer === wafer)
+  const waferIds = Array.from(new Set(spots.flatMap((spot) => spot.wafer ? [spot.wafer] : [])))
   const config = useMemo(() => parseValue(readings.technique), [readings.technique])
   const sessionKey = selected ? `${spotDevice}:${selected.label}` : ''
   const session = settings.sessions?.[sessionKey]
   const shownConfig = session ? session.techniqueConfig : config
-  const configText = useMemo(() => shownConfig === undefined || shownConfig === null || shownConfig === '' ? ''
-    : typeof shownConfig === 'string' ? shownConfig : JSON.stringify(shownConfig, null, 2), [shownConfig])
+  const techniques = useMemo(() => techniqueRows(shownConfig), [shownConfig])
   const selectSpot = (value: string) => {
     patchSettings({ selectedSpot: value })
     setSaveMessage('')
@@ -86,12 +92,16 @@ export function WaferMeasurementTab({ decoration, isConfigure, onGeometryChange,
     },
   })
   const flow = (value: number | null) => value === null ? 'Unavailable' : `${number.format(value)} ${session?.flowUnit ?? readings.unit}`.trim()
-  const sourceSelect = (label: string, key: 'spotDevice' | 'gasDevice' | 'potentiostatDevice', value: string, names: string[]) => (
-    <label>{label}<select aria-label={label} value={value} onChange={(e) => patchSettings({ [key]: e.target.value, ...(key === 'spotDevice' ? { selectedSpot: undefined } : {}) })}>
-      <option value="">Not connected</option>
-      {value && !names.includes(value) && <option value={value}>{value} (unavailable)</option>}
-      {names.map((name) => <option key={name} value={name}>{name}</option>)}
-    </select></label>
+  const dimensionInput = (key: 'length' | 'width', label: string, value: number) => (
+    <label>{label} (mm)<input type="number" aria-label={`Wafer ${key} (mm)`} min="0.001" step="any" disabled={!wafer}
+      value={value} onChange={(event) => {
+        const next = event.currentTarget.valueAsNumber
+        if (!wafer || !Number.isFinite(next) || next <= 0) return
+        patchSettings({ waferDimensionsMm: {
+          ...settings.waferDimensionsMm,
+          [wafer]: { length: lengthMm, width: widthMm, [key]: next },
+        } })
+      }} /></label>
   )
 
   return (
@@ -101,10 +111,14 @@ export function WaferMeasurementTab({ decoration, isConfigure, onGeometryChange,
       onMouseDown={() => { if (isConfigure) setSelected(decoration.id) }}>
       <header className="wafer-header">
         <div><span className="wafer-eyebrow">MEASUREMENT</span><h3>Wafer measurement</h3></div>
-        <label className="wafer-spot-select control-section">Measurement spot
-          <select aria-label="Measurement spot" value={selected?.value ?? ''} disabled={!spots.length} onChange={(e) => selectSpot(e.target.value)}>
-            {!spots.length && <option value="">No measurement spot enums available</option>}
-            {spots.map((spot) => <option key={spot.value} value={spot.value}>{spot.label}</option>)}
+        <label className="wafer-spot-select control-section">Wafer ID
+          <select aria-label="Wafer ID" value={wafer ?? ''} disabled={!waferIds.length} onChange={(e) => {
+            const first = spots.find((spot) => spot.wafer === e.target.value)
+            if (first) selectSpot(first.value)
+            setCursor(null)
+          }}>
+            {!waferIds.length && <option value="">No wafer IDs available</option>}
+            {waferIds.map((id) => <option key={id} value={id}>{id}</option>)}
           </select>
         </label>
         {isConfigure && <button type="button" className="wafer-remove" aria-label="Remove wafer measurement tab" onClick={() => remove(decoration.id)}>×</button>}
@@ -122,19 +136,33 @@ export function WaferMeasurementTab({ decoration, isConfigure, onGeometryChange,
             <div><span>Argon flow</span><output aria-label="Argon flow">{flow(session?.argonFlow ?? readings.argon)}</output></div>
             <div><span>N₂ flow</span><output aria-label="N2 flow">{flow(session?.nitrogenFlow ?? readings.nitrogen)}</output></div>
           </div>
-          <dl className="wafer-session-info">
-            <div><dt>Selected spot</dt><dd>{selected?.label ?? 'No spot selected'}</dd></div>
-            <div><dt>Current position</dt><dd>{current?.label ?? 'Not reported'}</dd></div>
-            <div><dt>Active technique</dt><dd>{String((session ? session.activeTechnique : readings.activeTechnique) || 'Not reported')}</dd></div>
-          </dl>
           <h4>Technique configuration</h4>
-          {configText ? <pre className="wafer-technique" aria-label="Technique configuration">{configText}</pre>
+          {techniques.length ? <div className="wafer-technique"><table aria-label="Technique configuration">
+            <thead><tr><th scope="col">Technique number</th><th scope="col">Name</th><th scope="col">Detailed config</th></tr></thead>
+            <tbody>{techniques.map((technique, index) => <tr key={index}>
+              <td>{technique.number}</td><td>{technique.name}</td>
+              <td><TechniqueDetails key={`${sessionKey}:${technique.number}`} technique={technique} /></td>
+            </tr>)}</tbody>
+          </table></div>
             : <p className="wafer-empty">{potentiostatDevice ? 'Waiting for potentiostat configuration…' : 'No potentiostat connected.'}</p>}
           {!gasDevice && <p className="wafer-empty">No gas flow group connected.</p>}
         </section>
         <section className="wafer-map" aria-label="Wafer map">
           <h4>{wafer?.replace(/_/g, ' ') ?? 'Wafer'}</h4>
-          <svg viewBox="0 0 320 320" role="group" aria-label="Wafer measurement spots">
+          <div className="wafer-dimensions" role="group" aria-label="Wafer dimensions">
+            {dimensionInput('length', 'Length', lengthMm)}
+            <span aria-hidden="true">×</span>
+            {dimensionInput('width', 'Width', widthMm)}
+          </div>
+          <svg viewBox="0 0 320 320" role="group" aria-label="Wafer measurement spots"
+            onPointerMove={(event) => {
+              const svg = event.currentTarget
+              const matrix = svg.getScreenCTM()
+              if (!matrix) return
+              const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse())
+              const x = (point.x - 160) / 142, y = (160 - point.y) / 142
+              setCursor(x * x + y * y <= 1 ? { x, y } : null)
+            }} onPointerLeave={() => setCursor(null)}>
             <defs>
               <radialGradient id={`${graphicId}-fill`} cx="35%" cy="30%" r="75%"><stop offset="0" stopColor="#edf6fc" /><stop offset="1" stopColor="#c0d3e2" /></radialGradient>
               <clipPath id={`${graphicId}-clip`}><circle cx="160" cy="160" r="142" /></clipPath>
@@ -155,20 +183,20 @@ export function WaferMeasurementTab({ decoration, isConfigure, onGeometryChange,
                 transform={`translate(${x}, ${y})`} onClick={() => selectSpot(spot.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectSpot(spot.value) } }}>
                 <title>{spot.label}{atPosition ? ' · Current position' : ''}</title>
-                <circle r="19" /><text textAnchor="middle" dominantBaseline="central">{spot.spot}</text>
+                <circle className="wafer-spot-hit" r="12" />
+                <circle className="wafer-spot-dot" r="2" />
               </g>
             })}
           </svg>
+          <output className="wafer-coordinates" aria-label="Cursor coordinates">{cursor
+              ? `X: ${number.format(Math.abs(cursor.x * lengthMm / 2) < 0.0005 ? 0 : cursor.x * lengthMm / 2)} mm · Y: ${number.format(Math.abs(cursor.y * widthMm / 2) < 0.0005 ? 0 : cursor.y * widthMm / 2)} mm`
+              : 'Move the pointer over the wafer'}</output>
+          <small>Coordinates: mm · centre (0, 0) · +X right, +Y up</small>
           {!waferSpots.length && <p className="wafer-empty">No measurement spots available.</p>}
-          <div className="wafer-legend"><span><i className="wafer-legend-selected" />Selected</span><span><i className="wafer-legend-current" />Current position</span></div>
+          <div className="wafer-legend"><span><i className="wafer-legend-selected" />Selected</span><span><i className="wafer-legend-current" />Live spot</span></div>
           <small>Schematic wafer map · {waferSpots.length} measurement spots</small>
         </section>
       </div>
-      {isConfigure && <details className="wafer-sources control-section"><summary>Data sources</summary><div>
-        {sourceSelect('Measurement spots source', 'spotDevice', spotDevice, options.spots)}
-        {sourceSelect('Gas flow group', 'gasDevice', gasDevice, options.gas)}
-        {sourceSelect('Potentiostat', 'potentiostatDevice', potentiostatDevice, options.potentiostat)}
-      </div></details>}
       {isConfigure && <div className="resize-handle" title="Resize wafer measurement tab" />}
     </div>
   )

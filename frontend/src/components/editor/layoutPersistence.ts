@@ -107,20 +107,19 @@ export async function fetchDeviceParamsSafe(): Promise<void> {
   }
 }
 
-/** Get a layout by name from localStorage or the server (legacy loaders). */
+/** Prefer the saved server file; browser copies may predate changes to it. */
 export async function fetchLayoutByName(name: string): Promise<LayoutData | null> {
-  const stored = getStoredLayouts()
-  if (stored[name]) return stored[name]
   try {
     const payload = await api.getLayout(name)
-    return payload.layout ?? null
+    if (payload.layout) return payload.layout
   } catch {
-    try {
-      const reply = await api.nodemanager('get_layout', { name })
-      if (reply?.data && typeof reply.data === 'object') return reply.data as LayoutData
-    } catch {
-      /* not found */
-    }
-    return null
+    /* Try the legacy server loader before falling back to a browser copy. */
   }
+  try {
+    const reply = await api.nodemanager('get_layout', { name })
+    if (reply?.data && typeof reply.data === 'object') return reply.data as LayoutData
+  } catch {
+    /* Local-only layouts and offline browser copies remain available. */
+  }
+  return getStoredLayouts()[name] ?? null
 }

@@ -1,4 +1,7 @@
 import { expect, test, type Page, type WebSocketRoute } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+
+const ascendLayout = JSON.parse(readFileSync(new URL('../../layout/ASCEND_HTS.json', import.meta.url), 'utf8'))
 
 const temperature = {
   original_name: 'temperature', module_name: 'temperature',
@@ -51,6 +54,46 @@ test.beforeEach(async ({ page }) => {
       localStorage.setItem('gas_system_layouts', JSON.stringify({ 'Pages demo': layout }))
     }
   }, mainCanvas)
+})
+
+test('selecting ASCEND_HTS loads server pages even with an older browser copy', async ({ page }) => {
+  await page.route('**/api/layouts', (route) => route.fulfill({ json: { status: 'ok', names: ['ASCEND_HTS'] } }))
+  await page.route('**/api/layouts/ASCEND_HTS', (route) => route.fulfill({ json: { status: 'ok', layout: ascendLayout } }))
+  await page.addInitScript((layout) => {
+    // Simulate a cached version from before subpages were added on the server.
+    localStorage.setItem('gas_system_layouts', JSON.stringify({ ASCEND_HTS: layout }))
+  }, mainCanvas)
+  await page.goto('/')
+  await page.locator('#layout-select').selectOption('ASCEND_HTS')
+  await expect.poll(() => page.evaluate(async () => {
+    const source = '/src/store/appStore.ts'
+    const { useAppStore } = await import(source)
+    return useAppStore.getState().wsConnected
+  })).toBe(true)
+  await page.getByRole('button', { name: 'Connect to system layout', exact: true }).click()
+  await expect(page.getByRole('tab', { name: 'Sample change', exact: true })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Plots', exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: 'Sample change', exact: true }).click()
+  await expect(page.getByRole('tab', { name: 'Sample change', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await page.reload()
+  await expect(page.getByRole('tab', { name: 'Sample change', exact: true })).toBeVisible()
+})
+
+test('loads the legacy server layout before a browser copy when the REST endpoint fails', async ({ page }) => {
+  await page.route('**/api/layouts/Pages%20demo', (route) => route.fulfill({ status: 404, json: { status: 'not_found' } }))
+  await page.route('**/api/nodemanager/get_layout', (route) => route.fulfill({ json: {
+    status: 'ok', data: { ...mainCanvas, pages: ascendLayout.pages.slice(0, 1) },
+  } }))
+  await page.goto('/system')
+  await expect(page.getByRole('tab', { name: 'Sample change', exact: true })).toBeVisible()
+})
+
+test('keeps browser-only layouts available when both server loaders fail', async ({ page }) => {
+  await page.route('**/api/layouts/Pages%20demo', (route) => route.fulfill({ status: 404, json: { status: 'not_found' } }))
+  await page.route('**/api/nodemanager/get_layout', (route) => route.fulfill({ status: 503, json: { status: 'error' } }))
+  await page.goto('/system')
+  await expect(page.locator('#deco-main')).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Main', exact: true })).toBeVisible()
 })
 
 test('creates independent subpages, preserves edits when switching, and saves/reloads all pages', async ({ page }) => {

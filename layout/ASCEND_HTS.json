@@ -2161,7 +2161,24 @@
       "layout": {
         "devices": [],
         "valveIcons": [],
-        "decorations": [],
+        "decorations": [
+          {
+            "id": "deco-1794577363008",
+            "type": "wafer_measurement_tab",
+            "left": "49px",
+            "top": "33px",
+            "width": "870px",
+            "height": "681px",
+            "color": "#cccccc",
+            "text": "",
+            "fontFamily": "",
+            "fontSize": "",
+            "lineColor": "",
+            "lineWidth": "",
+            "lineType": "",
+            "rotationDegrees": "0"
+          }
+        ],
         "plots": [],
         "connections": []
       }

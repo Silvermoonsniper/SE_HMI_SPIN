@@ -20,8 +20,7 @@ export function measurementSpots(info: DeviceInfo | undefined): MeasurementSpot[
     : Object.entries(data.members)
   return entries.map(([label, value]) => {
     const match = label.match(/^(.*?)_measurement_(?:position|spot)_(.+)$/i)
-    const unavailable = /^(unknown|undefined|none|not_set)$/i.test(label)
-    return { label, value: String(value), wafer: unavailable ? null : match?.[1] || 'Wafer', spot: match?.[2] || label }
+    return { label, value: String(value), wafer: match?.[1] || null, spot: match?.[2] || label }
   })
 }
 
@@ -42,6 +41,43 @@ export function waferSourceOptions(devices: DeviceParamsMap) {
 export function parseValue(value: unknown): unknown {
   if (typeof value !== 'string') return value
   try { return JSON.parse(value) } catch { return value }
+}
+
+export interface TechniqueRow {
+  number: string
+  name: string
+  details: Array<[string, string]>
+}
+
+/** Accept a single technique, a queue, or a queue keyed by technique number. */
+export function techniqueRows(value: unknown): TechniqueRow[] {
+  const parsed = parseValue(value)
+  if (parsed === undefined || parsed === null || parsed === '') return []
+  const record = (entry: unknown): Record<string, unknown> | null =>
+    entry !== null && typeof entry === 'object' && !Array.isArray(entry) ? entry as Record<string, unknown> : null
+  const root = record(parsed)
+  const queue = parseValue(root?.techniques ?? root?.queue ?? parsed)
+  const object = record(queue)
+  const entries: Array<[string, unknown]> = Array.isArray(queue) ? queue.map((entry, index) => [String(index + 1), entry])
+    : object && !('technique' in object || 'name' in object || 'technique_name' in object) && Object.keys(object).every((key) => /^\d+$/.test(key))
+      ? Object.entries(object) : [['1', queue]]
+  const flatten = (entry: unknown, path = ''): Array<[string, string]> => {
+    if (entry !== null && typeof entry === 'object') {
+      const fields = Object.entries(entry)
+      if (fields.length) return fields.flatMap(([key, child]) => flatten(child, path ? `${path}.${key}` : key))
+    }
+    return [[path || 'Value', entry === null ? '—' : String(entry)]]
+  }
+  return entries.map(([index, entry]) => {
+    const technique = record(parseValue(entry))
+    if (!technique) return { number: index, name: 'Technique', details: flatten(entry) }
+    const { technique_number, number, technique_name, name, technique: kind, ...details } = technique
+    return {
+      number: String(technique_number ?? number ?? index),
+      name: String(technique_name ?? name ?? kind ?? 'Technique'),
+      details: flatten(details),
+    }
+  })
 }
 
 /** Resolve the individual gas flows from the group's measured composition and total flow. */

@@ -159,7 +159,7 @@ export default function SystemPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Load the selected layout (localStorage first, then server — legacy connectToGUI).
+  // Load the selected server layout, with localStorage as an offline fallback.
   useEffect(() => {
     if (selectedLayout === loadedLayoutNameRef.current) return
     if (!selectedLayout) {
