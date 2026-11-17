@@ -1,12 +1,12 @@
 /**
  * Plot panel on the canvas — renders a Plotly chart from a PlotPanelState and
- * flushes buffered trace data every 2 s. Port of the plot-panel lifecycle from
+ * appends live samples individually on animation frames. Port of the plot-panel lifecycle from
  * plots.js (createPlotPanelFromConfig + flushBufferedPoints + refreshPlot).
  */
 
 import { useEffect, useMemo, useRef } from 'react'
 import Plotly from 'plotly.js-dist-min'
-import { usePlotStore, sampleTracePoints, MAX_RENDERED_PLOT_POINTS, type PlotPanelState, type LineTraceMeta, type XYTraceMeta, refreshSavedPlotNames, loadPlotConfig } from '../../store/plotStore'
+import { usePlotStore, sampleTracePoints, MAX_RENDERED_PLOT_POINTS, type PlotPanelState, type LineTraceMeta, type XYTraceMeta, subscribePlotSamples, type PlotSampleEvent, refreshSavedPlotNames, loadPlotConfig } from '../../store/plotStore'
 import { useCanvasDrag } from '../editor/useCanvasDrag'
 import { ContactPoints } from '../editor/ContactPoints'
 import { useEditorStore } from '../../store/editorStore'
@@ -106,86 +106,116 @@ export function PlotPanel({ panel, isConfigure, standalone = false, onRemove }: 
     return base
   }, [live.plotType, live.xAxisTitle, live.yAxisTitle, live.id, isConfigure])
 
-  // Buffer every incoming sample, but render only changed plots on a fixed cadence.
-  // Keep one Plotly operation in flight; a polling burst must not queue redraws.
+  // Append one incoming timestamp per animation frame. History recovery and bounded
+  // display compaction use a full snapshot; neither can build an unbounded render queue.
   useEffect(() => {
     const plotDiv = plotDivRef.current
     if (!plotDiv) return
+    type Point = Extract<PlotSampleEvent, { type: 'point' }>
+    const rendered = new Map<string, { index: number; count: number; markers: boolean }>()
+    const liveTailReserve = 256
+    let pending: Point[] = []
     let cancelled = false
     let rendering = false
     let forceRender = true
+    let frame: number | null = null
+    let retryTimer: number | null = null
     readyRef.current = false
 
+    const schedule = () => {
+      if (!cancelled && !rendering && frame === null && retryTimer === null && !document.hidden) frame = window.requestAnimationFrame(render)
+    }
     const render = () => {
+      frame = null
       if (cancelled || rendering || document.hidden || !plotDiv.isConnected) return
       const current = usePlotStore.getState().plots[panel.id]
-      if (!current) return
-      const changed = Object.values(current.traces).some((meta) =>
-        'isArrayParent' in meta ? Object.values(meta.children).some((child) => child.dirty) : meta.dirty,
-      )
-      if (!forceRender && !changed) return
+      if (!current || (!forceRender && !pending.length)) return
       rendering = true
       renderQueue.current = renderQueue.current.then(async () => {
         if (cancelled) return
-        const traceList: Array<Record<string, unknown>> = []
-        Object.values(current.traces).forEach((meta) => {
-          if ('isArrayParent' in meta) {
-            Object.values(meta.children).forEach((child) => {
-              const sampled = sampleTracePoints(child.x, child.y, MAX_RENDERED_PLOT_POINTS)
-              const trace = { x: sampled.x, y: sampled.y, mode: child.x.length > 200 ? 'lines' : 'lines+markers', name: child.name, type: 'scatter' }
-              applyTraceStyle(trace, child.style)
-              traceList.push(trace)
-              child.dirty = false
-            })
-            return
+        if (pending.some((point) => {
+          const trace = rendered.get(point.key)
+          return !trace || trace.count >= MAX_RENDERED_PLOT_POINTS || (trace.markers && trace.count >= 200)
+        })) forceRender = true
+        if (forceRender) {
+          pending = []
+          rendered.clear()
+          const traceList: Array<Record<string, unknown>> = []
+          const add = (key: string, x: unknown[], y: unknown[], name: string, style: LineTraceMeta['style'], xy = false) => {
+            const sampled = sampleTracePoints(x, y, MAX_RENDERED_PLOT_POINTS - liveTailReserve)
+            const markers = x.length <= 200
+            const trace: Record<string, unknown> = { x: sampled.x, y: sampled.y, name, type: 'scatter', mode: markers ? 'lines+markers' : 'lines' }
+            applyTraceStyle(trace, style)
+            rendered.set(key, { index: traceList.length, count: sampled.x.length, markers: !xy && markers })
+            traceList.push(trace)
           }
-          if (current.plotType === 'xy') {
-            const xy = meta as XYTraceMeta
-            const sampled = sampleTracePoints(xy.x, xy.y, MAX_RENDERED_PLOT_POINTS)
-            const trace: Record<string, unknown> = { x: sampled.x, y: sampled.y, name: xy.name }
-            applyTraceStyle(trace, xy.style)
-            if (!xy.style?.xyChartType) {
-              trace.type = 'scatter'
-              trace.mode = xy.x.length > 200 ? 'lines' : 'lines+markers'
+          Object.entries(current.traces).forEach(([key, meta]) => {
+            if ('isArrayParent' in meta) {
+              Object.entries(meta.children).forEach(([childKey, child]) => {
+                add(childKey, child.x, child.y, child.name, child.style)
+                child.dirty = false
+              })
+            } else if (current.plotType === 'xy') {
+              const xy = meta as XYTraceMeta
+              add(key, xy.x, xy.y, xy.name, xy.style, true)
+              xy.dirty = false
+            } else {
+              const line = meta as LineTraceMeta
+              add(key, line.rawX, line.rawY, line.name, line.style)
+              line.dirty = false
             }
-            traceList.push(trace)
-          } else {
-            const line = meta as LineTraceMeta
-            const sampled = sampleTracePoints(line.rawX, line.rawY, MAX_RENDERED_PLOT_POINTS)
-            const trace = { x: sampled.x, y: sampled.y, mode: line.rawX.length > 200 ? 'lines' : 'lines+markers', name: line.name, type: 'scatter' }
-            applyTraceStyle(trace, line.style)
-            traceList.push(trace)
-          }
-          // Clear before rendering: samples arriving during the render mark it dirty again.
-          meta.dirty = false
-        })
-        forceRender = false
-        // A fresh layout lets Plotly autorange in this render, without a second relayout.
-        const layout = {
-          ...layoutForType,
-          xaxis: { ...(layoutForType.xaxis as object) },
-          yaxis: { ...(layoutForType.yaxis as object), autorange: true },
+          })
+          forceRender = false
+          await Plotly.react(plotDiv, traceList as never, {
+            ...layoutForType,
+            xaxis: { ...(layoutForType.xaxis as object) },
+            yaxis: { ...(layoutForType.yaxis as object), autorange: true },
+          } as never, { responsive: true, scrollZoom: false, doubleClick: false as const, displayModeBar: isConfigure })
+        } else {
+          pending.sort((a, b) => a.x.getTime() - b.x.getTime())
+          const timestamp = pending[0].x.getTime()
+          const points: Point[] = []
+          while (pending.length && pending[0].x.getTime() === timestamp) points.push(pending.shift()!)
+          const indices: number[] = []
+          const x: Date[][] = []
+          const y: unknown[][] = []
+          points.forEach((point) => {
+            const trace = rendered.get(point.key)!
+            indices.push(trace.index)
+            x.push([point.x])
+            y.push([point.y])
+            trace.count += 1
+          })
+          await Plotly.extendTraces(plotDiv, { x, y } as never, indices)
         }
-        await Plotly.react(plotDiv, traceList as never, layout as never, {
-          responsive: true, scrollZoom: false, doubleClick: false as const, displayModeBar: isConfigure,
-        })
         if (!cancelled) readyRef.current = true
       }).catch(() => {
         forceRender = true
+        if (!cancelled) retryTimer = window.setTimeout(() => { retryTimer = null; schedule() }, 500)
       }).finally(() => {
         rendering = false
+        if (forceRender || pending.length) schedule()
       })
     }
-
-    render()
-    const interval = window.setInterval(render, 2000)
-    document.addEventListener('visibilitychange', render)
+    const unsubscribe = subscribePlotSamples(panel.id, (event) => {
+      if (document.hidden) { forceRender = true; pending = []; return }
+      if (event.type === 'refresh' || !event.live || !event.appended) forceRender = true
+      else {
+        pending.push(event)
+        if (pending.length > liveTailReserve) { pending = []; forceRender = true }
+      }
+      schedule()
+    })
+    const visibility = () => { forceRender = true; pending = []; schedule() }
+    document.addEventListener('visibilitychange', visibility)
+    schedule()
     return () => {
       cancelled = true
       readyRef.current = false
-      window.clearInterval(interval)
-      document.removeEventListener('visibilitychange', render)
-      // Purging a chart while Plotly is rendering it causes errors and orphaned work.
+      unsubscribe()
+      if (frame !== null) window.cancelAnimationFrame(frame)
+      if (retryTimer !== null) window.clearTimeout(retryTimer)
+      document.removeEventListener('visibilitychange', visibility)
       renderQueue.current = renderQueue.current.then(() => { Plotly.purge(plotDiv) }).catch(() => undefined)
     }
   }, [panel.id, isConfigure, layoutForType])

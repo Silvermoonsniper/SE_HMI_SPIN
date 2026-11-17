@@ -317,16 +317,6 @@ export default function SystemPage() {
           kind: isValveController ? 'valve-controller' : 'device',
         })
 
-        // Sample magazine: expand array value into per-slot boxes at layout positions.
-        const isSampleMagazine = name.includes('storage') || matched.toLowerCase().includes('storage')
-        if (isSampleMagazine) {
-          const valueEntry = latestValues[`${matched}.value`] ?? latestValues[`${matched}.target`]
-          const arr = Array.isArray(valueEntry?.value) ? (valueEntry.value as unknown[]) : []
-          arr.forEach((item, idx) => {
-            slots.push({ id: `mag-${deviceDomId(matched)}-slot-${idx}`, device: matched, index: idx, label: item })
-          })
-        }
-
         const isSamplePosition = name.includes('sample_at_measurement') || matched.toLowerCase().includes('sample_at_measurement')
         if (isSamplePosition) {
           samplePresence = { device: matched, left: parsePx(entry.left), top: parsePx(entry.top) }
@@ -693,14 +683,16 @@ export default function SystemPage() {
     layoutDocument(mainPageRef.current, pages, activePageId, buildCurrentLayout())
 
   const persistWaferSession = async (): Promise<string> => {
-    if (!selectedLayout) return 'Session captured. Save this layout to keep the session.'
+    if (!selectedLayout) return 'Spot added. Save this layout to keep the measurement session.'
     const document = buildCurrentDocument()
-    saveStoredLayout(selectedLayout, document)
+    let storedLocally = false
+    try { saveStoredLayout(selectedLayout, document); storedLocally = true } catch { /* Server save can still succeed. */ }
     try {
       await api.nodemanager('save_layout', { name: selectedLayout, layout: document })
-      return 'Session saved with the layout.'
+      return 'Spot added to the measurement session and saved with the layout.'
     } catch {
-      return 'Session saved in this browser. Server save is unavailable.'
+      return storedLocally ? 'Spot added and saved in this browser. Server save is unavailable.'
+        : 'Spot added for this visit. Saving is unavailable; save the layout before leaving.'
     }
   }
 

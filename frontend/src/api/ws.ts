@@ -10,7 +10,7 @@
  * out to registered handlers (store, plots, valve icons, ...).
  */
 
-import type { LatestValues, UpdateEvent, WsServerMessage } from './types'
+import type { LatestValues, UpdateEvent, WsServerMessage, PlotFrame } from './types'
 
 export type UpdateHandler = (update: UpdateEvent) => void
 export type SnapshotHandler = (values: LatestValues) => void
@@ -26,6 +26,7 @@ class LiveClient {
   private started = false
 
   private updateHandlers = new Set<UpdateHandler>()
+  private plotFrameHandlers = new Set<(frame: PlotFrame) => void>()
   private snapshotHandlers = new Set<SnapshotHandler>()
   private connectionHandlers = new Set<ConnectionHandler>()
 
@@ -57,6 +58,11 @@ class LiveClient {
   onSnapshot(handler: SnapshotHandler): () => void {
     this.snapshotHandlers.add(handler)
     return () => this.snapshotHandlers.delete(handler)
+  }
+
+  onPlotFrame(handler: (frame: PlotFrame) => void): () => void {
+    this.plotFrameHandlers.add(handler)
+    return () => this.plotFrameHandlers.delete(handler)
   }
 
   onConnectionChange(handler: ConnectionHandler): () => void {
@@ -94,6 +100,8 @@ class LiveClient {
         this.snapshotHandlers.forEach((handler) => handler(message.values))
       } else if (message.type === 'update') {
         this.updateHandlers.forEach((handler) => handler(message.data))
+      } else if (message.type === 'plot_frame') {
+        this.plotFrameHandlers.forEach((handler) => handler(message))
       }
     }
 

@@ -761,12 +761,18 @@ class ExtendedBackend(Backend):
         if not changed:
             return
         try:
+            payload = {
+                'value': _json_safe_value(update.value), 'unit': str(update.unit),
+                'state': str(update.state), 'state_str': str(update.state_str),
+            }
             update_hub.publish({
                 'key': update.key,
                 'unit': update.unit,
                 'state': getattr(update.state, 'value', str(update.state)),
                 'state_str': update.state_str,
-                'value': _json_safe_value(update.value),
+                'value': payload['value'],
+                'timestamp_ms': self._plot_sample_timestamp(update.key, payload, source='live'),
+                'plot_managed': self._is_framed_plot_key(update.key),
             })
         except Exception:
             pass
@@ -935,22 +941,53 @@ class ExtendedBackend(Backend):
                 self._plot_history[key] = history
             history.append(sample)
 
+    def _plot_sample_timestamp(self, key, payload, source='history'):
+        """Give live delivery and history replay the same timestamp for one sample."""
+        lock = self.__dict__.setdefault('_plot_sample_clock_lock', threading.Lock())
+        with lock:
+            clocks = self.__dict__.setdefault('_plot_sample_clocks', {})
+            previous = clocks.get(key)
+            if previous:
+                previous_payload, previous_ms, previous_source = previous
+                # Spin's send_param reports parameter health, while the recorder
+                # attaches the module status. Both still represent one reading.
+                same_reading = (previous_payload['value'] == payload['value']
+                                and previous_payload['unit'] == payload['unit'])
+                if previous_payload == payload or (previous_source != source and same_reading):
+                    # Keep recorded status authoritative, so a later status-only
+                    # history change still receives its own timestamp.
+                    if source == 'history':
+                        clocks[key] = (payload.copy(), previous_ms, source)
+                    return previous_ms
+            timestamp_ms = int(time.time() * 1000)
+            if previous:
+                timestamp_ms = max(timestamp_ms, previous[1] + 1)
+            clocks[key] = (payload.copy(), timestamp_ms, source)
+            return timestamp_ms
+
+    def _is_framed_plot_key(self, key):
+        """Runtime main readings are plotted together after a completed node poll."""
+        device, _, param = key.rpartition('.')
+        return param == 'value' and device in getattr(self, '_runtime_device_addrs', {})
+
     def _record_latest_value(self, key, unit, state, state_str, value):
         """Update latest-value caches and fan changed samples out to storage sinks."""
         safe_value = _json_safe_value(value)
-        timestamp_ms = int(time.time() * 1000)
         payload = {
             'value': safe_value,
             'unit': str(unit),
             'state': str(state),
             'state_str': str(state_str),
         }
+        timestamp_ms = self._plot_sample_timestamp(key, payload)
         previous_payload = self._last_recorded_payloads.get(key)
         is_changed = previous_payload != payload
         self._last_recorded_payloads[key] = payload.copy()
-        ExtendedBackend.latest_values[key] = payload
+        framed = self._is_framed_plot_key(key)
+        ExtendedBackend.latest_values[key] = {**payload, 'timestamp_ms': timestamp_ms, 'plot_managed': framed}
         if is_changed:
-            self._append_plot_history_sample(key, payload, timestamp_ms)
+            if not framed:
+                self._append_plot_history_sample(key, payload, timestamp_ms)
             self._append_persistent_history_sample(key, payload, timestamp_ms)
         if is_changed and hasattr(self, '_nexus_exporter') and self._nexus_exporter.is_running:
             try:
@@ -1104,8 +1141,13 @@ class ExtendedBackend(Backend):
         if not since_ms or since_ms <= 0:
             snapshot = {}
             for key, payload in ExtendedBackend.latest_values.items():
+                if self._is_framed_plot_key(key):
+                    # Individual value-change times are not a synchronized frame.
+                    payload = getattr(self, '_latest_plot_samples', {}).get(key)
+                    if payload is None:
+                        continue
                 snapshot[key] = {
-                    'timestamp_ms': server_time_ms,
+                    'timestamp_ms': payload.get('timestamp_ms', server_time_ms),
                     'value': payload.get('value'),
                     'unit': payload.get('unit', ''),
                     'state': payload.get('state', ''),
@@ -1271,16 +1313,51 @@ class ExtendedBackend(Backend):
             self._tasks.add(task)
             task.add_done_callback(self._tasks.discard)
 
+    def _register_configured_sampling_nodes(self, conf, device_data):
+        """Use the same sampling path for startup and hot-added SECoP nodes."""
+        groups = {}
+        for name, device_conf in conf.devices.items():
+            uri = urlparse(device_conf.device)
+            if uri.scheme != 'secop' or not uri.hostname:
+                continue
+            group = groups.setdefault((uri.hostname, uri.port or 10767), [])
+            group.append((uri.path.lstrip('/'), name))
+        for (host, port), modules in groups.items():
+            metadata = {}
+            for _, name in modules:
+                info = dict(device_data.get(name) or {})
+                if not info.get('all_params'):
+                    params = conf.devices[name].params
+                    info['all_params'] = list(dict.fromkeys(['value', 'status', *(
+                        param.name if hasattr(param, 'name') else str(param) for param in params)]))
+                metadata[name] = info
+            self.register_runtime_secop_node(host, port, modules, metadata)
+
     async def _publish_runtime_snapshot(self, snapshot_updates):
         """Publish one batch of runtime snapshot values to Spin subscribers."""
+        frame_values = {}
         for key, unit, state, state_str, value, is_main in snapshot_updates:
-            safe_value, _, changed = self._record_latest_value(key, unit, state, state_str, value)
+            safe_value, payload, changed = self._record_latest_value(key, unit, state, state_str, value)
+            if is_main:
+                frame_values[key] = payload
             if not changed:
                 continue
             await self.send_update(Update(key, unit, state, state_str, safe_value))
             if is_main:
                 device_name = key.split('.', 1)[0]
                 await self.send_update(Update(device_name, unit, state, state_str, safe_value))
+
+        if frame_values:
+            # This is the time of the completed sampling round, shared by all
+            # channels. Reconfirmed constant values belong in every plot frame.
+            timestamp_ms = max(int(time.time() * 1000), getattr(self, '_last_plot_frame_ms', 0) + 1)
+            self._last_plot_frame_ms = timestamp_ms
+            latest = self.__dict__.setdefault('_latest_plot_samples', {})
+            for key, payload in frame_values.items():
+                sample = {**payload, 'timestamp_ms': timestamp_ms}
+                latest[key] = sample
+                self._append_plot_history_sample(key, payload, timestamp_ms)
+            update_hub.publish({'type': 'plot_frame', 'timestamp_ms': timestamp_ms, 'values': frame_values})
 
     def refresh_runtime_latest_values(self):
         """Synchronously refresh latest-value caches from all registered runtime nodes."""
@@ -1303,46 +1380,62 @@ class ExtendedBackend(Backend):
             return []
 
         client = SecopClient(addr)
-        client.connect()
-        updates = []
+        try:
+            client.connect()
+            updates = []
 
-        for unique_name, cfg in node_cfg['devices'].items():
-            module = cfg['module']
-            info = cfg['info'] or {}
-            accessibles = info.get('accessibles') or {}
-            commands = set(info.get('commands') or [])
+            def read(module, param):
+                # Metadata uses wire names (_technique_config), while Frappy's
+                # read API uses internal names (technique_config). Its mapper
+                # also preserves reserved names such as _value correctly.
+                item = client.readParameter(module, client.internalize_name(param))
+                # Frappy reports read errors on the returned cache item instead
+                # of necessarily raising; an old cached value is not a new read.
+                error = getattr(item, 'readerror', None)
+                if error:
+                    raise error
+                if item is None:
+                    raise RuntimeError(f'No reading for {module}:{param}')
+                return getattr(item, 'value', item)
 
-            status_value = None
-            status_state = State.OK
-            status_state_str = ''
-            if 'status' in (info.get('all_params') or []):
-                try:
-                    status_item = client.readParameter(module, 'status')
-                    status_value = getattr(status_item, 'value', status_item)
-                    status_state, status_state_str = spin_secop.to_state(status_value)
-                except Exception as exc:
-                    status_value = None
-                    status_state = State.ERROR
-                    status_state_str = str(exc)
-                updates.append((f'{unique_name}.status', '', status_state, status_state_str, status_value, False))
+            for unique_name, cfg in node_cfg['devices'].items():
+                module = cfg['module']
+                info = cfg['info'] or {}
+                accessibles = dict(info.get('accessibles') or {})
+                param_info = info.get('param_info') or []
+                for entry in ([param_info] if isinstance(param_info, dict) else param_info):
+                    for param, metadata in entry.items():
+                        accessibles.setdefault(param, metadata)
+                commands = set(info.get('commands') or [])
 
-            for param_name in info.get('all_params') or []:
-                if param_name in commands or param_name == 'status':
-                    continue
+                status_value = None
+                status_state = State.OK
+                status_state_str = ''
+                if 'status' in (info.get('all_params') or []):
+                    try:
+                        status_value = read(module, 'status')
+                        status_state, status_state_str = spin_secop.to_state(status_value)
+                    except Exception as exc:
+                        status_state = State.ERROR
+                        status_state_str = str(exc)
+                    updates.append((f'{unique_name}.status', '', status_state, status_state_str, status_value, False))
 
-                unit = str(accessibles.get(param_name, {}).get('datainfo', {}).get('unit', ''))
-                try:
-                    item = client.readParameter(module, param_name)
-                    value = getattr(item, 'value', item)
-                    state, state_str = status_state, status_state_str
-                except Exception as exc:
-                    value = None
-                    state = State.ERROR
-                    state_str = str(exc)
+                for param_name in info.get('all_params') or []:
+                    if param_name in commands or param_name == 'status':
+                        continue
 
-                updates.append((f'{unique_name}.{param_name}', unit, state, state_str, value, param_name == 'value'))
-
-        return updates
+                    unit = str(accessibles.get(param_name, {}).get('datainfo', {}).get('unit', ''))
+                    try:
+                        value = read(module, param_name)
+                        state, state_str = status_state, status_state_str
+                    except Exception as exc:
+                        value = None
+                        state = State.ERROR
+                        state_str = str(exc)
+                    updates.append((f'{unique_name}.{param_name}', unit, state, state_str, value, param_name == 'value'))
+            return updates
+        finally:
+            client.disconnect()
 
     async def _poll_runtime_node(self, addr):
         """Continuously poll one runtime node and publish changed values."""
@@ -1380,6 +1473,11 @@ class ExtendedBackend(Backend):
        
         while True:
             for devname, dev in list(self._devices.items()):
+                # These nodes already have confirmed full snapshots and live
+                # updates. The cache fallback loses units/status and duplicates
+                # their readings on a different clock.
+                if devname in getattr(self, '_runtime_device_addrs', {}):
+                    continue
                
 
                 all_params = getattr(dev, 'all_params', None)
@@ -1441,7 +1539,7 @@ class ExtendedBackend(Backend):
     # Set all_params for each device from device_params.json
        
         json_path = os.path.join(os.path.dirname(__file__), 'device_params.json')
-       
+        device_data = {}
         try:
             
             with open(json_path, 'r') as f:
@@ -1464,6 +1562,8 @@ class ExtendedBackend(Backend):
             self.refresh_runtime_latest_values()
         except Exception as exc:
             self.log.warning(f'Failed to recover runtime nodes during startup: {exc}')
+
+        self._register_configured_sampling_nodes(conf, device_data)
 
         self.run_task(self.poll_all_parameters())
         # Start the FastAPI API server for latest values in a thread, pass self

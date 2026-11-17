@@ -2157,22 +2157,774 @@
   "pages": [
     {
       "id": "page-1794392345137-wdz12qfux5e",
-      "name": "Sample change",
+      "name": "measurement procedure initialization",
       "layout": {
-        "devices": [],
+        "devices": [
+          {
+            "id": "box-sim_cell_abstraction_layer_storage",
+            "device": "storage",
+            "deviceKey": "sim_cell_abstraction_layer_storage",
+            "logicalName": "sim_cell_abstraction_layer_storage",
+            "left": "104px",
+            "top": "569px",
+            "width": "229px",
+            "height": "125px",
+            "info": {
+              "params": [
+                "pollinterval"
+              ],
+              "all_params": [
+                "value",
+                "status",
+                "pollinterval",
+                "stop",
+                "_positions_file",
+                "_scan"
+              ],
+              "commands": [
+                "stop",
+                "_scan"
+              ],
+              "original_name": "storage",
+              "interface_classes": [
+                "Readable"
+              ],
+              "module_name": "storage",
+              "param_info": [
+                {
+                  "value": {
+                    "description": "scanned wafer IDs",
+                    "datainfo": {
+                      "type": "array",
+                      "minlen": 0,
+                      "maxlen": 100,
+                      "members": {
+                        "type": "string"
+                      }
+                    },
+                    "readonly": true
+                  }
+                },
+                {
+                  "status": {
+                    "description": "current status of the module",
+                    "datainfo": {
+                      "type": "tuple",
+                      "members": [
+                        {
+                          "type": "enum",
+                          "members": {
+                            "IDLE": 100,
+                            "WARN": 200,
+                            "BUSY": 300,
+                            "ERROR": 400
+                          }
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "readonly": true
+                  }
+                },
+                {
+                  "pollinterval": {
+                    "description": "default poll interval",
+                    "datainfo": {
+                      "unit": "s",
+                      "min": 0.1,
+                      "max": 120,
+                      "type": "double"
+                    },
+                    "readonly": false
+                  }
+                },
+                {
+                  "stop": {
+                    "description": "Return the concept scanner to idle, retaining the last scanned IDs.",
+                    "datainfo": {
+                      "type": "command"
+                    }
+                  }
+                },
+                {
+                  "_positions_file": {
+                    "description": "wafer coordinates JSON path",
+                    "datainfo": {
+                      "type": "string"
+                    },
+                    "readonly": true
+                  }
+                },
+                {
+                  "_scan": {
+                    "description": "Run the scan procedure and publish its wafer IDs as value.",
+                    "datainfo": {
+                      "type": "command"
+                    }
+                  }
+                }
+              ]
+            },
+            "image": null
+          },
+          {
+            "id": "box-sim_cell_abstraction_layer_sample_at_measurement_position",
+            "device": "sample_at_measurement_position",
+            "deviceKey": "sim_cell_abstraction_layer_sample_at_measurement_position",
+            "logicalName": "sim_cell_abstraction_layer_sample_at_measurement_position",
+            "left": "105px",
+            "top": "719px",
+            "width": "318px",
+            "height": "119px",
+            "info": {
+              "params": [
+                "target",
+                "pollinterval"
+              ],
+              "all_params": [
+                "value",
+                "status",
+                "target",
+                "pollinterval",
+                "stop",
+                "_queue_file",
+                "_step_timeout",
+                "_coordinates",
+                "_positions_file",
+                "_next"
+              ],
+              "commands": [
+                "stop",
+                "_next"
+              ],
+              "original_name": "sample_at_measurement_position",
+              "interface_classes": [
+                "Drivable"
+              ],
+              "module_name": "sample_at_measurement_position",
+              "param_info": [
+                {
+                  "value": {
+                    "description": "last fully prepared wafer position",
+                    "datainfo": {
+                      "type": "string"
+                    },
+                    "readonly": true
+                  }
+                },
+                {
+                  "status": {
+                    "description": "current status of the module",
+                    "datainfo": {
+                      "type": "tuple",
+                      "members": [
+                        {
+                          "type": "enum",
+                          "members": {
+                            "IDLE": 100,
+                            "WARN": 200,
+                            "BUSY": 300,
+                            "ERROR": 400
+                          }
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "readonly": true
+                  }
+                },
+                {
+                  "target": {
+                    "description": "wafer_ID_measurement_position_i",
+                    "datainfo": {
+                      "type": "string"
+                    },
+                    "readonly": false
+                  }
+                },
+                {
+                  "pollinterval": {
+                    "description": "preparation monitoring interval",
+                    "datainfo": {
+                      "unit": "s",
+                      "min": 0.05,
+                      "max": 10,
+                      "type": "double"
+                    },
+                    "readonly": false
+                  }
+                },
+                {
+                  "stop": {
+                    "description": "Stop the current preparation; the next target starts from home.",
+                    "datainfo": {
+                      "type": "command"
+                    }
+                  }
+                },
+                {
+                  "_queue_file": {
+                    "description": "preparation workflow JSON",
+                    "datainfo": {
+                      "type": "string"
+                    },
+                    "readonly": true
+                  }
+                },
+                {
+                  "_step_timeout": {
+                    "description": "action timeout, excluding dwell",
+                    "datainfo": {
+                      "unit": "s",
+                      "min": 1,
+                      "max": 86400,
+                      "type": "double"
+                    },
+                    "readonly": true
+                  }
+                },
+                {
+                  "_coordinates": {
+                    "description": "actual measurement coordinates",
+                    "datainfo": {
+                      "type": "struct",
+                      "members": {
+                        "x": {
+                          "unit": "mm",
+                          "type": "double"
+                        },
+                        "y": {
+                          "unit": "mm",
+                          "type": "double"
+                        },
+                        "z": {
+                          "unit": "mm",
+                          "type": "double"
+                        }
+                      }
+                    },
+                    "readonly": true
+                  }
+                },
+                {
+                  "_positions_file": {
+                    "description": "wafer measurement positions JSON",
+                    "datainfo": {
+                      "type": "string"
+                    },
+                    "readonly": true
+                  }
+                },
+                {
+                  "_next": {
+                    "description": "Prepare the next stored position; start at the first when unknown.",
+                    "datainfo": {
+                      "type": "command"
+                    }
+                  }
+                }
+              ]
+            },
+            "image": null
+          },
+          {
+            "id": "box-sim_cell_abstraction_layer_MFC_group_1_calibration",
+            "device": "MFC_group_1_calibration",
+            "deviceKey": "sim_cell_abstraction_layer_MFC_group_1_calibration",
+            "logicalName": "sim_cell_abstraction_layer_MFC_group_1_calibration",
+            "left": "101px",
+            "top": "176px",
+            "width": "340px",
+            "height": "309px",
+            "info": {
+              "params": [
+                "pollinterval",
+                "_calibration_setting"
+              ],
+              "all_params": [
+                "value",
+                "status",
+                "pollinterval",
+                "stop",
+                "go",
+                "_wait_timeout",
+                "_child_gas_dosing_uri",
+                "_calibrate_device_list",
+                "_calibration_setting"
+              ],
+              "commands": [
+                "stop",
+                "go"
+              ],
+              "original_name": "MFC_group_1_calibration",
+              "interface_classes": [
+                "Readable"
+              ],
+              "module_name": "MFC_group_1_calibration",
+              "param_info": [
+                {
+                  "value": {
+                    "description": "measurement and coefficients from calibration device",
+                    "datainfo": {
+                      "type": "struct",
+                      "members": {
+                        "measurement": {
+                          "type": "array",
+                          "minlen": 1,
+                          "maxlen": 10000,
+                          "members": {
+                            "min": 0,
+                            "max": 3000,
+                            "type": "double"
+                          }
+                        },
+                        "inverse_calib_coeff": {
+                          "type": "array",
+                          "minlen": 2,
+                          "maxlen": 5,
+                          "members": {
+                            "min": -3000,
+                            "max": 3000,
+                            "type": "double"
+                          }
+                        },
+                        "forward_calib_coeff": {
+                          "type": "array",
+                          "minlen": 2,
+                          "maxlen": 5,
+                          "members": {
+                            "min": -3000,
+                            "max": 3000,
+                            "type": "double"
+                          }
+                        }
+                      }
+                    },
+                    "readonly": true
+                  }
+                },
+                {
+                  "status": {
+                    "description": "current status of the module",
+                    "datainfo": {
+                      "type": "tuple",
+                      "members": [
+                        {
+                          "type": "enum",
+                          "members": {
+                            "IDLE": 100,
+                            "WARN": 200,
+                            "BUSY": 300,
+                            "ERROR": 400
+                          }
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "readonly": true
+                  }
+                },
+                {
+                  "pollinterval": {
+                    "description": "default poll interval",
+                    "datainfo": {
+                      "unit": "s",
+                      "min": 0.1,
+                      "max": 120,
+                      "type": "double"
+                    },
+                    "readonly": false
+                  }
+                },
+                {
+                  "stop": {
+                    "description": "stop automated calibration routiines",
+                    "datainfo": {
+                      "type": "command"
+                    }
+                  }
+                },
+                {
+                  "go": {
+                    "description": "start automated calibration routiines",
+                    "datainfo": {
+                      "type": "command"
+                    }
+                  }
+                },
+                {
+                  "_wait_timeout": {
+                    "description": "Maximum wait for a device to become idle, in seconds",
+                    "datainfo": {
+                      "min": 1,
+                      "max": 86400,
+                      "type": "double"
+                    },
+                    "readonly": true
+                  }
+                },
+                {
+                  "_child_gas_dosing_uri": {
+                    "description": "URI of the child gas dosing node",
+                    "datainfo": {
+                      "type": "string"
+                    },
+                    "readonly": true
+                  }
+                },
+                {
+                  "_calibrate_device_list": {
+                    "description": "list of devices which need to be calibrated",
+                    "datainfo": {
+                      "type": "array",
+                      "minlen": 1,
+                      "maxlen": 100,
+                      "members": {
+                        "maxchars": 60,
+                        "type": "string"
+                      }
+                    },
+                    "readonly": true
+                  }
+                },
+                {
+                  "_calibration_setting": {
+                    "description": "calibration settings for type, averaging and polynomial fitting",
+                    "datainfo": {
+                      "type": "struct",
+                      "members": {
+                        "calibrate_device": {
+                          "type": "enum",
+                          "members": {
+                            "massflow_contr0": 0,
+                            "massflow_contr1": 1
+                          }
+                        },
+                        "calibration_type": {
+                          "type": "enum",
+                          "members": {
+                            "flow_calibration": 0,
+                            "temperature_calibration": 1
+                          }
+                        },
+                        "average_number": {
+                          "min": 1,
+                          "max": 20,
+                          "type": "int"
+                        },
+                        "polynomial_order": {
+                          "min": 1,
+                          "max": 5,
+                          "type": "int"
+                        },
+                        "calibration_target_array": {
+                          "type": "array",
+                          "minlen": 1,
+                          "maxlen": 100,
+                          "members": {
+                            "min": -100000000,
+                            "max": 100000000,
+                            "type": "double"
+                          }
+                        }
+                      }
+                    },
+                    "readonly": false
+                  }
+                }
+              ]
+            },
+            "image": null
+          }
+        ],
         "valveIcons": [],
         "decorations": [
           {
             "id": "deco-1794577363008",
             "type": "wafer_measurement_tab",
-            "left": "49px",
-            "top": "33px",
+            "left": "600px",
+            "top": "183px",
             "width": "870px",
             "height": "681px",
             "color": "#cccccc",
             "text": "",
             "fontFamily": "",
             "fontSize": "",
+            "lineColor": "",
+            "lineWidth": "",
+            "lineType": "",
+            "rotationDegrees": "0",
+            "waferMeasurement": {
+              "selectedSpot": "1",
+              "sessions": {
+                "custom:01994788-5d05-4b9a-8205-4adcabeb68a3": {
+                  "capturedAt": "2026-11-16T14:27:36.034Z",
+                  "spotLabel": "Spot 4",
+                  "waferId": "wafer_001",
+                  "coordinatesMm": {
+                    "x": 0.265,
+                    "y": 5.249
+                  },
+                  "positionSource": "clicked",
+                  "flowSource": "target",
+                  "argonFlow": 0,
+                  "nitrogenFlow": 0,
+                  "flowUnit": "ml/min",
+                  "techniqueConfig": {
+                    "techniques": [
+                      {
+                        "name": "CV",
+                        "parameters": {
+                          "potential_reference": "reference_electrode",
+                          "cycles": 10,
+                          "initial_potential": 0,
+                          "final_potential": 0,
+                          "scan_rate": 0.1,
+                          "step_size": 0.001,
+                          "upper_vertex_potential": 1.6,
+                          "lower_vertex_potential": 0,
+                          "initial_scan_direction": "positive"
+                        }
+                      },
+                      {
+                        "name": "CV",
+                        "parameters": {
+                          "potential_reference": "reference_electrode",
+                          "cycles": 5,
+                          "initial_potential": 0,
+                          "final_potential": 0,
+                          "scan_rate": 0.04,
+                          "step_size": 0.001,
+                          "upper_vertex_potential": 1.55,
+                          "lower_vertex_potential": 0,
+                          "initial_scan_direction": "positive"
+                        }
+                      },
+                      {
+                        "name": "CV",
+                        "parameters": {
+                          "potential_reference": "open_circuit",
+                          "cycles": 2,
+                          "initial_potential": 0,
+                          "final_potential": 0,
+                          "scan_rate": 0.001,
+                          "step_size": 0.001,
+                          "upper_vertex_potential": 0.05,
+                          "lower_vertex_potential": -0.05,
+                          "initial_scan_direction": "positive"
+                        }
+                      },
+                      {
+                        "name": "CV",
+                        "parameters": {
+                          "potential_reference": "open_circuit",
+                          "cycles": 2,
+                          "initial_potential": 0,
+                          "final_potential": 0,
+                          "scan_rate": 0.002,
+                          "step_size": 0.001,
+                          "upper_vertex_potential": 0.05,
+                          "lower_vertex_potential": -0.05,
+                          "initial_scan_direction": "positive"
+                        }
+                      },
+                      {
+                        "name": "CV",
+                        "parameters": {
+                          "potential_reference": "open_circuit",
+                          "cycles": 2,
+                          "initial_potential": 0,
+                          "final_potential": 0,
+                          "scan_rate": 0.005,
+                          "step_size": 0.001,
+                          "upper_vertex_potential": 0.05,
+                          "lower_vertex_potential": -0.05,
+                          "initial_scan_direction": "positive"
+                        }
+                      },
+                      {
+                        "name": "CV",
+                        "parameters": {
+                          "potential_reference": "open_circuit",
+                          "cycles": 2,
+                          "initial_potential": 0,
+                          "final_potential": 0,
+                          "scan_rate": 0.01,
+                          "step_size": 0.001,
+                          "upper_vertex_potential": 0.05,
+                          "lower_vertex_potential": -0.05,
+                          "initial_scan_direction": "positive"
+                        }
+                      },
+                      {
+                        "name": "CV",
+                        "parameters": {
+                          "potential_reference": "open_circuit",
+                          "cycles": 2,
+                          "initial_potential": 0,
+                          "final_potential": 0,
+                          "scan_rate": 0.02,
+                          "step_size": 0.001,
+                          "upper_vertex_potential": 0.05,
+                          "lower_vertex_potential": -0.05,
+                          "initial_scan_direction": "positive"
+                        }
+                      },
+                      {
+                        "name": "CV",
+                        "parameters": {
+                          "potential_reference": "open_circuit",
+                          "cycles": 2,
+                          "initial_potential": 0,
+                          "final_potential": 0,
+                          "scan_rate": 0.04,
+                          "step_size": 0.001,
+                          "upper_vertex_potential": 0.05,
+                          "lower_vertex_potential": -0.05,
+                          "initial_scan_direction": "positive"
+                        }
+                      },
+                      {
+                        "name": "CV",
+                        "parameters": {
+                          "potential_reference": "open_circuit",
+                          "cycles": 2,
+                          "initial_potential": 0,
+                          "final_potential": 0,
+                          "scan_rate": 0.05,
+                          "step_size": 0.001,
+                          "upper_vertex_potential": 0.05,
+                          "lower_vertex_potential": -0.05,
+                          "initial_scan_direction": "positive"
+                        }
+                      },
+                      {
+                        "name": "CV",
+                        "parameters": {
+                          "potential_reference": "open_circuit",
+                          "cycles": 2,
+                          "initial_potential": 0,
+                          "final_potential": 0,
+                          "scan_rate": 0.07,
+                          "step_size": 0.001,
+                          "upper_vertex_potential": 0.05,
+                          "lower_vertex_potential": -0.05,
+                          "initial_scan_direction": "positive"
+                        }
+                      },
+                      {
+                        "name": "CV",
+                        "parameters": {
+                          "potential_reference": "open_circuit",
+                          "cycles": 2,
+                          "initial_potential": 0,
+                          "final_potential": 0,
+                          "scan_rate": 0.08,
+                          "step_size": 0.001,
+                          "upper_vertex_potential": 0.05,
+                          "lower_vertex_potential": -0.05,
+                          "initial_scan_direction": "positive"
+                        }
+                      },
+                      {
+                        "name": "CV",
+                        "parameters": {
+                          "potential_reference": "open_circuit",
+                          "cycles": 2,
+                          "initial_potential": 0,
+                          "final_potential": 0,
+                          "scan_rate": 0.1,
+                          "step_size": 0.001,
+                          "upper_vertex_potential": 0.05,
+                          "lower_vertex_potential": -0.05,
+                          "initial_scan_direction": "positive"
+                        }
+                      },
+                      {
+                        "name": "CV",
+                        "parameters": {
+                          "potential_reference": "reference_electrode",
+                          "cycles": 1,
+                          "initial_potential": 0.6,
+                          "final_potential": 1.8,
+                          "scan_rate": 0.001,
+                          "step_size": 0.001,
+                          "upper_vertex_potential": 0.6,
+                          "lower_vertex_potential": 0.6,
+                          "initial_scan_direction": "positive"
+                        }
+                      },
+                      {
+                        "name": "CA",
+                        "parameters": {
+                          "sample_period": 0.1,
+                          "potential_reference": "reference_electrode",
+                          "cycles": 1,
+                          "step1_potential": 1.65,
+                          "step1_duration": 3600
+                        }
+                      }
+                    ]
+                  },
+                  "activeTechnique": "CA",
+                  "sources": {
+                    "spotDevice": "sim_cell_abstraction_layer_sample_at_measurement_position",
+                    "gasDevice": "sim_cell_abstraction_layer_MFC_group_1",
+                    "potentiostatDevice": "potentiostat_biologic_SP200"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "deco-1794927723273",
+            "type": "label",
+            "left": "602px",
+            "top": "147px",
+            "width": "100px",
+            "height": "24px",
+            "color": "#000000",
+            "text": "Step 3: setup measurement protocol for each measurement spot\u00a0\u00d7",
+            "fontFamily": "Arial, sans-serif",
+            "fontSize": "16px",
+            "lineColor": "",
+            "lineWidth": "",
+            "lineType": "",
+            "rotationDegrees": "0"
+          },
+          {
+            "id": "deco-1794927801427",
+            "type": "label",
+            "left": "78px",
+            "top": "141px",
+            "width": "100px",
+            "height": "24px",
+            "color": "#000000",
+            "text": "Step 1 : calibrate flow\u00d7",
+            "fontFamily": "Arial, sans-serif",
+            "fontSize": "16px",
+            "lineColor": "",
+            "lineWidth": "",
+            "lineType": "",
+            "rotationDegrees": "0"
+          },
+          {
+            "id": "deco-1794927834532",
+            "type": "label",
+            "left": "85px",
+            "top": "518px",
+            "width": "100px",
+            "height": "24px",
+            "color": "#000000",
+            "text": "Step 2: scan available wafer samples\u00d7",
+            "fontFamily": "Arial, sans-serif",
+            "fontSize": "16px",
             "lineColor": "",
             "lineWidth": "",
             "lineType": "",

@@ -2,9 +2,9 @@
  * Plot subsystem store + live-update engine — React port of plots.js.
  *
  * Holds plot panels (traces with raw time-series buffers), the staging area
- * for the plot-configuration window, saved plot-config names, and the two
- * periodic loops: /api/plot_updates polling (10 s, paused in configure mode)
- * and the 2 s trace flush (handled by mounted PlotPanel components).
+ * for the plot-configuration window, saved plot-config names,
+ * /api/plot_updates polling (10 s, paused in configure mode)
+ * and incremental live rendering (handled by mounted PlotPanel components).
  */
 
 import { create } from 'zustand'
@@ -227,12 +227,11 @@ export function plotKeyMatches(emittedKey: string, candidateKey: string): boolea
   return !!canonEmitted && canonEmitted === canonCandidate
 }
 
-export function normalizePlotEventTimestamp(timestampMs: unknown, isLive: boolean): number {
+export function normalizePlotEventTimestamp(timestampMs: unknown, _isLive: boolean): number {
   const numeric = Number(timestampMs)
   const nowMs = Date.now()
   const minAllowed = nowMs - 30 * 24 * 60 * 60 * 1000
   const maxAllowed = nowMs + MAX_FUTURE_PLOT_SKEW_MS
-  if (isLive) return nowMs
   if (!Number.isFinite(numeric)) return nowMs
   if (numeric < minAllowed || numeric > maxAllowed) return nowMs
   return numeric
@@ -345,6 +344,27 @@ function appendTimeSample(x: Date[], y: unknown[], time: Date, value: unknown): 
   return true
 }
 
+export type PlotSampleEvent =
+  | { type: 'point'; key: string; x: Date; y: unknown; appended: boolean; live: boolean }
+  | { type: 'refresh' }
+
+const plotSampleListeners = new Map<string, Set<(event: PlotSampleEvent) => void>>()
+
+/** Subscribe only mounted plots; hidden layout pages still collect data without rendering. */
+export function subscribePlotSamples(id: string, listener: (event: PlotSampleEvent) => void): () => void {
+  let listeners = plotSampleListeners.get(id)
+  if (!listeners) { listeners = new Set(); plotSampleListeners.set(id, listeners) }
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+    if (!listeners.size) plotSampleListeners.delete(id)
+  }
+}
+
+function notifyPlotSample(id: string, event: PlotSampleEvent): void {
+  plotSampleListeners.get(id)?.forEach((listener) => listener(event))
+}
+
 /** Route one live update into matching plot traces. */
 export function ingestPlotUpdate(key: string, value: unknown, timestampMs: number, isLive: boolean): void {
   // Live updates are muted in configure mode (legacy isConfigurationModeActive gate).
@@ -366,7 +386,12 @@ export function ingestPlotUpdate(key: string, value: unknown, timestampMs: numbe
               parent.children[childKey] = { x: [], y: [], name: `${traceKey}[${idx}]`, style: parent.style, dirty: true }
             }
             const child = parent.children[childKey]
-            if (appendTimeSample(child.x, child.y, now, normalizeScalar(elem))) child.dirty = true
+            const appended = !child.x.length || now > child.x[child.x.length - 1]
+            const y = normalizeScalar(elem)
+            if (appendTimeSample(child.x, child.y, now, y)) {
+              child.dirty = true
+              notifyPlotSample(panel.id, { type: 'point', key: childKey, x: now, y, appended, live: isLive })
+            }
           })
         }
         return
@@ -399,6 +424,7 @@ export function ingestPlotUpdate(key: string, value: unknown, timestampMs: numbe
               trimTraceHistory(xy.x, xy.y)
               xy.lastPushedSignature = signature
               xy.dirty = true
+              notifyPlotSample(panel.id, { type: 'refresh' })
             }
           }
         }
@@ -408,7 +434,12 @@ export function ingestPlotUpdate(key: string, value: unknown, timestampMs: numbe
       // Line plot scalar.
       const line = meta as LineTraceMeta
       if (plotKeyMatches(key, traceKey) || plotKeyMatches(key, line.suffix)) {
-        if (appendTimeSample(line.rawX, line.rawY, now, normalizeScalar(value))) line.dirty = true
+        const appended = !line.rawX.length || now > line.rawX[line.rawX.length - 1]
+        const y = normalizeScalar(value)
+        if (appendTimeSample(line.rawX, line.rawY, now, y)) {
+          line.dirty = true
+          notifyPlotSample(panel.id, { type: 'point', key: traceKey, x: now, y, appended, live: isLive })
+        }
       }
     })
   })

@@ -14,6 +14,9 @@
 export type SecopState = 'idle' | 'warn' | 'busy' | 'error' | 'disabled' | 'unknown' | string
 
 export interface LatestValue {
+  timestamp_ms?: number
+  /** Main readings sampled together in a separate plot frame. */
+  plot_managed?: boolean
   value: unknown
   unit: string
   state: SecopState
@@ -25,6 +28,8 @@ export type LatestValues = Record<string, LatestValue>
 
 /** One live update event (identical to the legacy spinupdate event detail). */
 export interface UpdateEvent {
+  timestamp_ms?: number
+  plot_managed?: boolean
   key: string
   unit: string
   state: SecopState
@@ -32,9 +37,15 @@ export interface UpdateEvent {
   value: unknown
 }
 
+export interface PlotFrame {
+  timestamp_ms: number
+  values: LatestValues
+}
+
 export type WsServerMessage =
   | { type: 'snapshot'; values: LatestValues }
   | { type: 'update'; data: UpdateEvent }
+  | ({ type: 'plot_frame' } & PlotFrame)
 
 // ---------------------------------------------------------------------------
 // Device metadata (device_params.json)
@@ -106,12 +117,17 @@ export interface LayoutValveIconEntry {
 export interface WaferMeasurementSession {
   capturedAt: string
   spotLabel: string
-  argonFlow: number
-  nitrogenFlow: number
+  argonFlow: number | null
+  nitrogenFlow: number | null
   flowUnit: string
   techniqueConfig: unknown
   activeTechnique: string
   sources: { spotDevice: string; gasDevice: string; potentiostatDevice: string }
+  waferId?: string
+  spotValue?: string
+  coordinatesMm?: { x: number; y: number }
+  positionSource?: 'schematic' | 'clicked'
+  flowSource?: 'target' | 'measured'
 }
 
 export interface LayoutDecorationEntry {
@@ -137,6 +153,8 @@ export interface LayoutDecorationEntry {
     gasDevice?: string
     potentiostatDevice?: string
     selectedSpot?: string
+    selectedWaferId?: string
+    selectedSessionSpot?: string
     waferDiametersMm?: Record<string, number>
     waferDimensionsMm?: Record<string, { length: number; width: number }>
     sessions?: Record<string, WaferMeasurementSession>

@@ -27,12 +27,29 @@ body[data-configuration-mode="false"] .deco-box.wafer-measurement-tab { pointer-
 .wafer-section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .wafer-live { border-radius: 20px; padding: 2px 8px; background: #e8f5ef; color: #267455; font-size: 10px; }
 .wafer-session-caption { margin: 0 0 12px; color: #647c90; font-size: 11px; }
-.wafer-save-session { width: 100%; margin: 0 0 14px; padding: 9px 12px; border: 1px solid #255eb9; border-radius: 6px; background: #2563bd; color: white; font-weight: 600; cursor: pointer; }
-.wafer-save-session:disabled { opacity: 0.5; cursor: default; }
 .wafer-save-message { color: #267455; font-size: 11px; margin: 6px 0; }
 .wafer-flow-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
 .wafer-flow-grid > div { padding: 12px; border: 1px solid #d8e3ec; border-radius: 8px; background: #f8fbfd; }
 .wafer-flow-grid span { display: block; color: #647c90; font-size: 11px; }
+.wafer-flow-heading { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.wafer-flow-heading .wafer-details-button { padding: 3px 7px; font-size: 11px; }
+.wafer-other-gas-targets { color: #647c90; }
+.wafer-other-gas-targets dl > div { display: flex; justify-content: space-between; gap: 20px; margin: 6px 0; }
+.wafer-other-gas-targets dd { margin: 0; color: #20354a; }
+.wafer-session-spots { margin-top: 20px; padding-top: 16px; border-top: 1px solid #dce6ee; }
+.wafer-session-spots ol { padding: 0; list-style: none; margin: 0; }
+.wafer-session-spots li { padding: 10px; margin-bottom: 10px; background: #f8fbfd; border: 1px solid #dce6ee; border-radius: 7px; }
+.wafer-session-spots li > span, .wafer-session-spots li > small { display: block; margin-top: 3px; color: #647c90; overflow-wrap: anywhere; }
+.wafer-session-spot-name { padding: 0; border: 0; background: transparent; color: #255eb9; font: inherit; font-weight: 600; cursor: pointer; }
+.wafer-session-spots details { margin-top: 8px; font-size: 11px; }
+.wafer-session-spots summary { cursor: pointer; color: #255eb9; }
+.wafer-session-spots pre { max-height: 180px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 10px; }
+.wafer-spot-preview { margin: 16px 0; }
+.wafer-spot-preview > div { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 8px; }
+.wafer-spot-preview dt { color: #647c90; }
+.wafer-spot-preview dd { margin: 0; font-weight: 600; }
+.wafer-preview-techniques { padding: 0; list-style: none; }
+.wafer-preview-techniques li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; }
 .wafer-flow-grid output { display: block; margin-top: 4px; font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
 .wafer-technique { border: 1px solid #dce6ee; border-radius: 7px; max-height: 250px; overflow: auto; font-size: 11px; }
 .wafer-technique table { width: 100%; border-collapse: collapse; }
@@ -40,6 +57,25 @@ body[data-configuration-mode="false"] .deco-box.wafer-measurement-tab { pointer-
 .wafer-technique th { background: #f7fafc; position: sticky; top: 0; }
 .wafer-details-button { border: 1px solid #b7c8d7; border-radius: 5px; padding: 4px 10px; background: #f7fafc; color: #255eb9; font: inherit; cursor: pointer; }
 .wafer-details-button:hover, .wafer-details-button:focus-visible { background: #eaf2ff; border-color: #2563bd; }
+.wafer-technique-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.wafer-technique-editor { width: min(600px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 1px solid #b7c8d7; border-radius: 10px; color: #20354a; background: #fff; box-shadow: 0 12px 50px #0004; font: 13px/1.5 Arial, sans-serif; }
+.wafer-technique-editor::backdrop { background: #0f172a66; }
+.wafer-technique-editor header, .wafer-technique-editor footer { padding: 16px 20px; background: #f8fafc; }
+.wafer-technique-editor header { border-bottom: 1px solid #dce6ee; }
+.wafer-technique-editor h3 { margin: 0; font-size: 17px; }
+.wafer-technique-editor header p { margin: 4px 0 0; color: #647c90; overflow-wrap: anywhere; }
+.wafer-technique-editor-fields { padding: 20px; }
+.wafer-technique-editor label { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(0, 1.4fr); gap: 16px; align-items: baseline; margin-bottom: 12px; }
+.wafer-technique-editor input, .wafer-technique-editor textarea, .wafer-technique-editor select { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #b7c8d7; border-radius: 5px; font: inherit; }
+.wafer-technique-editor textarea { font-family: monospace; }
+.wafer-technique-editor footer { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #dce6ee; position: sticky; bottom: 0; }
+.wafer-technique-editor button { padding: 8px 14px; border: 1px solid #b7c8d7; border-radius: 5px; background: white; color: #20354a; cursor: pointer; }
+.wafer-technique-editor button[type="submit"] { background: #2563bd; color: white; border-color: #2563bd; }
+.wafer-details-button.wafer-remove-technique-button, .wafer-technique-editor button.wafer-remove-technique-button { background: #c62828; border-color: #c62828; color: #fff; }
+.wafer-details-button.wafer-remove-technique-button:hover, .wafer-details-button.wafer-remove-technique-button:focus-visible,
+.wafer-technique-editor button.wafer-remove-technique-button:hover, .wafer-technique-editor button.wafer-remove-technique-button:focus-visible { background: #a51e1e; border-color: #a51e1e; }
+.wafer-technique-editor button:disabled { opacity: 0.5; cursor: default; }
+.wafer-technique-editor-error { color: #b42318; white-space: pre-wrap; }
 .wafer-details-popup { position: fixed; inset: auto; margin: 0; z-index: 2147483647; width: 320px; max-width: calc(100vw - 16px); max-height: min(360px, calc(100vh - 16px)); overflow: auto; box-sizing: border-box; padding: 14px; border: 1px solid #555; border-radius: 8px; background: #000; color: #fff; box-shadow: 0 6px 24px #0006; font: 12px/1.5 Arial, sans-serif; overflow-wrap: anywhere; }
 .wafer-details-popup dl { margin: 10px 0 0; }
 .wafer-details-popup dl > div + div { margin-top: 7px; }
@@ -51,6 +87,7 @@ body[data-configuration-mode="false"] .deco-box.wafer-measurement-tab { pointer-
 .wafer-map small { font-size: 10px; color: #6d8294; margin-top: 10px; }
 .wafer-spot { cursor: pointer; outline: none; }
 .wafer-spot-dot { fill: #46617a; stroke: #46617a; stroke-width: 0.5px; pointer-events: none; }
+.wafer-session-spot .wafer-spot-dot { fill: #b7791f; stroke: #b7791f; }
 .wafer-spot-hit { fill: transparent; stroke: none; pointer-events: all; }
 .wafer-spot.is-current .wafer-spot-dot { fill: #27835e; stroke: #27835e; }
 .wafer-spot.is-selected .wafer-spot-dot { stroke: #2563eb; stroke-width: 1.5px; }
@@ -66,5 +103,6 @@ body[data-configuration-mode="false"] .deco-box.wafer-measurement-tab { pointer-
 .wafer-legend i { width: 9px; height: 9px; border-radius: 50%; }
 .wafer-legend-selected { border: 2px solid #2563eb; }
 .wafer-legend-current { background: #9ed7bd; border: 1px solid #27835e; }
+.wafer-legend-session { background: #b7791f; border: 1px solid #b7791f; }
 .wafer-empty { color: #6d8294; font-size: 12px; margin: 8px 0; }
 .wafer-measurement-tab.configure-layout:hover > .resize-handle { display: block; z-index: 3; }

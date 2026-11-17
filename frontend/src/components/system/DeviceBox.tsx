@@ -16,6 +16,7 @@ import type { DeviceInfo } from '../../api/types'
 import { useCanvasDrag } from '../editor/useCanvasDrag'
 import { useEditorStore } from '../../store/editorStore'
 import { AutomatorTable } from './AutomatorTable'
+import { CalibrationSettingsDialog } from './CalibrationSettingsDialog'
 import {
   formatLiveValue,
   getParamInfoMap,
@@ -75,8 +76,11 @@ function StandardDeviceBox({ device, domId, isConfigure, left, top, width, heigh
   const lowerDev = device.toLowerCase()
   const lowerDisplay = displayName.toLowerCase()
   const isValveController = lowerDisplay.includes('valve_controller') || lowerDev.includes('valve_controller')
-  const isSampleMagazine = lowerDisplay.includes('storage') || lowerDev.includes('storage')
+  const isStorage = [device, info?.original_name, info?.module_name]
+    .some((name) => name?.toLowerCase().includes('storage'))
   const isSamplePosition = lowerDisplay.includes('sample_at_measurement') || lowerDev.includes('sample_at_measurement')
+  const isCalibration = [device, info?.original_name, info?.module_name]
+    .some((name) => name?.toLowerCase().includes('calibration'))
 
   const interfaceClasses = Array.isArray(info?.interface_classes) ? info.interface_classes : []
   const isDrivable = interfaceClasses.includes('Drivable')
@@ -121,6 +125,17 @@ function StandardDeviceBox({ device, domId, isConfigure, left, top, width, heigh
 
   const writableParams = (info?.params ?? []).filter((p) => p !== 'value').sort()
   const commands = (info?.commands ?? []).slice().sort()
+  const calibrationCommand = (action: 'start' | 'stop') => {
+    const aliases = [`${action}calibration`, `calibration${action}`, action, ...(action === 'start' ? ['go'] : [])]
+    return aliases.map((alias) => commands.find((cmd) => cmd.replace(/^_/, '').replace(/_/g, '').toLowerCase() === alias))
+      .find(Boolean)
+  }
+  const startCalibration = calibrationCommand('start')
+  const stopCalibration = calibrationCommand('stop')
+  const scanCommand = (aliases: string[]) => aliases.map((alias) => commands.find((cmd) =>
+    cmd.replace(/_/g, '').toLowerCase() === alias)).find(Boolean)
+  const startScan = scanCommand(['scan', 'startscan', 'scanstart', 'start', 'go'])
+  const stopScan = scanCommand(['stopscan', 'scanstop', 'stop'])
 
   // Extra panel keys: live ∪ all_params, minus value/target (legacy renderExtra)
   const liveKeys = useMemo(
@@ -135,9 +150,14 @@ function StandardDeviceBox({ device, domId, isConfigure, left, top, width, heigh
     const keys = Array.from(new Set([...liveKeys, ...metadataKeys])).sort()
     return keys.filter((k) => k !== 'value' && k !== 'target')
   }, [liveKeys, info])
+  const calibrationSettings = Array.from(new Set([...extraKeys, ...writableParams]))
+    .filter((param) => !commands.includes(param) && (
+      /calibration|settings?|config/i.test(param) || writableParams.includes(param)
+    )).sort()
 
   const openModal = () => {
     setModalOpen(true)
+    if (isCalibration) return
     // Refresh values when opening so the read-only list is current.
     fetchAndMergeLatestValuesOnce()
       .then(() => hydrateDeviceFromNode(device))
@@ -184,7 +204,48 @@ function StandardDeviceBox({ device, domId, isConfigure, left, top, width, heigh
         </button>
       </div>
 
-      {isValveController ? (
+      {isCalibration ? (
+        <>
+          <div className="calibration-actions">
+            <button type="button" className="control-button" disabled={!startCalibration}
+              title={startCalibration ? `Execute ${startCalibration}` : 'No start calibration command advertised by this module'}
+              onClick={() => { if (startCalibration) void sendCommand(device, startCalibration) }}>
+              Start calibration
+            </button>
+            <button type="button" className="control-button" disabled={!stopCalibration}
+              title={stopCalibration ? `Execute ${stopCalibration}` : 'No stop calibration command advertised by this module'}
+              onClick={() => { if (stopCalibration) void sendCommand(device, stopCalibration) }}>
+              Stop calibration
+            </button>
+          </div>
+          <strong>Calibration results</strong>
+          <div className="calibration-results">
+            {valPayload?.value !== null && typeof valPayload?.value === 'object' && !Array.isArray(valPayload.value)
+              ? Object.entries(valPayload.value).map(([key, value]) => {
+                const valueMeta = paramInfo.value || info?.accessibles?.value
+                const members = valueMeta?.datainfo?.members as Record<string, { unit?: string; members?: { unit?: string } }> | undefined
+                const unit = members?.[key]?.unit || members?.[key]?.members?.unit || valPayload.unit
+                return <div className="calibration-setting" key={key}>
+                  <span>{key.replace(/_/g, ' ')}</span><span>{formatLiveValue(value, unit)}</span>
+                </div>
+              })
+              : <div className="calibration-setting"><span>{formatLiveValue(valPayload?.value, valPayload?.unit)}</span></div>}
+          </div>
+          <div className="calibration-settings-header">
+            <strong>Calibration settings</strong>
+            <button type="button" className="control-button" onClick={openModal} aria-label="Edit calibration settings">Edit</button>
+          </div>
+          <div className="calibration-settings">
+            {calibrationSettings.length === 0 ? <em>No calibration settings available</em> : calibrationSettings.map((param) => {
+              const payload = getParamValue(latestValues, device, param)
+              return <div className="calibration-setting" key={param}>
+                <span>{param.replace(/^_/, '').replace(/_/g, ' ')}</span>
+                <span>{formatLiveValue(payload?.value, payload?.unit)}</span>
+              </div>
+            })}
+          </div>
+        </>
+      ) : isValveController ? (
         <div id={`valves-container-${domId}`} className="valves-grid" />
       ) : (
         <div className="device-field">
@@ -215,7 +276,18 @@ function StandardDeviceBox({ device, domId, isConfigure, left, top, width, heigh
         </div>
       )}
 
-      <button
+      {!isCalibration && (isStorage ? <div className="storage-scan-actions">
+        <button type="button" className="control-button" disabled={!startScan}
+          title={startScan ? `Execute ${startScan}` : 'No scan command advertised by this module'}
+          onClick={() => { if (startScan) void sendCommand(device, startScan) }}>
+          Start scan
+        </button>
+        <button type="button" className="control-button" disabled={!stopScan}
+          title={stopScan ? `Execute ${stopScan}` : 'No stop scan command advertised by this module'}
+          onClick={() => { if (stopScan) void sendCommand(device, stopScan) }}>
+          Stop scan
+        </button>
+      </div> : <button
         type="button"
         className="expand-btn set-btn"
         id={`set-btn-${domId}`}
@@ -223,9 +295,10 @@ function StandardDeviceBox({ device, domId, isConfigure, left, top, width, heigh
         title="Set parameters"
       >
         Set
-      </button>
+      </button>)}
 
-      <DeviceParamModal
+      {isCalibration ? (modalOpen && <CalibrationSettingsDialog device={device} displayName={displayName}
+        params={calibrationSettings} onClose={() => setModalOpen(false)} />) : <DeviceParamModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         device={device}
@@ -246,7 +319,7 @@ function StandardDeviceBox({ device, domId, isConfigure, left, top, width, heigh
         selectedCurrent={selectedCurrent}
         onSubmitParam={submitParam}
         onSendCommand={(cmd) => void sendCommand(device, cmd)}
-      />
+      />}
       {isConfigure && <div className="resize-handle" />}
     </div>
   )
@@ -264,6 +337,7 @@ interface DeviceParamModalProps {
   device: string
   domId: string
   displayName: string
+  title?: string
   isValveController: boolean
   writableParams: string[]
   commands: string[]
@@ -287,6 +361,7 @@ function DeviceParamModal({
   device,
   domId,
   displayName,
+  title,
   isValveController,
   writableParams,
   commands,
@@ -327,6 +402,9 @@ function DeviceParamModal({
     >
       <div
         className="device-param-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title || displayName}
         style={{
           background: '#fff',
           borderRadius: 10,
@@ -342,9 +420,10 @@ function DeviceParamModal({
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h3 style={{ margin: 0, fontSize: 16, color: '#0f172a' }}>{displayName}</h3>
+          <h3 style={{ margin: 0, fontSize: 16, color: '#0f172a' }}>{title || displayName}</h3>
           <button
             type="button"
+            aria-label="Close settings"
             onClick={onClose}
             style={{ border: 'none', background: 'transparent', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}
           >

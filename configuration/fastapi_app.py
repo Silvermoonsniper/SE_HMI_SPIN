@@ -139,7 +139,10 @@ def create_app(backend=None):
             await websocket.send_json({'type': 'snapshot', 'values': snapshot})
             while True:
                 message = await queue.get()
-                await websocket.send_json({'type': 'update', 'data': message})
+                if message.get('type') == 'plot_frame':
+                    await websocket.send_json(message)
+                else:
+                    await websocket.send_json({'type': 'update', 'data': message})
         except WebSocketDisconnect:
             pass
         except Exception:
@@ -669,11 +672,13 @@ def create_app(backend=None):
         request_obj = SpinRequest(None, f'{device}.{param}', '', 'input', '', value)
 
         async def _perform_write():
-            await dev.handle_request(request_obj)
+            return await dev.handle_request(request_obj)
 
         try:
             future = asyncio.run_coroutine_threadsafe(_perform_write(), backend._loop)
-            future.result(timeout=10.0)
+            reply = future.result(timeout=10.0)
+            if getattr(reply, 'action', None) == 'error':
+                return _error(_json_safe_value(getattr(reply, 'data', 'Parameter write failed')), 400)
             return {'status': 'ok'}
         except Exception as exc:
             return _error(str(exc), 500)

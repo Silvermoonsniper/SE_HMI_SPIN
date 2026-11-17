@@ -39,7 +39,8 @@ export default function PlotPage() {
       if (!id) throw new Error('This plot configuration has no traces.')
       // Seed any values received while the configuration was loading.
       Object.entries(useAppStore.getState().latestValues).forEach(([key, value]) => {
-        ingestPlotUpdate(key, value.value, Date.now(), true)
+        if (value.plot_managed) return
+        ingestPlotUpdate(key, value.value, value.timestamp_ms ?? Date.now(), true)
       })
       refreshSavedPlotNames()
     }

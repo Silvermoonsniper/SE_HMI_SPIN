@@ -198,8 +198,9 @@ export function hydrateDeviceFromNode(device: string): Promise<void> {
 
 /** One-shot merge of the backend latest-value cache into the store. */
 export async function fetchAndMergeLatestValuesOnce(): Promise<void> {
+  const beforeRequest = useAppStore.getState().latestValues
   const values = await api.latestValues()
-  useAppStore.getState().mergeLatestValues(values)
+  useAppStore.getState().mergeLatestValues(values, beforeRequest)
 }
 
 // ---------------------------------------------------------------------------

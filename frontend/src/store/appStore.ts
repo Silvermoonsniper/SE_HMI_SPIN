@@ -30,7 +30,7 @@ interface AppState {
   setDeviceParams: (params: DeviceParamsMap | null) => void
   /** Merge entries into deviceParams (incoming wins per key; never wipes). */
   mergeDeviceParams: (params: DeviceParamsMap | null) => void
-  mergeLatestValues: (values: LatestValues) => void
+  mergeLatestValues: (values: LatestValues, beforeRequest?: LatestValues) => void
   applyUpdate: (update: UpdateEvent) => void
   setWsConnected: (connected: boolean) => void
   setConfigurationMode: (active: boolean) => void
@@ -59,14 +59,28 @@ export const useAppStore = create<AppState>((set) => ({
       return { deviceParams: { ...(state.deviceParams ?? {}), ...params } }
     }),
 
-  mergeLatestValues: (values) =>
-    set((state) => ({ latestValues: { ...state.latestValues, ...values } })),
+  mergeLatestValues: (values, beforeRequest) =>
+    set((state) => {
+      const accepted: LatestValues = {}
+      Object.entries(values).forEach(([key, incoming]) => {
+        const current = state.latestValues[key]
+        const comparable = incoming.timestamp_ms !== undefined && current?.timestamp_ms !== undefined
+        if (comparable && incoming.timestamp_ms! < current.timestamp_ms!) return
+        // A response started before a live update may contain an older snapshot.
+        if (beforeRequest && current !== beforeRequest[key]
+          && !(comparable && incoming.timestamp_ms! > current.timestamp_ms!)) return
+        accepted[key] = incoming
+      })
+      return { latestValues: { ...state.latestValues, ...accepted } }
+    }),
 
   applyUpdate: (update) =>
     set((state) => ({
       latestValues: {
         ...state.latestValues,
         [update.key]: {
+          timestamp_ms: update.timestamp_ms,
+          plot_managed: update.plot_managed,
           value: update.value,
           unit: update.unit ?? '',
           state: update.state,

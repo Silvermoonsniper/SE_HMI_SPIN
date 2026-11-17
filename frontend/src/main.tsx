@@ -23,7 +23,13 @@ liveClient.onSnapshot((values) => useAppStore.getState().mergeLatestValues(value
 liveClient.onUpdate((update) => {
   useAppStore.getState().applyUpdate(update)
   // Feed the plot buffers (muted in configure mode inside ingestPlotUpdate).
-  ingestPlotUpdate(update.key, update.value, Date.now(), true)
+  if (!update.plot_managed) ingestPlotUpdate(update.key, update.value, update.timestamp_ms ?? Date.now(), true)
+})
+liveClient.onPlotFrame((frame) => {
+  useAppStore.getState().mergeLatestValues(Object.fromEntries(Object.entries(frame.values).map(([key, value]) => [
+    key, { ...value, timestamp_ms: frame.timestamp_ms, plot_managed: true },
+  ])))
+  Object.entries(frame.values).forEach(([key, value]) => ingestPlotUpdate(key, value.value, frame.timestamp_ms, true))
 })
 liveClient.onConnectionChange((connected) => useAppStore.getState().setWsConnected(connected))
 initNodemanagerHandlers()
